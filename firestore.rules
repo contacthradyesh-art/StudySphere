@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // A user can only read/write their own profile and subcollections.
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /sessions/{sessionId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /studyStats/{period} {
+        allow read, write: if isOwner(uid);
+      }
+      // Smart Study Planner (Milestone 2)
+      match /tasks/{taskId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /weeklyPlan/{weekId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /monthlyPlan/{monthId} {
+        allow read, write: if isOwner(uid);
+      }
+      // Pomodoro + Focus Shield (Milestone 3)
+      match /pomodoroSessions/{sessionId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /focusSettings/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      // Notes + Subjects (Milestone 4)
+      match /notes/{noteId} {
+        allow read, write: if isOwner(uid);
+        match /versions/{versionId} {
+          allow read, write: if isOwner(uid);
+        }
+      }
+      match /subjects/{subjectId} {
+        allow read, write: if isOwner(uid);
+      }
+      // Digital Diary & Journal (Milestone 5)
+      match /journalEntries/{entryId} {
+        allow read, write: if isOwner(uid);
+      }
+      // AI Assistant + Flashcards (Milestone 6)
+      match /flashcardDecks/{deckId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /flashcards/{cardId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /aiConversations/{conversationId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+  }
+}
