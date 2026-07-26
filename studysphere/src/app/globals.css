@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-inter: "Inter", system-ui, sans-serif;
+    --font-jetbrains: "JetBrains Mono", monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body { @apply bg-charcoal-950 text-charcoal-50 font-sans; min-height: 100vh; overflow-x: hidden; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-charcoal-900; }
+  ::-webkit-scrollbar-thumb { @apply bg-charcoal-600 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-charcoal-500; }
+  *:focus-visible { @apply outline-2 outline-offset-2 outline-electric; }
+}
+
+@layer components {
+  .glass { @apply bg-charcoal-900/60 backdrop-blur-xl border border-white/[0.08] shadow-glass; }
+  .glass-hover { @apply glass hover:bg-charcoal-900/80 hover:border-white/[0.12] transition-all duration-300; }
+  .glow-border { @apply border border-electric/30 shadow-glow; }
+  .glow-border-neon { @apply border border-neon/30 shadow-glow-neon; }
+  .text-gradient { @apply bg-gradient-to-r from-electric to-neon bg-clip-text text-transparent; }
+  .card-base { @apply glass rounded-2xl p-4 md:p-6; }
+  .animate-in { @apply animate-fade-in; }
+}
+
+@layer utilities {
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}
