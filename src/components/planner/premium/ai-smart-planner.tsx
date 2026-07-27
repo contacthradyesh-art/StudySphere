@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
+import { requireAuth } from '@/lib/require-auth';
 import { generateWeeklyPlan } from '@/lib/planner/ai-generator';
 import { saveWeeklyPlan } from '@/lib/planner/weekly-plan-service';
 import { SUBJECTS, type Subject, type WeeklySlot } from '@/lib/firestore/planner-schema';
@@ -38,7 +39,8 @@ export function AiSmartPlanner({ weeklySlots }: { weeklySlots: WeeklySlot[] }) {
   }
 
   async function handleSave() {
-    if (!user || !preview) return;
+    if (!preview) return;
+    if (!requireAuth(user)) return;
     setGenerating(true);
     try {
       await saveWeeklyPlan(user.uid, preview);

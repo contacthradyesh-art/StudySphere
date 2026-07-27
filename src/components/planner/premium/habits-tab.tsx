@@ -7,6 +7,7 @@ import { GlassCard } from '@/components/shared/glass-card';
 import { HabitCard } from '@/components/planner/premium/habit-card';
 import { HabitDialog } from '@/components/planner/premium/habit-create-dialog';
 import { useAuth } from '@/hooks/use-auth';
+import { requireAuth } from '@/lib/require-auth';
 import { useHabitInsights } from '@/hooks/use-habit-insights';
 import { createHabit, deleteHabit, toggleHabitLog } from '@/lib/habits/habit-service';
 
@@ -53,7 +54,7 @@ export function HabitsTab() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onSubmit={async (data) => {
-          if (!user) return;
+          if (!requireAuth(user)) return;
           await createHabit(user.uid, data, habitProgress.length);
           setDialogOpen(false);
         }}

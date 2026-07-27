@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
+import { requireAuth } from '@/lib/require-auth';
 import { usePlannerStore } from '@/store/planner-store';
 import { addMonthlyGoal, removeMonthlyGoal, toggleMonthlyGoal } from '@/lib/planner/monthly-plan-service';
 import { SUBJECTS, type Subject } from '@/lib/firestore/planner-schema';
@@ -36,7 +37,8 @@ export function MonthlyView() {
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !label.trim()) return;
+    if (!label.trim()) return;
+    if (!requireAuth(user)) return;
     try {
       await addMonthlyGoal(user.uid, goals, {
         label: label.trim(),

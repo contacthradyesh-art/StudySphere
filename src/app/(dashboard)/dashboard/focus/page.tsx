@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared/glass-card';
 import { BlockListEditor } from '@/components/focus/block-list-editor';
 import { useAuth } from '@/hooks/use-auth';
+import { requireAuth } from '@/lib/require-auth';
 import { useFocusShieldState } from '@/hooks/use-focus-shield-state';
 import { getFocusSettings, saveFocusSettings } from '@/lib/pomodoro/session-service';
 import { broadcastFocusStart, broadcastFocusStop, buildBlockList } from '@/lib/focus/extension-contract';
@@ -46,7 +47,7 @@ export default function FocusShieldPage() {
   }
 
   async function persist() {
-    if (!user) return;
+    if (!requireAuth(user)) return;
     await saveFocusSettings(user.uid, settings);
     toast.success('Focus settings saved');
   }

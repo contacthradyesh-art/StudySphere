@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
+import { requireAuth } from '@/lib/require-auth';
 import { usePlannerStore } from '@/store/planner-store';
 import { addMonthlyGoal } from '@/lib/planner/monthly-plan-service';
 import { monthKey } from '@/lib/planner/date-keys';
@@ -32,7 +33,8 @@ export function ExamCountdown({ goals }: { goals: UpcomingGoal[] }) {
 
   async function addExam(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !label.trim() || !date) return;
+    if (!label.trim() || !date) return;
+    if (!requireAuth(user)) return;
     setAdding(true);
     try {
       const targetMonth = monthKey(new Date(`${date}T00:00:00`));

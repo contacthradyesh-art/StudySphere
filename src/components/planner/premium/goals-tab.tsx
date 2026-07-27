@@ -8,6 +8,7 @@ import { GoalCard } from '@/components/planner/premium/goal-card';
 import { GoalDialog } from '@/components/planner/premium/goal-create-dialog';
 import { GoalDetailView } from '@/components/planner/premium/goal-detail-view';
 import { useAuth } from '@/hooks/use-auth';
+import { requireAuth } from '@/lib/require-auth';
 import { useLifeGoalInsights } from '@/hooks/use-lifegoal-insights';
 import { useLifeGoalStore } from '@/store/lifegoal-store';
 import { createLifeGoal, deleteLifeGoal } from '@/lib/lifegoals/lifegoal-service';
@@ -69,7 +70,7 @@ export function GoalsTab() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onSubmit={async (data) => {
-          if (!user) return;
+          if (!requireAuth(user)) return;
           await createLifeGoal(user.uid, data, activeGoals.length);
           setDialogOpen(false);
         }}

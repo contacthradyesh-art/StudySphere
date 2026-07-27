@@ -10,6 +10,7 @@ import {
   deleteLifeMilestone, completeLifeGoal
 } from '@/lib/lifegoals/lifegoal-service';
 import { useAuth } from '@/hooks/use-auth';
+import { requireAuth } from '@/lib/require-auth';
 import type { LifeGoalProgress } from '@/hooks/use-lifegoal-insights';
 import type { LifeMilestone } from '@/lib/firestore/lifegoal-schema';
 
@@ -21,12 +22,12 @@ export function GoalDetailView({
   const milestones = selectMilestonesForGoal(allMilestones, goal.id);
 
   async function handleAdd(title: string) {
-    if (!user) return;
+    if (!requireAuth(user)) return;
     await createLifeMilestone(user.uid, { lifeGoalId: goal.id, title, deadline: null });
   }
 
   async function handleToggle(m: LifeMilestone) {
-    if (!user) return;
+    if (!requireAuth(user)) return;
     if (m.status === 'completed') {
       await updateLifeMilestone(user.uid, m.id, { status: 'pending', completedAt: null });
     } else {
@@ -40,7 +41,7 @@ export function GoalDetailView({
   }
 
   async function handleDelete(m: LifeMilestone) {
-    if (!user) return;
+    if (!requireAuth(user)) return;
     await deleteLifeMilestone(user.uid, m.id);
   }
 

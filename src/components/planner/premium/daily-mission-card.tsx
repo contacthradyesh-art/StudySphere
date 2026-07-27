@@ -1,5 +1,5 @@
 'use client';
-
+ 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -13,27 +13,31 @@ import { createTask, toggleTask } from '@/lib/planner/task-service';
 import { awardXp } from '@/lib/gamification/xp-service';
 import type { Task } from '@/lib/firestore/planner-schema';
 import type { usePlannerInsights } from '@/hooks/use-planner-insights';
-
+ 
 type Insights = ReturnType<typeof usePlannerInsights>;
-
+ 
 const todayIso = () => new Date().toISOString().slice(0, 10);
-
+ 
 export function DailyMissionCard({ insights, onManageAll }: { insights: Insights; onManageAll: () => void }) {
   const { user } = useAuth();
   const { tasksToday, missionPct } = insights;
   const [quickTitle, setQuickTitle] = useState('');
   const [adding, setAdding] = useState(false);
-
+ 
   async function handleToggle(task: Task) {
     if (!user) return;
     const nowCompleted = !task.completed;
     await toggleTask(user.uid, task.id, nowCompleted);
     if (nowCompleted) void awardXp(user.uid, 'completeTask');
   }
-
+ 
   async function quickAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !quickTitle.trim()) return;
+    if (!quickTitle.trim()) return;
+    if (!user) {
+      toast.error('Please log in again');
+      return;
+    }
     setAdding(true);
     try {
       await createTask(user.uid, { title: quickTitle.trim(), subject: null, priority: 'medium', dueDate: todayIso() });
@@ -45,9 +49,9 @@ export function DailyMissionCard({ insights, onManageAll }: { insights: Insights
       setAdding(false);
     }
   }
-
+ 
   const visible = tasksToday.slice(0, 6);
-
+ 
   return (
     <GlowCard delay={0.05} accent="#8b5cf6" className="space-y-4">
       <SectionHeading
@@ -55,7 +59,7 @@ export function DailyMissionCard({ insights, onManageAll }: { insights: Insights
         title={tasksToday.length === 0 ? 'A clear day — set a goal' : `${missionPct}% complete`}
         action={<Target className="h-5 w-5 text-primary" />}
       />
-
+ 
       <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary">
         <motion.div
           className="h-full rounded-full bg-gradient-brand"
@@ -64,7 +68,7 @@ export function DailyMissionCard({ insights, onManageAll }: { insights: Insights
           transition={{ duration: 0.6, ease: 'easeOut' }}
         />
       </div>
-
+ 
       <div className="space-y-2">
         {visible.length === 0 && (
           <p className="text-sm text-muted-foreground">No tasks due today yet. Add one below to start your mission.</p>
@@ -96,7 +100,7 @@ export function DailyMissionCard({ insights, onManageAll }: { insights: Insights
           <p className="text-xs text-muted-foreground">+{tasksToday.length - visible.length} more</p>
         )}
       </div>
-
+ 
       <form onSubmit={quickAdd} className="flex gap-2">
         <Input
           value={quickTitle}
@@ -104,14 +108,15 @@ export function DailyMissionCard({ insights, onManageAll }: { insights: Insights
           placeholder="Add a quick task for today..."
           className="flex-1"
         />
-        <Button type="submit" variant="gradient" size="icon" disabled={adding || !quickTitle.trim()} aria-label="Add task">
+        <Button type="submit" variant="gradient" size="icon" disabled={adding || !quickTitle.trim() || !user} aria-label="Add task">
           <Plus className="h-4 w-4" />
         </Button>
       </form>
-
+ 
       <button onClick={onManageAll} className="text-xs font-medium text-primary hover:underline">
         Manage all tasks &rarr;
       </button>
     </GlowCard>
   );
 }
+ 

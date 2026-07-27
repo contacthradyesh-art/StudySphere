@@ -11,6 +11,7 @@ import { EntryCard } from '@/components/journal/entry-card';
 import { JournalCalendar } from '@/components/journal/journal-calendar';
 import { JournalStats } from '@/components/journal/journal-stats';
 import { useAuth } from '@/hooks/use-auth';
+import { requireAuth } from '@/lib/require-auth';
 import { useJournalSync } from '@/hooks/use-journal';
 import { useJournalStore, filterEntries } from '@/store/journal-store';
 import { createEntry, updateEntry } from '@/lib/journal/journal-service';
@@ -43,7 +44,7 @@ export default function JournalPage() {
   }, [entries]);
 
   async function newEntry() {
-    if (!user) return;
+    if (!requireAuth(user)) return;
     try {
       const today = new Date().toISOString().slice(0, 10);
       const id = await createEntry(user.uid, {
@@ -58,7 +59,7 @@ export default function JournalPage() {
 
   async function handleMoodSelect(mood: Mood) {
     setTodayMood(mood);
-    if (!user) return;
+    if (!requireAuth(user)) return;
     try {
       const today = new Date().toISOString().slice(0, 10);
       const todayEntry = entries.find((e) => e.date === today);

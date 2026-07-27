@@ -10,6 +10,7 @@ import { GlassCard } from '@/components/shared/glass-card';
 import { LockDialog } from '@/components/journal/lock-dialog';
 import { DiaryEditor } from '@/components/journal/diary-editor';
 import { useAuth } from '@/hooks/use-auth';
+import { requireAuth } from '@/lib/require-auth';
 import { deleteEntry, getEntry, updateEntry } from '@/lib/journal/journal-service';
 import { decryptText, encryptText } from '@/lib/journal/journal-crypto';
 import { cn } from '@/lib/utils';
@@ -69,7 +70,7 @@ export default function JournalEntryPage() {
   useEffect(() => { load(); }, [load]);
 
   async function persist(extra: Partial<JournalEntry>) {
-    if (!user) return;
+    if (!requireAuth(user)) return;
     await updateEntry(user.uid, id, {
       title: title.trim(),
       mood,
@@ -80,7 +81,8 @@ export default function JournalEntryPage() {
   }
 
   async function save() {
-    if (!user || (locked && !unlocked)) return;
+    if (locked && !unlocked) return;
+    if (!requireAuth(user)) return;
     setSaving(true);
     try {
       if (locked && sessionPass) {
@@ -99,7 +101,7 @@ export default function JournalEntryPage() {
   }
 
   async function handleLock(passphrase: string) {
-    if (!user) return;
+    if (!requireAuth(user)) return;
     const { ciphertext, salt, iv } = await encryptText(content, passphrase);
     await persist({ content: ciphertext, locked: true, salt, iv });
     setSessionPass(passphrase);
@@ -125,7 +127,7 @@ export default function JournalEntryPage() {
   }
 
   async function remove() {
-    if (!user) return;
+    if (!requireAuth(user)) return;
     await deleteEntry(user.uid, id);
     toast.success('Entry deleted');
     router.push('/dashboard/journal');

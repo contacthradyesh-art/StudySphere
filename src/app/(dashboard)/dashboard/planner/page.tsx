@@ -1,5 +1,6 @@
 'use client';
-
+import { useAuth } from '@/hooks/use-auth';
+import { requireAuth } from '@/lib/require-auth';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
@@ -9,7 +10,6 @@ import { TaskItem } from '@/components/planner/task-item';
 import { TaskDialog } from '@/components/planner/task-dialog';
 import { WeeklyGrid } from '@/components/planner/weekly-grid';
 import { MonthlyView } from '@/components/planner/monthly-view';
-import { useAuth } from '@/hooks/use-auth';
 import { useTasksSync } from '@/hooks/use-tasks';
 import { usePlannerPlansSync, useUpcomingGoals } from '@/hooks/use-planner-plans';
 import { usePlannerStore } from '@/store/planner-store';
@@ -94,7 +94,7 @@ export default function PlannerPage() {
   );
 
   async function handleSubmit(data: NewTask) {
-    if (!user) return;
+    if (!requireAuth(user)) return;
     try {
       if (editing) await updateTask(user.uid, editing.id, data);
       else await createTask(user.uid, data);
@@ -104,14 +104,14 @@ export default function PlannerPage() {
   }
 
   async function handleToggle(task: Task) {
-    if (!user) return;
+    if (!requireAuth(user)) return;
     const nowCompleted = !task.completed;
     await toggleTask(user.uid, task.id, nowCompleted);
     if (nowCompleted) void awardXp(user.uid, 'completeTask');
   }
 
   async function handleDelete(task: Task) {
-    if (!user) return;
+    if (!requireAuth(user)) return;
     await deleteTask(user.uid, task.id);
     toast.success('Task deleted');
   }
