@@ -1,13 +1,14 @@
+
 /* StudySphere service worker: offline app shell + notification handling. */
 const CACHE = 'studysphere-v1';
 const APP_SHELL = ['/', '/dashboard', '/manifest.webmanifest'];
-
+ 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
   );
 });
-
+ 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -15,11 +16,13 @@ self.addEventListener('activate', (event) => {
     ).then(() => self.clients.claim())
   );
 });
-
+ 
 /* Network-first for navigations (fresh content), cache fallback when offline. */
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+  if (url.pathname.startsWith('/_next/') || url.pathname.startsWith('/api/')) return;
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -34,7 +37,7 @@ self.addEventListener('fetch', (event) => {
   }
   event.respondWith(caches.match(request).then((cached) => cached || fetch(request)));
 });
-
+ 
 /* Receive push payloads (when FCM/web-push is wired server-side). */
 self.addEventListener('push', (event) => {
   let data = { title: 'StudySphere', body: 'Time to study!' };
@@ -48,8 +51,9 @@ self.addEventListener('push', (event) => {
     })
   );
 });
-
+ 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(self.clients.openWindow('/dashboard'));
 });
+ 

@@ -13,7 +13,8 @@ export const XP_REWARDS = {
   // existing actions and values above are untouched.
   completeHabit: 5,
   completeMilestone: 30,
-  completeGoal: 100
+  completeGoal: 100,
+  completeMockTest: 25
 } as const;
 
 export type XpAction = keyof typeof XP_REWARDS;

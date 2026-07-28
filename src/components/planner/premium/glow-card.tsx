@@ -28,7 +28,7 @@ export function GlowCard({ children, className, delay = 0, accent = '#8b5cf6' }:
       style={{ '--glow': accent } as React.CSSProperties}
       className={cn(
         'glass group relative overflow-hidden rounded-2xl p-5 transition-shadow duration-300',
-        'before:absolute before:inset-0 before:rounded-2xl before:opacity-0 before:transition-opacity before:duration-300',
+        'before:pointer-events-none before:absolute before:inset-0 before:rounded-2xl before:opacity-0 before:transition-opacity before:duration-300',
         'before:[background:linear-gradient(135deg,var(--glow)_0%,transparent_40%,transparent_60%,var(--glow)_100%)] before:[mask:linear-gradient(#fff,#fff)_content-box,linear-gradient(#fff,#fff)] before:p-px before:[-webkit-mask-composite:xor] before:[mask-composite:exclude]',
         'hover:shadow-[0_0_40px_-10px_var(--glow)] hover:before:opacity-30',
         className

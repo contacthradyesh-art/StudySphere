@@ -93,3 +93,14 @@ export async function removeMonthlyGoal(
   const next = current.filter((g) => g.id !== goalId);
   await writeGoals(uid, next, key);
 }
+/** Update a goal's fields (label, subject, targetDate) in a month's plan. */
+export async function updateMonthlyGoal(
+  uid: string,
+  current: MonthlyGoal[],
+  goalId: string,
+  patch: Partial<Pick<MonthlyGoal, 'label' | 'subject' | 'targetDate'>>,
+  key: string = monthKey()
+) {
+  const next = current.map((g) => (g.id === goalId ? { ...g, ...patch } : g));
+  await writeGoals(uid, next, key);
+}

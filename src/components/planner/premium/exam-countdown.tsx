@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { GraduationCap, Plus } from 'lucide-react';
+import { GraduationCap, Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 import { GlowCard, SectionHeading } from './glow-card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { requireAuth } from '@/lib/require-auth';
 import { usePlannerStore } from '@/store/planner-store';
-import { addMonthlyGoal } from '@/lib/planner/monthly-plan-service';
+import { addMonthlyGoal, updateMonthlyGoal, removeMonthlyGoal } from '@/lib/planner/monthly-plan-service';
 import { monthKey } from '@/lib/planner/date-keys';
 import type { UpcomingGoal } from '@/lib/planner/monthly-plan-service';
 
@@ -29,7 +29,18 @@ export function ExamCountdown({ goals }: { goals: UpcomingGoal[] }) {
   const [date, setDate] = useState('');
   const [adding, setAdding] = useState(false);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState('');
+  const [editDate, setEditDate] = useState('');
+
   const upcoming = goals.filter((g) => !g.done && daysUntil(g.targetDate) >= 0).slice(0, 6);
+
+  function goalsListFor(targetMonth: string) {
+    const currentMonth = monthKey();
+    return targetMonth === currentMonth
+      ? currentGoals
+      : goals.filter((g) => g.monthKey === targetMonth).map(({ monthKey: _mk, ...g }) => g);
+  }
 
   async function addExam(e: React.FormEvent) {
     e.preventDefault();
@@ -38,13 +49,7 @@ export function ExamCountdown({ goals }: { goals: UpcomingGoal[] }) {
     setAdding(true);
     try {
       const targetMonth = monthKey(new Date(`${date}T00:00:00`));
-      const currentMonth = monthKey();
-      // Use whichever goal list already represents that month so we never
-      // overwrite goals that exist in a future month we haven't loaded fresh.
-      const existingForMonth = targetMonth === currentMonth
-        ? currentGoals
-        : goals.filter((g) => g.monthKey === targetMonth).map(({ monthKey: _mk, ...g }) => g);
-      await addMonthlyGoal(user.uid, existingForMonth, { label: label.trim(), subject: null, targetDate: date }, targetMonth);
+      await addMonthlyGoal(user.uid, goalsListFor(targetMonth), { label: label.trim(), subject: null, targetDate: date }, targetMonth);
       setLabel('');
       setDate('');
       toast.success('Exam added to countdown');
@@ -52,6 +57,42 @@ export function ExamCountdown({ goals }: { goals: UpcomingGoal[] }) {
       toast.error('Could not add exam');
     } finally {
       setAdding(false);
+    }
+  }
+
+  function startEdit(g: UpcomingGoal) {
+    setEditingId(g.id);
+    setEditLabel(g.label);
+    setEditDate(g.targetDate);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditLabel('');
+    setEditDate('');
+  }
+
+  async function saveEdit(g: UpcomingGoal) {
+    if (!requireAuth(user)) return;
+    const trimmed = editLabel.trim();
+    if (!trimmed || !editDate) { cancelEdit(); return; }
+    try {
+      await updateMonthlyGoal(user.uid, goalsListFor(g.monthKey), g.id, { label: trimmed, targetDate: editDate }, g.monthKey);
+      toast.success('Exam updated');
+    } catch {
+      toast.error('Could not update exam');
+    } finally {
+      cancelEdit();
+    }
+  }
+
+  async function handleDelete(g: UpcomingGoal) {
+    if (!requireAuth(user)) return;
+    try {
+      await removeMonthlyGoal(user.uid, goalsListFor(g.monthKey), g.id, g.monthKey);
+      toast.success('Exam removed');
+    } catch {
+      toast.error('Could not remove exam');
     }
   }
 
@@ -67,6 +108,7 @@ export function ExamCountdown({ goals }: { goals: UpcomingGoal[] }) {
             const days = daysUntil(g.targetDate);
             const urgent = days <= 14;
             const progressPct = Math.max(4, Math.min(100, Math.round(100 - (days / 90) * 100)));
+            const isEditing = editingId === g.id;
             return (
               <motion.div
                 key={g.id}
@@ -78,14 +120,33 @@ export function ExamCountdown({ goals }: { goals: UpcomingGoal[] }) {
                   urgent ? 'border-amber-400/40 bg-amber-400/10' : 'border-white/10 bg-white/5'
                 )}
               >
-                <p className="truncate text-sm font-semibold">{g.label}</p>
-                <p className={cn('mt-0.5 text-2xl font-bold tabular-nums', urgent ? 'text-amber-300' : 'text-foreground')}>
-                  {days}d
-                </p>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                  <div className="h-full rounded-full bg-gradient-brand" style={{ width: `${progressPct}%` }} />
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">{g.targetDate}</p>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="h-8 text-sm" autoFocus />
+                    <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-8 text-sm" />
+                    <div className="flex gap-2">
+                      <button onClick={() => saveEdit(g)} className="text-primary hover:opacity-80" aria-label="Save"><Check className="h-4 w-4" /></button>
+                      <button onClick={cancelEdit} className="text-muted-foreground hover:text-foreground" aria-label="Cancel"><X className="h-4 w-4" /></button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="truncate text-sm font-semibold">{g.label}</p>
+                      <div className="flex shrink-0 gap-1.5">
+                        <button onClick={() => startEdit(g)} className="text-muted-foreground hover:text-primary" aria-label="Edit exam"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => handleDelete(g)} className="text-muted-foreground hover:text-red-500" aria-label="Delete exam"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    </div>
+                    <p className={cn('mt-0.5 text-2xl font-bold tabular-nums', urgent ? 'text-amber-300' : 'text-foreground')}>
+                      {days}d
+                    </p>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                      <div className="h-full rounded-full bg-gradient-brand" style={{ width: `${progressPct}%` }} />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{g.targetDate}</p>
+                  </>
+                )}
               </motion.div>
             );
           })}
