@@ -45,6 +45,7 @@ export function CreateTestDialog({ isOpen, onClose }: CreateTestDialogProps) {
       topic: q.topic || fallbackTopic || "General",
       subject: "general-awareness",
       difficulty: "medium",
+      hint: q.hint || undefined,
     }));
   }
 

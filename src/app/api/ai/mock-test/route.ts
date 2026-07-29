@@ -5,14 +5,16 @@ const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemi
 const GENERATE_SYSTEM_PROMPT = `You are an expert question setter for Indian competitive exams (SSC, UPSC, UPP, Banking, RRB, etc).
 Generate high-quality, unique multiple-choice questions. Never repeat a question.
 Explanations must be short (1-2 plain sentences), plain text only — no LaTeX, no backslash commands, no markdown, no special formatting symbols.
+Also provide a short hint (1 sentence, plain text) for each question — it should nudge the student toward the method/concept without revealing the final answer.
 Return ONLY valid JSON, no markdown, no commentary, matching exactly this shape:
-{"questions":[{"text":"...","options":["A","B","C","D"],"correctOptionIndex":0,"explanation":"...","topic":"..."}]}`;
+{"questions":[{"text":"...","options":["A","B","C","D"],"correctOptionIndex":0,"explanation":"...","topic":"...","hint":"..."}]}`;
 
 const PARSE_SYSTEM_PROMPT = `You extract multiple-choice questions from messy pasted text (any language, any format).
 For each question found, identify the question text, its options, which option is correct, and a short explanation if present.
 Explanations must be short (1-2 plain sentences), plain text only — no LaTeX, no backslash commands, no markdown.
+Also generate a short hint (1 sentence, plain text) for each question that nudges toward the method without giving away the answer.
 Return ONLY valid JSON, no markdown, no commentary, matching exactly this shape:
-{"questions":[{"text":"...","options":["A","B","C","D"],"correctOptionIndex":0,"explanation":"...","topic":"..."}]}
+{"questions":[{"text":"...","options":["A","B","C","D"],"correctOptionIndex":0,"explanation":"...","topic":"...","hint":"..."}]}
 If no explanation is given, use an empty string. If fewer or more than 4 options exist, include exactly what was given.`;
 
 async function callGemini(systemPrompt: string, userPrompt: string) {

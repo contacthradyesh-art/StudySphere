@@ -13,6 +13,7 @@ export function TestInterface() {
   const { session, answerQuestion, toggleReview, navigateToQuestion, navigateToSection, updateTimeRemaining, completeTest } = useMockTestStore();
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const [revealedHints, setRevealedHints] = useState<Record<string, boolean>>({});
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -27,6 +28,10 @@ export function TestInterface() {
     const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
     answerQuestion(questionId, optionIndex, timeSpent);
   }, [answerQuestion, questionStartTime]);
+
+  const toggleHint = useCallback((questionId: string) => {
+    setRevealedHints((prev) => ({ ...prev, [questionId]: !prev[questionId] }));
+  }, []);
 
   const handleNext = useCallback(() => {
     if (!session) return;
@@ -92,7 +97,26 @@ export function TestInterface() {
                       <Badge variant={currentQuestion.difficulty === "hard" ? "danger" : currentQuestion.difficulty === "medium" ? "warning" : "neon"} size="sm">{currentQuestion.difficulty}</Badge>
                     </div>
                   </div>
-                  <p className="text-base text-charcoal-50 leading-relaxed mb-6">{currentQuestion.text}</p>
+                  <p className="text-base text-charcoal-50 leading-relaxed mb-4">{currentQuestion.text}</p>
+
+                  {currentQuestion.hint && (
+                    <div className="mb-4">
+                      {!revealedHints[currentQuestion.id] ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleHint(currentQuestion.id)}
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500/20 transition-colors"
+                        >
+                          💡 Show Hint
+                        </button>
+                      ) : (
+                        <div className="text-xs px-3 py-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-200">
+                          💡 {currentQuestion.hint}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="space-y-3">
                     {currentQuestion.options.map((option, index) => {
                       const isSelected = currentAnswer?.selectedOptionIndex === index;

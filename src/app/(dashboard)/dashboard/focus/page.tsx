@@ -36,11 +36,23 @@ export default function FocusShieldPage() {
   const { user } = useAuth();
   const [settings, setSettings] = useState<Settings>(DEFAULT_FOCUS_SETTINGS);
   const { active, endsAt, startSession, endSession } = useFocusShieldState();
+  const [extensionConnected, setExtensionConnected] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     getFocusSettings(user.uid).then(setSettings);
   }, [user]);
+
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.source !== window) return;
+      if (event.data?.channel === 'studysphere-focus' && event.data?.type === 'EXTENSION_READY') {
+        setExtensionConnected(true);
+      }
+    }
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   function patch(p: Partial<Settings>) {
     setSettings((s) => ({ ...s, ...p }));
@@ -119,11 +131,22 @@ export default function FocusShieldPage() {
       )}
 
       <GlassCard>
-        <h2 className="mb-1 font-semibold">Browser extension</h2>
+        <div className="mb-1 flex items-center justify-between">
+          <h2 className="font-semibold">Browser extension</h2>
+          <span
+            className={cn(
+              'rounded-full px-2.5 py-1 text-xs font-medium',
+              extensionConnected ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'
+            )}
+          >
+            {extensionConnected ? '● Extension connected' : '○ Extension not detected'}
+          </span>
+        </div>
         <p className="text-sm text-muted-foreground">
           Website blocking at the network level is enforced by the companion extension, which listens on the
           <code> studysphere-focus </code> channel. The app broadcasts the active block list on activation; see
           <code> src/lib/focus/extension-contract.ts</code>.
+          {!extensionConnected && ' Load the extension from the /extension folder via chrome://extensions (Developer mode → Load unpacked) to enable real blocking.'}
         </p>
       </GlassCard>
     </div>

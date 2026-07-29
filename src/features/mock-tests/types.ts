@@ -7,7 +7,7 @@ export type QuestionType = "mcq" | "fill-in" | "true-false";
 export interface Question {
   id: string; text: string; options: string[]; correctOptionIndex: number; explanation: string;
   topic: string; subject: SubjectArea; difficulty: Difficulty;
-  previousYearExam?: string; previousYear?: number; imageUrl?: string;
+  previousYearExam?: string; previousYear?: number; imageUrl?: string;hint?: string;
 }
 
 export interface UserAnswer { questionId: string; selectedOptionIndex: number | null; timeSpent: number; isMarkedForReview: boolean; }
