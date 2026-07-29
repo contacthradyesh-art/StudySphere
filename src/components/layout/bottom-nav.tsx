@@ -2,15 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarCheck, Timer, NotebookPen, Sparkles } from 'lucide-react';
+import { LayoutDashboard, CalendarCheck, Timer, NotebookPen } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MoreSheet } from './more-sheet';
 
 const BOTTOM_NAV = [
   { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { href: '/dashboard/planner', label: 'Planner', icon: CalendarCheck },
   { href: '/dashboard/pomodoro', label: 'Focus', icon: Timer },
   { href: '/dashboard/notes', label: 'Notes', icon: NotebookPen },
-  { href: '/dashboard/assistant', label: 'AI', icon: Sparkles },
 ];
 
 export function BottomNav() {
@@ -34,6 +34,7 @@ export function BottomNav() {
           </Link>
         );
       })}
+      <MoreSheet />
     </nav>
   );
 }
