@@ -148,7 +148,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── STAT CARDS ── */}
-        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
             { icon: "⏱️", label: "Study Time Today", value: "2h 45m", sub: "↑ 28% vs yesterday", c: "text-green-400" },
             { icon: "🔥", label: "Streak", value: "12 Days", sub: "Keep it going!", c: "text-orange-400" },
@@ -156,7 +156,7 @@ export default function DashboardPage() {
             { icon: "✅", label: "Tasks Done", value: `${doneTasks}/${tasks.length}`, sub: "Keep pushing!", c: "text-blue-400" },
             { icon: "⭐", label: "XP Today", value: "220 XP", sub: "Total XP: 3250", c: "text-yellow-400" },
           ].map((s) => (
-            <div key={s.label} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex-1 min-w-[140px]">
+            <div key={s.label} className="bg-white/5 border border-white/10 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-lg">{s.icon}</span>
                 <span className="text-xs text-gray-400 truncate">{s.label}</span>
