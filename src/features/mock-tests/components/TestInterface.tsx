@@ -26,7 +26,6 @@ export function TestInterface() {
   useEffect(() => { if (session?.status === "timed-out") completeTest(); }, [session?.status, completeTest]);
 
   const handleSelectOption = useCallback((questionId: string, optionIndex: number) => {
-    console.log('OPTION CLICKED', { questionId, optionIndex }); // TEMP DIAGNOSTIC
     const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
     answerQuestion(questionId, optionIndex, timeSpent);
   }, [answerQuestion, questionStartTime]);
