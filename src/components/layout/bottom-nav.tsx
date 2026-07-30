@@ -16,7 +16,7 @@ const BOTTOM_NAV = [
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-stretch border-t border-white/10 bg-background/80 backdrop-blur-xl md:hidden">
+    <nav className="safe-bottom fixed bottom-0 left-0 right-0 z-50 flex h-16 items-stretch border-t border-white/10 bg-background/80 backdrop-blur-xl md:hidden">
       {BOTTOM_NAV.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
         return (

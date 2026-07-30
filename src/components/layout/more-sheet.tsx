@@ -49,7 +49,7 @@ export function MoreSheet() {
           />
 
           {/* Sheet */}
-          <div className="absolute bottom-0 left-0 right-0 max-h-[75vh] overflow-y-auto rounded-t-2xl border-t border-white/10 bg-background p-4 pb-8">
+          <div className="safe-bottom absolute bottom-0 left-0 right-0 max-h-[75vh] overflow-y-auto rounded-t-2xl border-t border-white/10 bg-background p-4 pb-8">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-base font-semibold">More</h3>
               <button onClick={() => setOpen(false)} aria-label="Close">
