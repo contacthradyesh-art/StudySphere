@@ -25,15 +25,15 @@ export function Topbar() {
       </div>
 
       {/* Right Side */}
-      <div className="flex items-center gap-2 ml-auto">
-        <Button variant="ghost" size="icon" aria-label="Notifications">
-          <Bell className="h-5 w-5" />
+      <div className="flex items-center gap-1 ml-auto">
+        <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Notifications">
+          <Bell className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" aria-label="Profile">
-          <UserIcon className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Profile">
+          <UserIcon className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" aria-label="Sign out" onClick={handleSignOut}>
-          <LogOut className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Sign out" onClick={handleSignOut}>
+          <LogOut className="h-4 w-4" />
         </Button>
       </div>
     </header>
