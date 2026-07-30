@@ -128,7 +128,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0d0d1a] text-white">
-      <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-5">
+      <div className="max-w-[1400px] mx-auto space-y-5">
 
         {/* ── HEADER ── */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
