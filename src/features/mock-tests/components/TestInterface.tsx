@@ -14,6 +14,7 @@ export function TestInterface() {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [revealedHints, setRevealedHints] = useState<Record<string, boolean>>({});
+  const [revealedExplanations, setRevealedExplanations] = useState<Record<string, boolean>>({});
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -25,12 +26,17 @@ export function TestInterface() {
   useEffect(() => { if (session?.status === "timed-out") completeTest(); }, [session?.status, completeTest]);
 
   const handleSelectOption = useCallback((questionId: string, optionIndex: number) => {
+    console.log('OPTION CLICKED', { questionId, optionIndex }); // TEMP DIAGNOSTIC
     const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
     answerQuestion(questionId, optionIndex, timeSpent);
   }, [answerQuestion, questionStartTime]);
 
   const toggleHint = useCallback((questionId: string) => {
     setRevealedHints((prev) => ({ ...prev, [questionId]: !prev[questionId] }));
+  }, []);
+
+  const toggleExplanation = useCallback((questionId: string) => {
+    setRevealedExplanations((prev) => ({ ...prev, [questionId]: !prev[questionId] }));
   }, []);
 
   const handleNext = useCallback(() => {
@@ -99,21 +105,37 @@ export function TestInterface() {
                   </div>
                   <p className="text-base text-charcoal-50 leading-relaxed mb-4">{currentQuestion.text}</p>
 
-                  {currentQuestion.hint && (
-                    <div className="mb-4">
-                      {!revealedHints[currentQuestion.id] ? (
-                        <button
-                          type="button"
-                          onClick={() => toggleHint(currentQuestion.id)}
-                          className="text-xs font-medium px-3 py-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500/20 transition-colors"
-                        >
-                          💡 Show Hint
-                        </button>
-                      ) : (
-                        <div className="text-xs px-3 py-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-200">
-                          💡 {currentQuestion.hint}
-                        </div>
-                      )}
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                    {currentQuestion.hint && !revealedHints[currentQuestion.id] && (
+                      <button
+                        type="button"
+                        onClick={() => toggleHint(currentQuestion.id)}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500/20 transition-colors"
+                      >
+                        💡 Show Hint
+                      </button>
+                    )}
+                    {currentQuestion.explanation && !revealedExplanations[currentQuestion.id] && (
+                      <button
+                        type="button"
+                        onClick={() => toggleExplanation(currentQuestion.id)}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20 transition-colors inline-flex items-center gap-1"
+                        aria-label="Show explanation"
+                      >
+                        ℹ️ Explain
+                      </button>
+                    )}
+                  </div>
+
+                  {currentQuestion.hint && revealedHints[currentQuestion.id] && (
+                    <div className="mb-3 text-xs px-3 py-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-200">
+                      💡 {currentQuestion.hint}
+                    </div>
+                  )}
+
+                  {currentQuestion.explanation && revealedExplanations[currentQuestion.id] && (
+                    <div className="mb-4 text-xs px-3 py-2 rounded-lg border border-sky-500/30 bg-sky-500/10 text-sky-200">
+                      ℹ️ {currentQuestion.explanation}
                     </div>
                   )}
 
