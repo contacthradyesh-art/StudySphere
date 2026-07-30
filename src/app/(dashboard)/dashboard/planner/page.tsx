@@ -118,9 +118,6 @@ export default function PlannerPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* ── Hero stats bar ── */}
-      <PlannerHero insights={insights} />
-
       {/* ── Habits overview (shows when habits exist) ── */}
       <HabitsOverviewPanel />
 
@@ -157,11 +154,16 @@ export default function PlannerPage() {
 
       {/* ── OVERVIEW TAB ── */}
       {tab === 'overview' && (
-        <div className="grid gap-5 lg:grid-cols-2">
-          <DailyMissionCard insights={insights} onManageAll={() => setTab('tasks')} />
-          <StudyTimeline blocks={todayTimeline} />
-          <ExamCountdown goals={upcomingGoals} />
-          <RecentActivity tasks={tasks} sessions={sessions} goals={upcomingGoals} />
+        <div className="space-y-5">
+          <div className="grid gap-5 lg:grid-cols-2">
+            <DailyMissionCard insights={insights} onManageAll={() => setTab('tasks')} />
+            <StudyTimeline blocks={todayTimeline} />
+            <ExamCountdown goals={upcomingGoals} />
+            <RecentActivity tasks={tasks} sessions={sessions} goals={upcomingGoals} />
+          </div>
+
+          {/* ── Stats — moved below the actionable cards; not very useful up top when all zero for new users ── */}
+          <PlannerHero insights={insights} />
         </div>
       )}
 
