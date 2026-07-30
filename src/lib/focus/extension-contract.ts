@@ -23,6 +23,7 @@ export interface FocusStartMessage {
   type: 'FOCUS_START';
   blockList: string[];
   endsAt: number; // epoch ms
+  disableNotifications: boolean;
 }
 
 export interface FocusStopMessage {
@@ -41,9 +42,9 @@ export function buildBlockList(settings: Pick<FocusSettings, 'blockShorts' | 'bl
 }
 
 /** Notify the extension (if installed) that a focus session has begun. */
-export function broadcastFocusStart(blockList: string[], endsAt: number) {
+export function broadcastFocusStart(blockList: string[], endsAt: number, disableNotifications: boolean) {
   if (typeof window === 'undefined') return;
-  const msg: FocusStartMessage = { channel: EXTENSION_CHANNEL, type: 'FOCUS_START', blockList, endsAt };
+  const msg: FocusStartMessage = { channel: EXTENSION_CHANNEL, type: 'FOCUS_START', blockList, endsAt, disableNotifications };
   window.postMessage(msg, window.location.origin);
 }
 

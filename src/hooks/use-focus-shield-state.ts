@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const STORAGE_KEY = 'focus-shield-state-v1';
 
@@ -17,7 +17,6 @@ function load(): FocusShieldState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as FocusShieldState;
-      // Auto-expire if the saved end time has already passed.
       if (parsed.active && parsed.endsAt && parsed.endsAt < Date.now()) {
         return DEFAULT_STATE;
       }
@@ -40,10 +39,18 @@ function save(state: FocusShieldState) {
 /**
  * Shared Focus Shield session state, persisted to localStorage so it's visible
  * both on the dedicated Focus Shield page and the dashboard preview widget.
- * Listens for the `storage` event so multiple tabs/components stay in sync.
+ * Auto-expires itself with a live timer once `endsAt` passes, instead of
+ * only checking on page load.
  */
 export function useFocusShieldState() {
   const [state, setState] = useState<FocusShieldState>(DEFAULT_STATE);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const endSession = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setState(DEFAULT_STATE);
+    save(DEFAULT_STATE);
+  }, []);
 
   useEffect(() => {
     setState(load());
@@ -54,6 +61,23 @@ export function useFocusShieldState() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
+  // Schedule an auto-expire the moment `endsAt` is reached, instead of
+  // waiting for the next page load/reload to notice.
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (state.active && state.endsAt) {
+      const msLeft = state.endsAt - Date.now();
+      if (msLeft <= 0) {
+        endSession();
+      } else {
+        timerRef.current = setTimeout(endSession, msLeft);
+      }
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [state.active, state.endsAt, endSession]);
+
   const startSession = useCallback((durationMinutes: number, blockedCount: number) => {
     const next: FocusShieldState = {
       active: true,
@@ -62,11 +86,6 @@ export function useFocusShieldState() {
     };
     setState(next);
     save(next);
-  }, []);
-
-  const endSession = useCallback(() => {
-    setState(DEFAULT_STATE);
-    save(DEFAULT_STATE);
   }, []);
 
   return { ...state, startSession, endSession };

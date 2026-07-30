@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ShieldCheck, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,7 @@ export default function FocusShieldPage() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_FOCUS_SETTINGS);
   const { active, endsAt, startSession, endSession } = useFocusShieldState();
   const [extensionConnected, setExtensionConnected] = useState(false);
+  const wasActive = useRef(active);
 
   useEffect(() => {
     if (!user) return;
@@ -54,6 +55,15 @@ export default function FocusShieldPage() {
     return () => window.removeEventListener('message', onMessage);
   }, []);
 
+  // If the session auto-expired (active flipped true -> false on its own),
+  // tell the extension/Android bridge too, so blocking releases immediately.
+  useEffect(() => {
+    if (wasActive.current && !active) {
+      broadcastFocusStop();
+    }
+    wasActive.current = active;
+  }, [active]);
+
   function patch(p: Partial<Settings>) {
     setSettings((s) => ({ ...s, ...p }));
   }
@@ -67,7 +77,7 @@ export default function FocusShieldPage() {
   function activate() {
     const end = Date.now() + settings.focusDurationMinutes * 60 * 1000;
     startSession(settings.focusDurationMinutes, buildBlockList(settings).length);
-    broadcastFocusStart(buildBlockList(settings), end);
+    broadcastFocusStart(buildBlockList(settings), end, settings.disableNotifications);
     toast.success('Focus Shield activated');
   }
 
