@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { LogOut, User as UserIcon, Bell, Search } from 'lucide-react';
-import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { signOut } from '@/lib/auth/service';
@@ -27,7 +26,6 @@ export function Topbar() {
 
       {/* Right Side */}
       <div className="flex items-center gap-2 ml-auto">
-        <ThemeToggle />
         <Button variant="ghost" size="icon" aria-label="Notifications">
           <Bell className="h-5 w-5" />
         </Button>

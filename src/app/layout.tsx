@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans`}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark">
           <AuthProvider>{children}</AuthProvider>
           <Toaster richColors position="top-center" />
           <PwaInit />
