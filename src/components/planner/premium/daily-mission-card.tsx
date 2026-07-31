@@ -195,7 +195,7 @@ export function DailyMissionCard({ insights, onManageAll }: { insights: Insights
             value={quickTitle}
             onChange={(e) => setQuickTitle(e.target.value)}
             placeholder="Add a quick task for today..."
-            className="flex-1"
+            className="min-w-0 flex-1"
           />
           <Button
             type="button"
