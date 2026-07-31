@@ -94,9 +94,9 @@ export function GoalDialog({ open, initial, onClose, onSubmit }: GoalDialogProps
           </div>
           <div className="space-y-2 rounded-xl border border-white/10 p-3">
             <Label className="flex items-center gap-1.5">🔔 Reminder alarm (optional)</Label>
-            <div className="grid grid-cols-2 gap-3">
-              <Input type="date" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} />
-              <Input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+              <Input type="date" className="w-full min-w-0" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} />
+              <Input type="time" className="w-full min-w-0" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />
             </div>
             <p className="text-xs text-muted-foreground">
               Plays a chime + notification while StudySphere is open at this time.

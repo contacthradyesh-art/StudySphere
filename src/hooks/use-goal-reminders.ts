@@ -9,11 +9,33 @@ import type { LifeGoal } from '@/lib/firestore/lifegoal-schema';
 const FIRED_KEY = 'ss_goal_reminders_fired';
 const CHECK_INTERVAL_MS = 15000;
 
+// Shared, lazily-unlocked AudioContext. Browsers block sound that isn't
+// triggered by a user gesture, so we create/resume this on the user's very
+// first tap anywhere in the app, then reuse it later when an alarm fires
+// on its own (from a background timer, with no tap involved).
+let sharedCtx: AudioContext | null = null;
+
+function getAudioCtxCtor(): typeof AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  return window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext || null;
+}
+
+function unlockAudio() {
+  const Ctor = getAudioCtxCtor();
+  if (!Ctor) return;
+  if (!sharedCtx) sharedCtx = new Ctor();
+  if (sharedCtx.state === 'suspended') sharedCtx.resume().catch(() => {});
+}
+
 /** A short, pleasant ascending chime built with the Web Audio API — no mp3 file needed. */
 function playAlarmTune() {
   try {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new AudioCtx();
+    const Ctor = getAudioCtxCtor();
+    if (!Ctor) return;
+    if (!sharedCtx) sharedCtx = new Ctor();
+    const ctx = sharedCtx;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
     const notes = [880, 988, 1046.5, 1318.5]; // A5, B5, C6, E6 — bright, non-jarring chime
     let t = ctx.currentTime;
 
@@ -34,7 +56,7 @@ function playAlarmTune() {
       t += 0.15;
     }
   } catch {
-    /* Autoplay/audio restrictions — fail silently, toast + notification still show. */
+    /* Audio failed — toast + notification below still show. */
   }
 }
 
@@ -66,6 +88,17 @@ function markFired(id: string) {
 export function useGoalReminders() {
   const { user } = useAuth();
   const goalsRef = useRef<LifeGoal[]>([]);
+
+  // Unlock audio on the very first tap anywhere, so later background-timer
+  // alarms are allowed to play sound.
+  useEffect(() => {
+    function onFirstInteraction() {
+      unlockAudio();
+      window.removeEventListener('pointerdown', onFirstInteraction);
+    }
+    window.addEventListener('pointerdown', onFirstInteraction, { once: true });
+    return () => window.removeEventListener('pointerdown', onFirstInteraction);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
