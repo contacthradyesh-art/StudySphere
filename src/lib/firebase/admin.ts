@@ -1,5 +1,6 @@
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 function initAdmin(): App | null {
   const existing = getApps();
@@ -19,6 +20,7 @@ function initAdmin(): App | null {
 
 export const adminApp = initAdmin();
 export const adminAuth = adminApp ? getAuth(adminApp) : null;
+export const adminDb = adminApp ? getFirestore(adminApp) : null;
 const FIVE_DAYS_MS = 60 * 60 * 24 * 5 * 1000;
 
 export async function createSessionCookie(idToken: string) {
