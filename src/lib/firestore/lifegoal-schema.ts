@@ -27,6 +27,8 @@ export interface LifeGoal {
   examTag: string | null;
   /** ISO date string YYYY-MM-DD, optional. */
   deadline: string | null;
+  /** Epoch ms for an optional reminder alarm, null if none set. */
+  reminderAt: number | null;
   status: LifeGoalStatus;
   /** Accent color for UI, consistent with GlowCard's accent prop. */
   color: string;
@@ -38,7 +40,7 @@ export interface LifeGoal {
 }
 
 /** Payload used when creating a goal (id + status + timestamps assigned by the service). */
-export type NewLifeGoal = Pick<LifeGoal, 'title' | 'description' | 'examTag' | 'deadline' | 'color'>;
+export type NewLifeGoal = Pick<LifeGoal, 'title' | 'description' | 'examTag' | 'deadline' | 'color' | 'reminderAt'>;
 
 export interface LifeMilestone {
   id: string;

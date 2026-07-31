@@ -15,12 +15,25 @@ interface GoalDialogProps {
 
 const ACCENTS = ['#8b5cf6', '#ec4899', '#6366f1', '#f59e0b', '#10b981', '#ef4444'];
 
+function toDateInput(ms: number | null): string {
+  if (!ms) return '';
+  const d = new Date(ms);
+  return d.toISOString().slice(0, 10);
+}
+function toTimeInput(ms: number | null): string {
+  if (!ms) return '';
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 export function GoalDialog({ open, initial, onClose, onSubmit }: GoalDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [examTag, setExamTag] = useState('');
   const [deadline, setDeadline] = useState('');
   const [color, setColor] = useState(ACCENTS[0]);
+  const [reminderDate, setReminderDate] = useState('');
+  const [reminderTime, setReminderTime] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -29,6 +42,8 @@ export function GoalDialog({ open, initial, onClose, onSubmit }: GoalDialogProps
       setExamTag(initial?.examTag ?? '');
       setDeadline(initial?.deadline ?? '');
       setColor(initial?.color ?? ACCENTS[0]);
+      setReminderDate(toDateInput(initial?.reminderAt ?? null));
+      setReminderTime(toTimeInput(initial?.reminderAt ?? null));
     }
   }, [open, initial]);
 
@@ -37,12 +52,20 @@ export function GoalDialog({ open, initial, onClose, onSubmit }: GoalDialogProps
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
+
+    let reminderAt: number | null = null;
+    if (reminderDate && reminderTime) {
+      const combined = new Date(`${reminderDate}T${reminderTime}:00`);
+      if (!isNaN(combined.getTime())) reminderAt = combined.getTime();
+    }
+
     onSubmit({
       title: title.trim(),
       description: description.trim() || null,
       examTag: examTag.trim() || null,
       deadline: deadline || null,
-      color
+      color,
+      reminderAt
     });
   }
 
@@ -68,6 +91,16 @@ export function GoalDialog({ open, initial, onClose, onSubmit }: GoalDialogProps
               <Label htmlFor="goal-deadline">Deadline</Label>
               <Input id="goal-deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
             </div>
+          </div>
+          <div className="space-y-2 rounded-xl border border-white/10 p-3">
+            <Label className="flex items-center gap-1.5">🔔 Reminder alarm (optional)</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <Input type="date" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} />
+              <Input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Plays a chime + notification while StudySphere is open at this time.
+            </p>
           </div>
           <div className="space-y-2">
             <Label>Accent color</Label>
