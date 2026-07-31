@@ -36,11 +36,13 @@ export interface Task {
   lifeGoalId?: string | null;
   /** Foundation Phase: optional link to a LifeMilestone. Undefined on old tasks. */
   lifeMilestoneId?: string | null;
+  /** Optional reminder alarm, epoch ms. Undefined/null on tasks with no alarm. */
+  reminderAt?: number | null;
 }
 
 /** Payload used when creating a task (id + timestamps assigned by the service). */
 export type NewTask = Pick<Task, 'title' | 'subject' | 'priority' | 'dueDate'> &
-  Partial<Pick<Task, 'lifeGoalId' | 'lifeMilestoneId'>>;
+  Partial<Pick<Task, 'lifeGoalId' | 'lifeMilestoneId' | 'reminderAt'>>;
 
 export interface WeeklySlot {
   day: number; // 0=Mon ... 6=Sun

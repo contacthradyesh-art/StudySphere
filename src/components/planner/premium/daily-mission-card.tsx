@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Check, Plus, Target, Pencil, Trash2, X } from 'lucide-react';
+import { Check, Plus, Target, Pencil, Trash2, X, Bell } from 'lucide-react';
 import { GlowCard, SectionHeading } from './glow-card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,8 @@ export function DailyMissionCard({ insights, onManageAll }: { insights: Insights
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [showReminder, setShowReminder] = useState(false);
+  const [reminderTime, setReminderTime] = useState('');
 
   async function handleToggle(task: Task) {
     if (!requireAuth(user)) return;
@@ -40,9 +42,25 @@ export function DailyMissionCard({ insights, onManageAll }: { insights: Insights
     if (!requireAuth(user)) return;
     setAdding(true);
     try {
-      await createTask(user.uid, { title: quickTitle.trim(), subject: null, priority: 'medium', dueDate: todayIso() });
+      let reminderAt: number | null = null;
+      if (showReminder && reminderTime) {
+        const combined = new Date(`${todayIso()}T${reminderTime}:00`);
+        if (!isNaN(combined.getTime())) {
+          // If the chosen time already passed today, assume tomorrow.
+          reminderAt = combined.getTime() < Date.now() ? combined.getTime() + 24 * 60 * 60 * 1000 : combined.getTime();
+        }
+      }
+      await createTask(user.uid, {
+        title: quickTitle.trim(),
+        subject: null,
+        priority: 'medium',
+        dueDate: todayIso(),
+        ...(reminderAt ? { reminderAt } : {})
+      });
       setQuickTitle('');
-      toast.success('Added to today\u2019s mission');
+      setReminderTime('');
+      setShowReminder(false);
+      toast.success(reminderAt ? 'Added with a reminder alarm 🔔' : 'Added to today\u2019s mission');
     } catch {
       toast.error('Could not add task');
     } finally {
@@ -154,6 +172,7 @@ export function DailyMissionCard({ insights, onManageAll }: { insights: Insights
                 >
                   {task.title}
                 </span>
+                {task.reminderAt && <Bell className="h-3.5 w-3.5 shrink-0 text-primary" />}
                 {task.subject && <span className="shrink-0 text-xs text-muted-foreground">{task.subject}</span>}
                 <button onClick={() => startEdit(task)} className="shrink-0 text-muted-foreground hover:text-primary" aria-label="Edit task">
                   <Pencil className="h-3.5 w-3.5" />
@@ -170,16 +189,33 @@ export function DailyMissionCard({ insights, onManageAll }: { insights: Insights
         )}
       </div>
 
-      <form onSubmit={quickAdd} className="flex gap-2">
-        <Input
-          value={quickTitle}
-          onChange={(e) => setQuickTitle(e.target.value)}
-          placeholder="Add a quick task for today..."
-          className="flex-1"
-        />
-        <Button type="submit" variant="gradient" size="icon" disabled={adding || !quickTitle.trim() || !user} aria-label="Add task">
-          <Plus className="h-4 w-4" />
-        </Button>
+      <form onSubmit={quickAdd} className="space-y-2">
+        <div className="flex gap-2">
+          <Input
+            value={quickTitle}
+            onChange={(e) => setQuickTitle(e.target.value)}
+            placeholder="Add a quick task for today..."
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            variant={showReminder ? 'gradient' : 'outline'}
+            size="icon"
+            onClick={() => setShowReminder((v) => !v)}
+            aria-label="Toggle reminder alarm"
+          >
+            <Bell className="h-4 w-4" />
+          </Button>
+          <Button type="submit" variant="gradient" size="icon" disabled={adding || !quickTitle.trim() || !user} aria-label="Add task">
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        {showReminder && (
+          <div className="flex items-center gap-2">
+            <Input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} className="w-full min-w-0" />
+            <span className="shrink-0 text-xs text-muted-foreground">Alarm today</span>
+          </div>
+        )}
       </form>
 
       <button onClick={onManageAll} className="text-xs font-medium text-primary hover:underline">

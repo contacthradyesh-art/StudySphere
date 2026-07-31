@@ -4,7 +4,9 @@ import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { subscribeLifeGoals } from '@/lib/lifegoals/lifegoal-service';
+import { subscribeTasks } from '@/lib/planner/task-service';
 import type { LifeGoal } from '@/lib/firestore/lifegoal-schema';
+import type { Task } from '@/lib/firestore/planner-schema';
 
 const FIRED_KEY = 'ss_goal_reminders_fired';
 const CHECK_INTERVAL_MS = 15000;
@@ -79,15 +81,29 @@ function markFired(id: string) {
   }
 }
 
+function fire(key: string, title: string, subtitle: string) {
+  markFired(key);
+  playAlarmTune();
+  toast.message(`🔔 ${title}`, { description: subtitle, duration: 8000 });
+  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification('StudySphere — Reminder', { body: title });
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 /**
- * Watches all of the user's active life-goal reminders and, once StudySphere
- * is open, fires a chime + toast + browser notification exactly once per
- * reminder when its time arrives. Mount once near the app root
- * (see GoalReminderWatcher) so it works from any page.
+ * Watches all of the user's active life-goal reminders AND task reminders,
+ * and once StudySphere is open, fires a chime + toast + browser notification
+ * exactly once per reminder when its time arrives. Mount once near the app
+ * root (see GoalReminderWatcher) so it works from any page.
  */
 export function useGoalReminders() {
   const { user } = useAuth();
   const goalsRef = useRef<LifeGoal[]>([]);
+  const tasksRef = useRef<Task[]>([]);
 
   // Unlock audio on the very first tap anywhere, so later background-timer
   // alarms are allowed to play sound.
@@ -105,10 +121,16 @@ export function useGoalReminders() {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => {});
     }
-    const unsub = subscribeLifeGoals(user.uid, (goals) => {
+    const unsubGoals = subscribeLifeGoals(user.uid, (goals) => {
       goalsRef.current = goals;
     });
-    return () => unsub();
+    const unsubTasks = subscribeTasks(user.uid, (tasks) => {
+      tasksRef.current = tasks;
+    });
+    return () => {
+      unsubGoals();
+      unsubTasks();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -119,21 +141,17 @@ export function useGoalReminders() {
       for (const goal of goalsRef.current) {
         if (!goal.reminderAt || goal.status !== 'active') continue;
         if (goal.reminderAt > now) continue;
-        if (fired.has(goal.id)) continue;
+        const key = `goal:${goal.id}`;
+        if (fired.has(key)) continue;
+        fire(key, goal.title, goal.examTag || 'Time to work on this goal.');
+      }
 
-        markFired(goal.id);
-        playAlarmTune();
-        toast.message(`🔔 Goal reminder: ${goal.title}`, {
-          description: goal.examTag || 'Time to work on this goal.',
-          duration: 8000
-        });
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          try {
-            new Notification('StudySphere — Goal reminder', { body: goal.title });
-          } catch {
-            /* ignore */
-          }
-        }
+      for (const task of tasksRef.current) {
+        if (!task.reminderAt || task.completed) continue;
+        if (task.reminderAt > now) continue;
+        const key = `task:${task.id}`;
+        if (fired.has(key)) continue;
+        fire(key, task.title, task.subject || 'Time for this task.');
       }
     }, CHECK_INTERVAL_MS);
 
