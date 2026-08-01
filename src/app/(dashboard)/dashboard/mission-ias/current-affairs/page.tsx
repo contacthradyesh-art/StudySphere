@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { ExternalLink, Bookmark, BookmarkCheck, NotebookPen, Landmark } from 'lucide-react';
+import { ExternalLink, Bookmark, BookmarkCheck, NotebookPen, Landmark, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { requireAuth } from '@/lib/require-auth';
 import { GlassCard } from '@/components/shared/glass-card';
@@ -47,6 +47,7 @@ export default function CurrentAffairsPage() {
   const [category, setCategory] = useState<UpscCategory | 'all'>('all');
   const [bookmarked, setBookmarked] = useState<Set<string>>(new Set());
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeCurrentAffairs((data) => { setItems(data); setLoading(false); });
@@ -91,15 +92,45 @@ export default function CurrentAffairsPage() {
     }
   }
 
+  async function handleRefresh() {
+    if (!requireAuth(user)) return;
+    setRefreshing(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/mission-ias/refresh', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.status === 429) {
+        toast.message(`Just refreshed recently \u2014 try again in ~${data.waitSeconds}s.`);
+      } else if (res.ok && data.ok) {
+        toast.success(data.added > 0 ? `Refreshed \u2014 ${data.added} new item(s) added.` : 'Refreshed \u2014 you\u2019re all caught up.');
+      } else {
+        toast.error('Could not refresh right now.');
+      }
+    } catch {
+      toast.error('Could not refresh right now.');
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <div className="space-y-5 animate-fade-in">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <Landmark className="h-6 w-6 text-primary" /> Current Affairs Hub
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          AI-summarized government press releases, tagged by UPSC relevance. Part of Mission IAS.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            <Landmark className="h-6 w-6 text-primary" /> Current Affairs Hub
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            AI-summarized news, tagged by UPSC relevance. Updates automatically every morning. Part of Mission IAS.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+          <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+          {refreshing ? 'Refreshing...' : 'Refresh'}
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -131,7 +162,7 @@ export default function CurrentAffairsPage() {
       {!loading && filtered.length === 0 && (
         <GlassCard>
           <p className="text-sm text-muted-foreground">
-            No current affairs yet. This fills up automatically once daily — check back soon, or an admin can trigger a manual fetch.
+            No current affairs yet. This fills up automatically every morning \u2014 or tap Refresh above.
           </p>
         </GlassCard>
       )}
