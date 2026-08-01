@@ -39,7 +39,7 @@ const ITEMS_PER_FEED = 5;
 // first handful of calls. Both caps below keep a single run inside the
 // free-tier RPM budget; leftover items are simply picked up next run.
 const MIN_CALL_INTERVAL_MS = 4300; // keeps us under ~14 requests/minute
-const MAX_ITEMS_PER_RUN = 12;
+const MAX_ITEMS_PER_RUN = 8;
 
 const SUMMARY_SYSTEM_PROMPT = `You are a UPSC current-affairs mentor preparing daily notes for a serious aspirant, across ALL GS papers (Polity, Economy, IR, Environment, Science & Tech, Security, Social Issues, Agriculture) — not just international affairs. Given a news headline and short description, write:
 1. "summary": 2-3 original sentences in plain English explaining what happened AND the essential background/context an aspirant needs (the "why", not just the "what") — rewrite fully in your own words, never copy the input wording.
@@ -75,7 +75,7 @@ if (!apiKey) {
     body: JSON.stringify({
       system_instruction: { parts: [{ text: SUMMARY_SYSTEM_PROMPT }] },
       contents: [{ role: 'user', parts: [{ text: `Title: ${title}\n\nDescription: ${description}` }] }],
-      generationConfig: { maxOutputTokens: 500, temperature: 0.4, responseMimeType: 'application/json' }
+      generationConfig: { maxOutputTokens: 800, temperature: 0.4, responseMimeType: 'application/json' }
     })
   });
 
@@ -148,7 +148,7 @@ export interface RefreshResults {
  * free-tier rate limit rather than bursting into 429s — unprocessed items
  * are simply picked up on the next run.
  */
-export async function runCurrentAffairsRefresh(timeBudgetMs = 50000): Promise<RefreshResults> {
+export async function runCurrentAffairsRefresh(timeBudgetMs = 42000): Promise<RefreshResults> {
   if (!adminDb) throw new Error('Server not configured');
   if (!process.env.GEMINI_API_KEY_MISSION_IAS) {
     console.error('runCurrentAffairsRefresh: GEMINI_API_KEY_MISSION_IAS is not set in this environment');
