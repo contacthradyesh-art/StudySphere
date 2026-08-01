@@ -87,11 +87,12 @@ if (!apiKey) {
   }
 
   const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const parts = data.candidates?.[0]?.content?.parts;
+  const text = Array.isArray(parts) ? parts.map((p: { text?: string }) => p.text ?? '').join('') : undefined;
   if (!text) {
-    throw new GeminiError(`Gemini returned no content. Raw response: ${JSON.stringify(data).slice(0, 300)}`);
+    const finishReason = data.candidates?.[0]?.finishReason;
+    throw new GeminiError(`Gemini returned no content (finishReason: ${finishReason}). Raw response: ${JSON.stringify(data).slice(0, 300)}`);
   }
-
   const parsed = JSON.parse(text);
   const validCategories: UpscCategory[] = [
     'polity', 'economy', 'international-relations', 'environment', 'science-tech',
