@@ -13,7 +13,12 @@ function decodeEntities(s: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'");
+    .replace(/&apos;/g, "'")
+    // Numeric entities like &#8217; (curly apostrophe) or hex &#x2019; —
+    // common in newspaper RSS feeds. Converts any leftover numeric entity
+    // to its actual character instead of showing the raw code.
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)));
 }
 
 function extractTag(block: string, tag: string): string {
