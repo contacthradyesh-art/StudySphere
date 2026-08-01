@@ -2,7 +2,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { fetchRssItems } from './rss-parser';
 import { CURRENT_AFFAIRS_COLLECTION, type UpscCategory } from './current-affairs-schema';
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent';
 
 // Broad spread across UPSC's GS papers: background/explainer pieces (best for
 // exam prep, not just headlines), plus dedicated international, economy,
