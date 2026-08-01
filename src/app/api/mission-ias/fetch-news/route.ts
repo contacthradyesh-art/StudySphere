@@ -7,26 +7,41 @@ export const maxDuration = 60;
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
-// Multiple sources for redundancy. PIB (a .gov.in / NIC-hosted site) blocks
-// requests from many cloud-hosting IP ranges including Vercel's, so it's
-// kept only as a fallback attempt; commercial newspaper RSS feeds are the
-// primary source and are generally accessible from any server.
+// Multiple sources for redundancy and broader UPSC-relevant coverage.
+// PIB (a .gov.in / NIC-hosted site) blocks requests from many cloud-hosting
+// IP ranges including Vercel's, so it's kept only as a fallback attempt.
+// "Explained" is prioritized first — it gives background/context rather than
+// just a headline, which is exactly what aids exam prep.
 // Only headlines + short RSS snippets are ever read (never full article
 // bodies), and everything shown to the user is an AI-written original
 // summary with a link back to the source — never copied text.
 const FEEDS: { url: string; source: string }[] = [
+  { url: 'https://indianexpress.com/section/explained/feed/', source: 'The Indian Express (Explained)' },
   { url: 'https://indianexpress.com/section/india/feed/', source: 'The Indian Express' },
+  { url: 'https://indianexpress.com/section/world/feed/', source: 'The Indian Express (World)' },
+  { url: 'https://indianexpress.com/section/business/feed/', source: 'The Indian Express (Business)' },
   { url: 'https://www.thehindu.com/news/national/feeder/default.rss', source: 'The Hindu' },
+  { url: 'https://www.thehindu.com/sci-tech/feeder/default.rss', source: 'The Hindu (Sci-Tech)' },
+  { url: 'https://www.thehindu.com/society/feeder/default.rss', source: 'The Hindu (Society)' },
   { url: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1', source: 'PIB (Press Information Bureau)' }
 ];
 
-const SUMMARY_SYSTEM_PROMPT = `You are a UPSC current-affairs editor. Given a government press-release title and description, write:
-1. A short, original 2-sentence plain-English summary (never copy the input wording verbatim, rewrite in your own words).
-2. The single most relevant UPSC category from exactly this list: polity, economy, international-relations, environment, science-tech, security, governance, agriculture, social-issues, other.
-3. The most relevant GS Paper for UPSC Mains, e.g. "GS2", "GS3", or "GS2, GS3" if it spans two.
-Return ONLY valid JSON, no markdown, matching exactly: {"summary":"...","category":"...","gsPaper":"..."}`;
+// Kept modest per feed since 8 feeds run in one 60s request — plenty of
+// items are still skipped as "already saved" on repeat runs, so nothing
+// is lost, it just gets picked up on the next scheduled run.
+const ITEMS_PER_FEED = 8;
 
-async function summarize(title: string, description: string): Promise<{ summary: string; category: UpscCategory; gsPaper: string }> {
+const SUMMARY_SYSTEM_PROMPT = `You are a UPSC current-affairs mentor preparing daily notes for a serious aspirant. Given a news headline and short description, write:
+1. "summary": 2-3 original sentences in plain English explaining what happened and the essential background/context needed to understand it — rewrite fully in your own words, never copy the input wording.
+2. "examRelevance": ONE short sentence (max 20 words) stating specifically why this matters for UPSC — e.g. a static-topic link, a scheme/law/institution it connects to, or a likely angle for prelims or a mains answer. Be concrete, not generic ("this is important" is not acceptable).
+3. "category": the single most relevant UPSC category from exactly this list: polity, economy, international-relations, environment, science-tech, security, governance, agriculture, social-issues, other.
+4. "gsPaper": the most relevant GS Paper for UPSC Mains, e.g. "GS2", "GS3", or "GS2, GS3" if it spans two.
+Return ONLY valid JSON, no markdown, matching exactly: {"summary":"...","examRelevance":"...","category":"...","gsPaper":"..."}`;
+
+async function summarize(
+  title: string,
+  description: string
+): Promise<{ summary: string; examRelevance: string; category: UpscCategory; gsPaper: string }> {
   const res = await fetch(`${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -46,6 +61,7 @@ async function summarize(title: string, description: string): Promise<{ summary:
   ];
   return {
     summary: parsed.summary || description.slice(0, 200),
+    examRelevance: parsed.examRelevance || '',
     category: validCategories.includes(parsed.category) ? parsed.category : 'other',
     gsPaper: parsed.gsPaper || 'GS2'
   };
@@ -73,8 +89,7 @@ export async function GET(req: NextRequest) {
 
     results.fetched += items.length;
 
-    // Only process the newest handful per run to stay within time/cost limits.
-    for (const item of items.slice(0, 15)) {
+    for (const item of items.slice(0, ITEMS_PER_FEED)) {
       const docId = Buffer.from(item.guid).toString('base64url').slice(0, 140);
       const ref = adminDb.collection(CURRENT_AFFAIRS_COLLECTION).doc(docId);
       const existing = await ref.get();
@@ -84,7 +99,7 @@ export async function GET(req: NextRequest) {
       }
 
       try {
-        const { summary, category, gsPaper } = await summarize(item.title, item.description);
+        const { summary, examRelevance, category, gsPaper } = await summarize(item.title, item.description);
         const publishedAt = item.pubDate ? new Date(item.pubDate).getTime() : Date.now();
         await ref.set({
           id: docId,
@@ -93,6 +108,7 @@ export async function GET(req: NextRequest) {
           link: item.link,
           publishedAt: Number.isFinite(publishedAt) ? publishedAt : Date.now(),
           summary,
+          examRelevance,
           category,
           gsPaper,
           createdAt: Date.now()

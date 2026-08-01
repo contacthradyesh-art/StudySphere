@@ -150,6 +150,11 @@ export default function CurrentAffairsPage() {
 
             <h3 className="font-semibold leading-snug">{item.title}</h3>
             <p className="text-sm text-muted-foreground">{item.summary}</p>
+            {item.examRelevance && (
+              <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
+                📌 <span className="font-medium">UPSC Relevance:</span> {item.examRelevance}
+              </p>
+            )}
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <a href={item.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">

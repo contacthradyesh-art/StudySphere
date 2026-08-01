@@ -12,6 +12,8 @@ export interface CurrentAffairsItem {
   link: string;
   publishedAt: number;
   summary: string;
+  /** One-line note on why this matters for UPSC prelims/mains — the exam angle, not just the news. */
+  examRelevance: string;
   category: UpscCategory;
   gsPaper: string;
   createdAt: number;
