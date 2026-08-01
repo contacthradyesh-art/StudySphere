@@ -144,6 +144,11 @@ export default function CurrentAffairsPage() {
                 {CATEGORY_LABELS[item.category]}
               </span>
               <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-muted-foreground">{item.gsPaper}</span>
+              {item.topic && (
+                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300">
+                  {item.topic}
+                </span>
+              )}
               <span className="text-[11px] text-muted-foreground">{item.source}</span>
               <span className="text-[11px] text-muted-foreground">{'\u00b7'} {new Date(item.publishedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
             </div>
