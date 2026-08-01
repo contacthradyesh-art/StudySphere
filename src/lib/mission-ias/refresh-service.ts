@@ -64,10 +64,10 @@ async function summarize(
   title: string,
   description: string
 ): Promise<{ summary: string; topic: string; examRelevance: string; category: UpscCategory; gsPaper: string }> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new GeminiError('GEMINI_API_KEY is not set in this environment');
-  }
+  const apiKey = process.env.GEMINI_API_KEY_MISSION_IAS;
+if (!apiKey) {
+  throw new GeminiError('GEMINI_API_KEY_MISSION_IAS is not set in this environment');
+}
 
   const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
     method: 'POST',
@@ -150,9 +150,9 @@ export interface RefreshResults {
  */
 export async function runCurrentAffairsRefresh(timeBudgetMs = 50000): Promise<RefreshResults> {
   if (!adminDb) throw new Error('Server not configured');
-  if (!process.env.GEMINI_API_KEY) {
-    console.error('runCurrentAffairsRefresh: GEMINI_API_KEY is not set in this environment');
-    return { fetched: 0, added: 0, skippedExisting: 0, errors: 0, stoppedEarly: false, fatalError: 'GEMINI_API_KEY is not set' };
+  if (!process.env.GEMINI_API_KEY_MISSION_IAS) {
+    console.error('runCurrentAffairsRefresh: GEMINI_API_KEY_MISSION_IAS is not set in this environment');
+    return { fetched: 0, added: 0, skippedExisting: 0, errors: 0, stoppedEarly: false, fatalError: 'GEMINI_API_KEY_MISSION_IAS is not set' };
   }
 
   const start = Date.now();
