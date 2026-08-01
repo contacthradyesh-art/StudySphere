@@ -42,11 +42,23 @@ const SUMMARY_SYSTEM_PROMPT = `You are a UPSC current-affairs mentor preparing d
 5. "gsPaper": the most relevant GS Paper for UPSC Mains, e.g. "GS2", "GS3", or "GS2, GS3" if it spans two.
 Return ONLY valid JSON, no markdown, matching exactly: {"summary":"...","topic":"...","examRelevance":"...","category":"...","gsPaper":"..."}`;
 
+class GeminiError extends Error {
+  constructor(message: string, public status?: number) {
+    super(message);
+    this.name = 'GeminiError';
+  }
+}
+
 async function summarize(
   title: string,
   description: string
 ): Promise<{ summary: string; topic: string; examRelevance: string; category: UpscCategory; gsPaper: string }> {
-  const res = await fetch(`${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`, {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new GeminiError('GEMINI_API_KEY is not set in this environment');
+  }
+
+  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -55,9 +67,18 @@ async function summarize(
       generationConfig: { maxOutputTokens: 500, temperature: 0.4, responseMimeType: 'application/json' }
     })
   });
+
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => '');
+    throw new GeminiError(`Gemini API returned ${res.status}: ${errBody.slice(0, 300)}`, res.status);
+  }
+
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('AI did not return content');
+  if (!text) {
+    throw new GeminiError(`Gemini returned no content. Raw response: ${JSON.stringify(data).slice(0, 300)}`);
+  }
+
   const parsed = JSON.parse(text);
   const validCategories: UpscCategory[] = [
     'polity', 'economy', 'international-relations', 'environment', 'science-tech',
@@ -78,6 +99,7 @@ export interface RefreshResults {
   skippedExisting: number;
   errors: number;
   stoppedEarly: boolean;
+  fatalError?: string;
 }
 
 /**
@@ -89,6 +111,13 @@ export interface RefreshResults {
  */
 export async function runCurrentAffairsRefresh(timeBudgetMs = 50000): Promise<RefreshResults> {
   if (!adminDb) throw new Error('Server not configured');
+  if (!process.env.GEMINI_API_KEY) {
+    // Fail fast and loud instead of letting every single item fail silently
+    // one by one — this is the #1 cause of a refresh that "succeeds" (200)
+    // but saves zero items.
+    console.error('runCurrentAffairsRefresh: GEMINI_API_KEY is not set in this environment');
+    return { fetched: 0, added: 0, skippedExisting: 0, errors: 0, stoppedEarly: false, fatalError: 'GEMINI_API_KEY is not set' };
+  }
 
   const start = Date.now();
   const outOfTime = () => Date.now() - start > timeBudgetMs;
@@ -138,7 +167,8 @@ export async function runCurrentAffairsRefresh(timeBudgetMs = 50000): Promise<Re
         });
         results.added++;
       } catch (err) {
-        console.error('Failed to summarize/save item', item.title, err);
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`Failed to summarize/save item "${item.title}": ${message}`);
         results.errors++;
       }
     }
