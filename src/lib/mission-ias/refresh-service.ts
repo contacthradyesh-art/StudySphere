@@ -25,6 +25,12 @@ const FEEDS: { url: string; source: string }[] = [
   { url: 'https://www.thehindu.com/sci-tech/feeder/default.rss', source: 'The Hindu (Sci-Tech)' },
   { url: 'https://www.thehindu.com/society/feeder/default.rss', source: 'The Hindu (Society)' },
   { url: 'https://www.thehindu.com/opinion/feeder/default.rss', source: 'The Hindu (Opinion)' },
+  { url: 'https://www.livemint.com/rss/economy', source: 'Mint (Economy)' },
+  { url: 'https://www.livemint.com/rss/politics', source: 'Mint (Politics)' },
+  { url: 'https://www.downtoearth.org.in/rss/environment', source: 'Down To Earth (Environment)' },
+  { url: 'https://www.downtoearth.org.in/rss/climate-change', source: 'Down To Earth (Climate)' },
+  { url: 'https://www.business-standard.com/rss/economy-policy-10802.rss', source: 'Business Standard (Economy Policy)' },
+  { url: 'https://www.livelaw.in/feed', source: 'LiveLaw' },
   { url: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1', source: 'PIB (Press Information Bureau)' }
 ];
 
