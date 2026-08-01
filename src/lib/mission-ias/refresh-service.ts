@@ -34,6 +34,13 @@ const FEEDS: { url: string; source: string }[] = [
 // here is the safer choice against the serverless time limit.
 const ITEMS_PER_FEED = 5;
 
+// Gemini's free-tier rate limit is well under what 13 feeds * 5 items can
+// produce if fired back-to-back — the whole batch was hitting 429 after the
+// first handful of calls. Both caps below keep a single run inside the
+// free-tier RPM budget; leftover items are simply picked up next run.
+const MIN_CALL_INTERVAL_MS = 4300; // keeps us under ~14 requests/minute
+const MAX_ITEMS_PER_RUN = 12;
+
 const SUMMARY_SYSTEM_PROMPT = `You are a UPSC current-affairs mentor preparing daily notes for a serious aspirant, across ALL GS papers (Polity, Economy, IR, Environment, Science & Tech, Security, Social Issues, Agriculture) — not just international affairs. Given a news headline and short description, write:
 1. "summary": 2-3 original sentences in plain English explaining what happened AND the essential background/context an aspirant needs (the "why", not just the "what") — rewrite fully in your own words, never copy the input wording.
 2. "topic": the specific static-syllabus concept this connects to, in 2-5 words, e.g. "Federalism", "Repo Rate & Inflation", "Indo-Pacific Strategy", "Fundamental Rights", "Panchayati Raj", "Monsoon & Agriculture". Be precise and specific, never just repeat the category name.
@@ -43,10 +50,14 @@ const SUMMARY_SYSTEM_PROMPT = `You are a UPSC current-affairs mentor preparing d
 Return ONLY valid JSON, no markdown, matching exactly: {"summary":"...","topic":"...","examRelevance":"...","category":"...","gsPaper":"..."}`;
 
 class GeminiError extends Error {
-  constructor(message: string, public status?: number) {
+  constructor(message: string, public status?: number, public retryAfterMs?: number) {
     super(message);
     this.name = 'GeminiError';
   }
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function summarize(
@@ -70,7 +81,9 @@ async function summarize(
 
   if (!res.ok) {
     const errBody = await res.text().catch(() => '');
-    throw new GeminiError(`Gemini API returned ${res.status}: ${errBody.slice(0, 300)}`, res.status);
+    const retryAfterHeader = res.headers.get('retry-after');
+    const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : undefined;
+    throw new GeminiError(`Gemini API returned ${res.status}: ${errBody.slice(0, 300)}`, res.status, retryAfterMs);
   }
 
   const data = await res.json();
@@ -93,6 +106,31 @@ async function summarize(
   };
 }
 
+/** Throttled + single-retry wrapper around summarize(), so one run never bursts past Gemini's free-tier rate limit. */
+async function summarizeThrottled(
+  title: string,
+  description: string,
+  lastCallAt: { value: number }
+): Promise<{ summary: string; topic: string; examRelevance: string; category: UpscCategory; gsPaper: string }> {
+  const wait = lastCallAt.value + MIN_CALL_INTERVAL_MS - Date.now();
+  if (wait > 0) await sleep(wait);
+  lastCallAt.value = Date.now();
+
+  try {
+    return await summarize(title, description);
+  } catch (err) {
+    if (err instanceof GeminiError && err.status === 429) {
+      // One retry after the interval Gemini asked for (or a safe default) —
+      // if it's still rate-limited after that, let it fail; the item is
+      // picked up automatically on the next scheduled/manual run.
+      await sleep(err.retryAfterMs ?? 6000);
+      lastCallAt.value = Date.now();
+      return await summarize(title, description);
+    }
+    throw err;
+  }
+}
+
 export interface RefreshResults {
   fetched: number;
   added: number;
@@ -106,26 +144,26 @@ export interface RefreshResults {
  * Fetches all configured RSS feeds, AI-summarizes new items, and saves them.
  * Shared by the daily automatic cron route and the user-facing manual
  * "Refresh" button, so both stay in sync with one implementation.
- * Stops gracefully near the serverless time limit rather than timing out —
- * unprocessed items are simply picked up on the next run.
+ * Stops gracefully near the serverless time limit AND near Gemini's
+ * free-tier rate limit rather than bursting into 429s — unprocessed items
+ * are simply picked up on the next run.
  */
 export async function runCurrentAffairsRefresh(timeBudgetMs = 50000): Promise<RefreshResults> {
   if (!adminDb) throw new Error('Server not configured');
   if (!process.env.GEMINI_API_KEY) {
-    // Fail fast and loud instead of letting every single item fail silently
-    // one by one — this is the #1 cause of a refresh that "succeeds" (200)
-    // but saves zero items.
     console.error('runCurrentAffairsRefresh: GEMINI_API_KEY is not set in this environment');
     return { fetched: 0, added: 0, skippedExisting: 0, errors: 0, stoppedEarly: false, fatalError: 'GEMINI_API_KEY is not set' };
   }
 
   const start = Date.now();
   const outOfTime = () => Date.now() - start > timeBudgetMs;
+  const lastCallAt = { value: 0 };
 
   const results: RefreshResults = { fetched: 0, added: 0, skippedExisting: 0, errors: 0, stoppedEarly: false };
+  let attempted = 0;
 
   feedLoop: for (const feed of FEEDS) {
-    if (outOfTime()) { results.stoppedEarly = true; break; }
+    if (outOfTime() || attempted >= MAX_ITEMS_PER_RUN) { results.stoppedEarly = true; break; }
 
     let items;
     try {
@@ -139,7 +177,7 @@ export async function runCurrentAffairsRefresh(timeBudgetMs = 50000): Promise<Re
     results.fetched += items.length;
 
     for (const item of items.slice(0, ITEMS_PER_FEED)) {
-      if (outOfTime()) { results.stoppedEarly = true; break feedLoop; }
+      if (outOfTime() || attempted >= MAX_ITEMS_PER_RUN) { results.stoppedEarly = true; break feedLoop; }
 
       const docId = Buffer.from(item.guid).toString('base64url').slice(0, 140);
       const ref = adminDb.collection(CURRENT_AFFAIRS_COLLECTION).doc(docId);
@@ -149,8 +187,9 @@ export async function runCurrentAffairsRefresh(timeBudgetMs = 50000): Promise<Re
         continue;
       }
 
+      attempted++;
       try {
-        const { summary, topic, examRelevance, category, gsPaper } = await summarize(item.title, item.description);
+        const { summary, topic, examRelevance, category, gsPaper } = await summarizeThrottled(item.title, item.description, lastCallAt);
         const publishedAt = item.pubDate ? new Date(item.pubDate).getTime() : Date.now();
         await ref.set({
           id: docId,
