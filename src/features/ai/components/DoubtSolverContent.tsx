@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { Suspense, useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Card } from "@/components/shared/Card";
@@ -12,7 +12,7 @@ import type { ChatMessage, DoubtMode } from "../types";
 
 const modeTabs = [{ id: "standard", label: "Standard" }, { id: "explain-like-confused", label: "Explain Like I'm Confused" }];
 
-export function DoubtSolverContent() {
+function DoubtSolverInner() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const [mode, setMode] = useState<DoubtMode>("standard");
@@ -59,9 +59,6 @@ export function DoubtSolverContent() {
     sendMessage(inputText, selectedImage);
   }, [inputText, selectedImage, sendMessage]);
 
-  // On first mount, pick up a prompt handed off from elsewhere in the app
-  // (e.g. Mission IAS's "Ask AI" button, or a dashboard quick-ask button's
-  // ?q= link) and send it automatically — no separate chat system needed.
   useEffect(() => {
     if (autoSentRef.current) return;
     autoSentRef.current = true;
@@ -148,5 +145,13 @@ export function DoubtSolverContent() {
         </div>
       </div>
     </motion.div>
+  );
+}
+
+export function DoubtSolverContent() {
+  return (
+    <Suspense fallback={<div className="h-[calc(100vh-8rem)] grid place-items-center text-charcoal-500 text-sm">Loading...</div>}>
+      <DoubtSolverInner />
+    </Suspense>
   );
 }
