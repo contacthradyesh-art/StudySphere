@@ -23,7 +23,7 @@ const QUICK_ACTIONS = [
   { label: 'New Entry', icon: '✏️', href: '#', action: true },
   { label: 'Planner', icon: '📅', href: '/dashboard/planner' },
   { label: 'Pomodoro', icon: '⏱️', href: '/dashboard/pomodoro' },
-  { label: 'AI Assistant', icon: '🤖', href: '/dashboard/assistant' },
+  { label: 'AI Assistant', icon: '🤖', href: '/dashboard/ai' },
 ];
 
 export default function JournalPage() {

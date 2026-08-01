@@ -12,7 +12,7 @@ const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, ready: true },
   { href: '/dashboard/planner', label: 'Life Planner', icon: CalendarCheck, ready: true },
   { href: '/dashboard/mock-tests', label: 'Mock Tests', icon: GraduationCap, ready: true },
-  { href: '/dashboard/mission-ias/current-affairs', label: 'Mission IAS', icon: Landmark, ready: true },
+  { href: '/dashboard/mission-ias', label: 'Mission IAS', icon: Landmark, ready: true },
   { href: '/dashboard/growth-os', label: 'Growth OS', icon: Rocket, ready: true },
   { href: '/dashboard/pomodoro', label: 'Pomodoro', icon: Timer, ready: true },
   { href: '/dashboard/focus', label: 'Focus Shield', icon: ShieldCheck, ready: true },

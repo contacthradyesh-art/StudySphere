@@ -65,7 +65,7 @@ const TOOLS = [
   { icon: "📝", title: "Mock Tests", desc: "Chapter-wise & full length tests.", link: "/dashboard/mock-tests", color: "#22c55e", cta: "Attempt Test →" },
   { icon: "📚", title: "Question Bank", desc: "50000+ questions with solutions.", link: "/dashboard/question-bank", color: "#f97316", cta: "Explore →" },
   { icon: "🃏", title: "Flashcards", desc: "Quick revision with smart flashcards.", link: "/dashboard/flashcards", color: "#06b6d4", cta: "Open →" },
-  { icon: "🤖", title: "AI Summarizer", desc: "Summarize notes & get key points.", link: "/dashboard/assistant", color: "#a855f7", cta: "Try Now →" },
+  { icon: "🤖", title: "AI Summarizer", desc: "Summarize notes & get key points.", link: "/dashboard/ai", color: "#a855f7", cta: "Try Now →" },
 ];
 
 const QUICK_ACTIONS = [
@@ -123,7 +123,7 @@ export default function DashboardPage() {
 
   const handleAiSubmit = () => {
     if (!aiQuery.trim()) return;
-    router.push(`/dashboard/assistant?q=${encodeURIComponent(aiQuery)}`);
+    router.push(`/dashboard/ai?q=${encodeURIComponent(aiQuery)}`);
   };
 
   return (
@@ -237,7 +237,7 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-2 gap-2 mb-4">
               {AI_SUGGESTIONS.map((s) => (
-                <button key={s} onClick={() => { setAiQuery(s); router.push(`/dashboard/assistant?q=${encodeURIComponent(s)}`); }}
+                <button key={s} onClick={() => { setAiQuery(s); router.push(`/dashboard/ai?q=${encodeURIComponent(s)}`); }}
                   className="text-xs bg-white/8 hover:bg-white/15 text-gray-300 px-2 py-1.5 rounded-lg text-left transition-colors border border-white/10 truncate">
                   {s}
                 </button>

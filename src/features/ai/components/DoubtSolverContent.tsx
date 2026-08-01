@@ -1,45 +1,16 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams } from "next/navigation";
+import { motion } from "framer-motion";
 import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
 import { Tabs } from "@/components/shared/Tabs";
 import { showToast } from "@/components/shared/Toast";
 import { cn } from "@/utils/cn";
+import { consumePendingAiPrompt } from "@/lib/ai/pending-prompt";
 import type { ChatMessage, DoubtMode } from "../types";
 
 const modeTabs = [{ id: "standard", label: "Standard" }, { id: "explain-like-confused", label: "Explain Like I'm Confused" }];
-
-const sampleResponses: Record<string, string> = {
-  default: `**Here's the step-by-step solution:**
-
-1. **Identify the given information** from the question
-2. **Apply the relevant formula** or concept
-3. **Calculate step by step**, showing all work
-4. **Verify the answer** by substituting back
-
-**Key Concept:** Always check if the question has any special conditions or constraints that might change the approach.
-
-**Related Topics:** Practice similar problems from Profit & Loss, Percentage, and Ratio chapters.`,
-  confused: `Let me break this down in the simplest way possible! 😊
-
-Think of it like this...
-
-**Imagine you're at a shop:**
-- You buy something for Rs 100 (this is your Cost Price)
-- You sell it for Rs 120 (this is your Selling Price)
-- The extra Rs 20 you got? That's your Profit!
-
-**The formula is just:**
-Profit = What you got - What you paid
-
-**To find the percentage:**
-Profit% = (Profit / Cost Price) × 100
-= (20 / 100) × 100
-= 20%
-
-**That's it!** Want me to try another example? 🎯`,
-};
 
 export function DoubtSolverContent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -49,21 +20,57 @@ export function DoubtSolverContent() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchParams = useSearchParams();
+  const autoSentRef = useRef(false);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-  const handleSend = useCallback(async () => {
-    const text = inputText.trim();
-    if (!text && !selectedImage) return;
-    const userMessage: ChatMessage = { id: `msg-${Date.now()}`, role: "user", content: text || "Please analyze this image", imageUrl: selectedImage || undefined, timestamp: new Date(), mode };
-    setMessages((prev) => [...prev, userMessage]);
-    setInputText(""); setSelectedImage(null); setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    const responseContent = mode === "explain-like-confused" ? sampleResponses.confused : sampleResponses.default;
-    const aiMessage: ChatMessage = { id: `msg-${Date.now()}-ai`, role: "assistant", content: responseContent, timestamp: new Date() };
-    setMessages((prev) => [...prev, aiMessage]);
-    setIsLoading(false);
-  }, [inputText, selectedImage, mode]);
+  const sendMessage = useCallback(async (text: string, imageUrl: string | null) => {
+    if (!text.trim() && !imageUrl) return;
+    const userMessage: ChatMessage = { id: `msg-${Date.now()}`, role: "user", content: text || "Please analyze this image", imageUrl: imageUrl || undefined, timestamp: new Date(), mode };
+    const history = [...messages, userMessage];
+    setMessages(history);
+    setInputText("");
+    setSelectedImage(null);
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: history.map((m) => ({ role: m.role, content: m.content })),
+          mode,
+          image: imageUrl || undefined
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Assistant unavailable');
+      const aiMessage: ChatMessage = { id: `msg-${Date.now()}-ai`, role: "assistant", content: data.reply, timestamp: new Date() };
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch {
+      showToast("Couldn't reach the AI assistant. Please try again.", "warning");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [messages, mode]);
+
+  const handleSend = useCallback(() => {
+    sendMessage(inputText, selectedImage);
+  }, [inputText, selectedImage, sendMessage]);
+
+  // On first mount, pick up a prompt handed off from elsewhere in the app
+  // (e.g. Mission IAS's "Ask AI" button, or a dashboard quick-ask button's
+  // ?q= link) and send it automatically — no separate chat system needed.
+  useEffect(() => {
+    if (autoSentRef.current) return;
+    autoSentRef.current = true;
+    const fromMissionIas = consumePendingAiPrompt();
+    const fromQuery = searchParams.get('q');
+    const prompt = fromMissionIas || fromQuery;
+    if (prompt) sendMessage(prompt, null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -86,7 +93,7 @@ export function DoubtSolverContent() {
       )}
 
       <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar">
-        {messages.length === 0 && (
+        {messages.length === 0 && !isLoading && (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <span className="text-4xl mb-4">🤖</span>
             <h3 className="text-lg font-semibold text-charcoal-200 mb-2">Ask me anything!</h3>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase/admin';
 import { runCurrentAffairsRefresh } from '@/lib/mission-ias/refresh-service';
 
@@ -18,7 +19,13 @@ async function getUidFromRequest(req: NextRequest): Promise<string | null> {
   }
 }
 
-/** Manual refresh, triggered from the Current Affairs Hub's Refresh button. Any signed-in user can call it. */
+/**
+ * Manual refresh, triggered from the Current Affairs Hub's Refresh button.
+ * Returns immediately once the run is kicked off; the actual fetch +
+ * summarize + save work continues in the background via `after()` (up to
+ * `maxDuration`). The UI never needs to wait for it — the Hub is subscribed
+ * to Firestore in real time, so new items simply appear as they're saved.
+ */
 export async function POST(req: NextRequest) {
   if (!adminDb) return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
 
@@ -36,6 +43,14 @@ export async function POST(req: NextRequest) {
 
   await lockRef.set({ lastRun: Date.now() }, { merge: true });
 
-  const results = await runCurrentAffairsRefresh();
-  return NextResponse.json({ ok: true, ...results });
+  after(async () => {
+    try {
+      const results = await runCurrentAffairsRefresh();
+      console.log('Current affairs refresh finished', results);
+    } catch (err) {
+      console.error('Background current affairs refresh failed', err);
+    }
+  });
+
+  return NextResponse.json({ ok: true, started: true });
 }

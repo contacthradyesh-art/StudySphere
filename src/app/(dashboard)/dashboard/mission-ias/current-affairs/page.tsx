@@ -13,6 +13,7 @@ import {
 } from '@/lib/mission-ias/current-affairs-service';
 import type { CurrentAffairsItem, UpscCategory } from '@/lib/mission-ias/current-affairs-schema';
 import { createNote } from '@/lib/notes/notes-service';
+import { AskAiButton } from '@/components/ai/ask-ai-button';
 
 const CATEGORY_LABELS: Record<UpscCategory, string> = {
   polity: 'Polity',
@@ -202,6 +203,10 @@ export default function CurrentAffairsPage() {
               <Button variant="ghost" size="sm" disabled={savingId === item.id} onClick={() => handleSaveToNotes(item)}>
                 <NotebookPen className="h-4 w-4" /> {savingId === item.id ? 'Saving...' : 'Save to Notes'}
               </Button>
+              <AskAiButton
+                label="Ask AI"
+                prompt={`Explain this current affairs item for UPSC preparation, in simple language with the key exam-relevant points:\n\nTitle: ${item.title}\n\nSummary: ${item.summary}\n\nCategory: ${CATEGORY_LABELS[item.category]} (${item.gsPaper})`}
+              />
             </div>
           </GlassCard>
         ))}
