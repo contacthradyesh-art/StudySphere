@@ -56,6 +56,18 @@ service cloud.firestore {
       match /aiConversations/{conversationId} {
         allow read, write: if isOwner(uid);
       }
+      // Mission IAS: per-user bookmarked current-affairs items
+      match /bookmarkedNews/{itemId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Mission IAS: current affairs items are populated server-side only
+    // (via the Admin SDK, which bypasses these rules); any signed-in
+    // student can read them.
+    match /currentAffairs/{itemId} {
+      allow read: if request.auth != null;
+      allow write: if false;
     }
   }
 }

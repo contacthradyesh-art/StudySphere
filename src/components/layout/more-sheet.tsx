@@ -6,11 +6,12 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   GraduationCap, Rocket, ShieldCheck, BookOpen, BookHeart,
-  Layers, Sparkles, LayoutDashboard, MoreHorizontal, X
+  Layers, Sparkles, LayoutDashboard, MoreHorizontal, X, Landmark
 } from 'lucide-react';
 
 const MORE_NAV = [
   { href: '/dashboard/mock-tests', label: 'Mock Tests', icon: GraduationCap },
+  { href: '/dashboard/mission-ias/current-affairs', label: 'Mission IAS', icon: Landmark },
   { href: '/dashboard/growth-os', label: 'Growth OS', icon: Rocket },
   { href: '/dashboard/focus', label: 'Focus Shield', icon: ShieldCheck },
   { href: '/dashboard/subjects', label: 'Subjects', icon: BookOpen },
