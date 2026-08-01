@@ -7,9 +7,16 @@ export const maxDuration = 60;
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
-// Official government RSS sources only — legal to fetch headlines/links from.
-// (No copyrighted newspaper article text is ever stored or reproduced.)
+// Multiple sources for redundancy. PIB (a .gov.in / NIC-hosted site) blocks
+// requests from many cloud-hosting IP ranges including Vercel's, so it's
+// kept only as a fallback attempt; commercial newspaper RSS feeds are the
+// primary source and are generally accessible from any server.
+// Only headlines + short RSS snippets are ever read (never full article
+// bodies), and everything shown to the user is an AI-written original
+// summary with a link back to the source — never copied text.
 const FEEDS: { url: string; source: string }[] = [
+  { url: 'https://indianexpress.com/section/india/feed/', source: 'The Indian Express' },
+  { url: 'https://www.thehindu.com/news/national/feeder/default.rss', source: 'The Hindu' },
   { url: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1', source: 'PIB (Press Information Bureau)' }
 ];
 

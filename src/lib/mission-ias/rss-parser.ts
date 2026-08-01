@@ -24,6 +24,10 @@ function extractTag(block: string, tag: string): string {
   return '';
 }
 
+function stripHtml(s: string): string {
+  return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /** Parses an RSS 2.0 XML string into a plain array of items. Deliberately
  * simple (regex-based) rather than a full XML parser, to avoid adding a new
  * dependency for a well-known, consistently-shaped format. */
@@ -31,13 +35,13 @@ export function parseRss(xml: string): RssItem[] {
   const items: RssItem[] = [];
   const itemBlocks = xml.match(/<item[\s\S]*?<\/item>/gi) || [];
   for (const block of itemBlocks) {
-    const title = extractTag(block, 'title');
+    const title = decodeEntities(stripHtml(extractTag(block, 'title')));
     const link = extractTag(block, 'link');
     if (!title || !link) continue;
     items.push({
       title,
       link,
-      description: extractTag(block, 'description'),
+      description: decodeEntities(stripHtml(extractTag(block, 'description'))).slice(0, 600),
       pubDate: extractTag(block, 'pubDate'),
       guid: extractTag(block, 'guid') || link
     });
