@@ -60,6 +60,13 @@ service cloud.firestore {
       match /bookmarkedNews/{itemId} {
         allow read, write: if isOwner(uid);
       }
+      // Mission IAS: Digital Library
+      match /libraryFiles/{fileId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /libraryFolders/{folderId} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // Mission IAS: current affairs items are populated server-side only

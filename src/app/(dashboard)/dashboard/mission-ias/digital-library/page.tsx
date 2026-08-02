@@ -18,6 +18,8 @@ import {
 } from '@/lib/mission-ias/library-service';
 import type { LibraryFile, LibraryFolder } from '@/lib/mission-ias/library-schema';
 import type { UpscCategory } from '@/lib/mission-ias/current-affairs-schema';
+import { AskAiButton } from '@/components/ai/ask-ai-button';
+import { createNote } from '@/lib/notes/notes-service';
 
 const SUBJECT_LABELS: Record<UpscCategory, string> = {
   polity: 'Polity', economy: 'Economy', 'international-relations': 'Int\u2019l Relations',
@@ -54,6 +56,7 @@ export default function DigitalLibraryPage() {
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [uploadSubject, setUploadSubject] = useState<UpscCategory>('other');
+  const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -133,6 +136,25 @@ export default function DigitalLibraryPage() {
       toast.success('File deleted');
     } catch {
       toast.error('Could not delete file');
+    }
+  }
+
+  async function handleAddToNotes(file: LibraryFile) {
+    if (!requireAuth(user)) return;
+    setSavingNoteId(file.id);
+    try {
+      await createNote(user.uid, {
+        title: file.name,
+        content: `Library file: [${file.name}](${file.downloadUrl})\n\nSubject: ${file.subject ? SUBJECT_LABELS[file.subject] : 'Uncategorized'}`,
+        subject: null,
+        category: 'Digital Library',
+        tags: file.subject ? [file.subject, 'digital-library'] : ['digital-library']
+      });
+      toast.success('Added to Notes');
+    } catch {
+      toast.error('Could not add to notes');
+    } finally {
+      setSavingNoteId(null);
     }
   }
 
@@ -267,12 +289,33 @@ export default function DigitalLibraryPage() {
                       <p className="text-xs text-muted-foreground">{file.subject ? SUBJECT_LABELS[file.subject] : 'Uncategorized'} \u00b7 {formatBytes(file.size)}</p>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
                     <a href={file.downloadUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                       <ExternalLink className="h-3.5 w-3.5" /> Open
                     </a>
                     <button onClick={() => handleDelete(file)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red-400">
                       <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <AskAiButton
+                      label="Ask AI"
+                      prompt={`I have a study file called "${file.name}" in my Digital Library (subject: ${file.subject ? SUBJECT_LABELS[file.subject] : 'uncategorized'}). Help me understand the key concepts I should know for this topic.`}
+                    />
+                    <AskAiButton
+                      label="MCQs"
+                      prompt={`Generate 5 UPSC-style MCQs (with answers) on the topic of "${file.name}" (subject: ${file.subject ? SUBJECT_LABELS[file.subject] : 'general'}).`}
+                    />
+                    <AskAiButton
+                      label="Flashcards"
+                      prompt={`Create 5 flashcards (Q&A format) for revising the topic of "${file.name}" (subject: ${file.subject ? SUBJECT_LABELS[file.subject] : 'general'}).`}
+                    />
+                    <button
+                      onClick={() => handleAddToNotes(file)}
+                      disabled={savingNoteId === file.id}
+                      className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                    >
+                      {savingNoteId === file.id ? 'Saving...' : 'Add to Notes'}
                     </button>
                   </div>
                 </GlassCard>
