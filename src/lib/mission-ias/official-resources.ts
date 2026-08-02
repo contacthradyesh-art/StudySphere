@@ -10,17 +10,44 @@ export interface OfficialResource {
 }
 
 // Every entry links to the source's own official government/institutional
-// page — StudySphere never re-hosts or copies these documents, for both
-// copyright safety and so the content is always the current edition.
+// page — StudySphere never re-hosts, copies, or links to pirated/paid-book
+// PDFs. Only genuinely free, official material is included here.
 export const OFFICIAL_RESOURCES: OfficialResource[] = [
+  // --- NCERT, split by GS-relevant subject so each card points students
+  // straight to the right section instead of one generic catch-all link ---
   {
-    id: 'ncert-textbooks',
-    title: 'NCERT Textbooks (Class VI\u2013XII)',
+    id: 'ncert-history',
+    title: 'NCERT History (Class VI\u2013XII)',
     type: 'Textbooks',
-    description: 'The static-syllabus foundation for UPSC \u2014 free, official PDFs for History, Geography, Polity, and Economics across every class.',
+    description: 'Ancient, medieval, modern Indian history and world history \u2014 free official PDFs, all classes.',
     officialUrl: 'https://ncert.nic.in/textbook.php',
     subject: 'other'
   },
+  {
+    id: 'ncert-geography',
+    title: 'NCERT Geography (Class VI\u2013XII)',
+    type: 'Textbooks',
+    description: 'Physical, human, and Indian geography \u2014 the syllabus foundation for GS1.',
+    officialUrl: 'https://ncert.nic.in/textbook.php',
+    subject: 'environment'
+  },
+  {
+    id: 'ncert-polity',
+    title: 'NCERT Political Science (Class IX\u2013XII)',
+    type: 'Textbooks',
+    description: 'Constitution, democratic politics, and contemporary world politics \u2014 GS2 foundation.',
+    officialUrl: 'https://ncert.nic.in/textbook.php',
+    subject: 'polity'
+  },
+  {
+    id: 'ncert-economics',
+    title: 'NCERT Economics (Class IX\u2013XII)',
+    type: 'Textbooks',
+    description: 'Indian economic development, micro/macroeconomics basics \u2014 GS3 foundation.',
+    officialUrl: 'https://ncert.nic.in/textbook.php',
+    subject: 'economy'
+  },
+  // --- Current affairs / government primary sources ---
   {
     id: 'pib-archive',
     title: 'PIB Press Releases Archive',
@@ -46,6 +73,15 @@ export const OFFICIAL_RESOURCES: OfficialResource[] = [
     subject: 'polity'
   },
   {
+    id: 'egazette',
+    title: 'The Gazette of India',
+    type: 'Official Gazette',
+    description: 'Official notifications for new laws, rules, and appointments as they are enacted.',
+    officialUrl: 'https://egazette.gov.in',
+    subject: 'governance'
+  },
+  // --- Economy ---
+  {
     id: 'union-budget',
     title: 'Union Budget & Economic Survey (all years)',
     type: 'Budget Documents',
@@ -54,13 +90,14 @@ export const OFFICIAL_RESOURCES: OfficialResource[] = [
     subject: 'economy'
   },
   {
-    id: 'egazette',
-    title: 'The Gazette of India',
-    type: 'Official Gazette',
-    description: 'Official notifications for new laws, rules, and appointments as they are enacted.',
-    officialUrl: 'https://egazette.gov.in',
-    subject: 'governance'
+    id: 'rbi-publications',
+    title: 'RBI Reports & Publications',
+    type: 'Central Bank Reports',
+    description: 'Monetary policy statements, Financial Stability Report, and annual RBI publications.',
+    officialUrl: 'https://www.rbi.org.in',
+    subject: 'economy'
   },
+  // --- Governance / policy think tank ---
   {
     id: 'niti-aayog',
     title: 'Reports & Publications',
@@ -69,6 +106,16 @@ export const OFFICIAL_RESOURCES: OfficialResource[] = [
     officialUrl: 'https://www.niti.gov.in',
     subject: 'governance'
   },
+  // --- International Relations ---
+  {
+    id: 'mea',
+    title: 'Ministry of External Affairs \u2014 Statements & Press Releases',
+    type: 'Government Portal',
+    description: 'Official statements, bilateral relations documents, and foreign policy positions.',
+    officialUrl: 'https://www.mea.gov.in',
+    subject: 'international-relations'
+  },
+  // --- Polity / Judiciary ---
   {
     id: 'livelaw',
     title: 'Supreme Court & High Court Judgments',
@@ -76,5 +123,23 @@ export const OFFICIAL_RESOURCES: OfficialResource[] = [
     description: 'Judiciary and constitutional-law coverage \u2014 strengthens GS2 answers with real case references.',
     officialUrl: 'https://www.livelaw.in',
     subject: 'polity'
+  },
+  // --- UPSC itself ---
+  {
+    id: 'upsc-official',
+    title: 'Syllabus, Notifications & Previous Year Papers',
+    type: 'Exam Authority',
+    description: 'The exam authority\u2019s own site \u2014 official syllabus, notifications, and downloadable previous year question papers.',
+    officialUrl: 'https://upsc.gov.in',
+    subject: 'other'
+  },
+  // --- Yojana / Kurukshetra ---
+  {
+    id: 'yojana-kurukshetra',
+    title: 'Yojana & Kurukshetra (free e-journals)',
+    type: 'Government Journal',
+    description: 'Ministry of I&B\u2019s monthly journals on development (Yojana) and rural issues (Kurukshetra), free to read.',
+    officialUrl: 'https://publicationsdivision.nic.in/journals',
+    subject: 'governance'
   }
 ];
