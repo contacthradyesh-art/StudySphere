@@ -71,9 +71,9 @@ async function summarize(
   description: string
 ): Promise<{ summary: string; topic: string; examRelevance: string; category: UpscCategory; gsPaper: string }> {
   const apiKey = process.env.GEMINI_API_KEY_MISSION_IAS;
-if (!apiKey) {
-  throw new GeminiError('GEMINI_API_KEY_MISSION_IAS is not set in this environment');
-}
+  if (!apiKey) {
+    throw new GeminiError('GEMINI_API_KEY_MISSION_IAS is not set in this environment');
+  }
 
   const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
     method: 'POST',
@@ -81,7 +81,25 @@ if (!apiKey) {
     body: JSON.stringify({
       system_instruction: { parts: [{ text: SUMMARY_SYSTEM_PROMPT }] },
       contents: [{ role: 'user', parts: [{ text: `Title: ${title}\n\nDescription: ${description}` }] }],
-      generationConfig: { maxOutputTokens: 800, temperature: 0.4, responseMimeType: 'application/json' }
+      generationConfig: {
+        maxOutputTokens: 800,
+        temperature: 0.4,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            summary: { type: 'STRING' },
+            topic: { type: 'STRING' },
+            examRelevance: { type: 'STRING' },
+            category: {
+              type: 'STRING',
+              enum: ['polity', 'economy', 'international-relations', 'environment', 'science-tech', 'security', 'governance', 'agriculture', 'social-issues', 'other']
+            },
+            gsPaper: { type: 'STRING' }
+          },
+          required: ['summary', 'topic', 'examRelevance', 'category', 'gsPaper']
+        }
+      }
     })
   });
 
@@ -99,7 +117,27 @@ if (!apiKey) {
     const finishReason = data.candidates?.[0]?.finishReason;
     throw new GeminiError(`Gemini returned no content (finishReason: ${finishReason}). Raw response: ${JSON.stringify(data).slice(0, 300)}`);
   }
-  const parsed = JSON.parse(text);
+
+  let parsed: { summary?: string; topic?: string; examRelevance?: string; category?: string; gsPaper?: string };
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    // Last-resort fallback if the model still returns malformed JSON despite
+    // the schema constraint (e.g. an unescaped quote inside a string field) —
+    // pull each field out with a regex instead of discarding the whole item.
+    const field = (key: string) => {
+      const m = text.match(new RegExp(`"${key}"\\s*:\\s*"([\\s\\S]*?)"\\s*[,}]`));
+      return m ? m[1] : undefined;
+    };
+    parsed = {
+      summary: field('summary'),
+      topic: field('topic'),
+      examRelevance: field('examRelevance'),
+      category: field('category'),
+      gsPaper: field('gsPaper')
+    };
+  }
+
   const validCategories: UpscCategory[] = [
     'polity', 'economy', 'international-relations', 'environment', 'science-tech',
     'security', 'governance', 'agriculture', 'social-issues', 'other'
@@ -108,7 +146,7 @@ if (!apiKey) {
     summary: parsed.summary || description.slice(0, 200),
     topic: parsed.topic || '',
     examRelevance: parsed.examRelevance || '',
-    category: validCategories.includes(parsed.category) ? parsed.category : 'other',
+    category: validCategories.includes(parsed.category as UpscCategory) ? (parsed.category as UpscCategory) : 'other',
     gsPaper: parsed.gsPaper || 'GS2'
   };
 }
