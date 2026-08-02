@@ -1,5 +1,5 @@
 import {
-  addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc
+  addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, updateDoc, where
 } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase/client';
 import { COLLECTIONS } from '@/lib/firestore/schema';
@@ -115,6 +115,9 @@ export async function createLibraryFolder(uid: string, name: string) {
   await addDoc(foldersCol(uid), { name, createdAt: Date.now() });
 }
 
+/** Deletes a folder. Files inside it are NOT deleted — they're moved back to "All Files" so nothing is lost. */
 export async function deleteLibraryFolder(uid: string, folderId: string) {
+  const filesSnap = await getDocs(query(filesCol(uid), where('folderId', '==', folderId)));
+  await Promise.all(filesSnap.docs.map((d) => updateDoc(d.ref, { folderId: null })));
   await deleteDoc(doc(foldersCol(uid), folderId));
 }

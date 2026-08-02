@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
   subscribeLibraryFiles, subscribeLibraryFolders, uploadLibraryFile,
-  createLibraryFolder, toggleLibraryFavorite, deleteLibraryFile
+  createLibraryFolder, deleteLibraryFolder, toggleLibraryFavorite, deleteLibraryFile
 } from '@/lib/mission-ias/library-service';
 import type { LibraryFile, LibraryFolder } from '@/lib/mission-ias/library-schema';
 import type { UpscCategory } from '@/lib/mission-ias/current-affairs-schema';
@@ -96,6 +96,20 @@ export default function DigitalLibraryPage() {
       setUploading(false);
     }
   }
+  async function handleDeleteFolder(folder: LibraryFolder, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!requireAuth(user)) return;
+    if (!confirm(`Delete "${folder.name}"? Files inside will move to All Files, not be deleted.`)) return;
+    try {
+      if (activeFolder === folder.id) setActiveFolder('all');
+      await deleteLibraryFolder(user.uid, folder.id);
+      toast.success('Folder deleted');
+    } catch {
+      toast.error('Could not delete folder');
+    }
+  }
+
+  async function handleCreateFolder() {
 
   async function handleCreateFolder() {
     if (!requireAuth(user) || !newFolderName.trim()) return;
@@ -189,14 +203,16 @@ export default function DigitalLibraryPage() {
               >
                 All Files
               </button>
-              {folders.map((f) => (
-                <button
+             {folders.map((f) => (
+                <span
                   key={f.id}
-                  onClick={() => setActiveFolder(f.id)}
-                  className={cn('whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium', activeFolder === f.id ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-muted-foreground')}
+                  className={cn('group flex items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium', activeFolder === f.id ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-muted-foreground')}
                 >
-                  {f.name}
-                </button>
+                  <button onClick={() => setActiveFolder(f.id)}>{f.name}</button>
+                  <button onClick={(e) => handleDeleteFolder(f, e)} className="text-muted-foreground/60 hover:text-red-400" aria-label={`Delete ${f.name}`}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
               ))}
             </div>
           </div>
