@@ -39,7 +39,7 @@ const MODULES: ModuleCard[] = [
   { label: 'Vocabulary Lab', icon: Languages },
   { label: 'Interview Room', icon: Mic },
   { label: 'Knowledge Graph', icon: Network },
-  { label: 'Digital Library', icon: Library },
+  { label: 'Digital Library', icon: Library, href: '/dashboard/mission-ias/digital-library' },
   { label: 'Mission Analytics', icon: BarChart3 },
   { label: 'Bookmarks', icon: Bookmark },
   { label: 'Map Practice', icon: Map }

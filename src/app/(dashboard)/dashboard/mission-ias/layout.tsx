@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Landmark, Newspaper } from 'lucide-react';
+import { Landmark, Newspaper, Library } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -14,7 +14,8 @@ import { cn } from '@/lib/utils';
  */
 const MISSION_IAS_NAV = [
   { href: '/dashboard/mission-ias', label: 'Mission Dashboard', icon: Landmark, ready: true },
-  { href: '/dashboard/mission-ias/current-affairs', label: 'Current Affairs', icon: Newspaper, ready: true }
+  { href: '/dashboard/mission-ias/current-affairs', label: 'Current Affairs', icon: Newspaper, ready: true },
+  { href: '/dashboard/mission-ias/digital-library', label: 'Digital Library', icon: Library, ready: true }
 ];
 
 export default function MissionIasLayout({ children }: { children: React.ReactNode }) {
