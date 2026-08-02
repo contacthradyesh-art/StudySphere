@@ -12,9 +12,11 @@ export interface LibraryFolder {
 export interface LibraryFile {
   id: string;
   name: string;
-  /** Path inside Firebase Storage, used to delete the underlying file too. */
-  storagePath: string;
-  /** Public download URL from Storage. */
+  /** Cloudinary's identifier for this asset, used to delete it later. */
+  publicId: string;
+  /** "image" or "raw" (PDFs/docs) — Cloudinary needs this to delete correctly. */
+  resourceType: 'image' | 'raw';
+  /** Public download/view URL from Cloudinary. */
   downloadUrl: string;
   /** File size in bytes. */
   size: number;

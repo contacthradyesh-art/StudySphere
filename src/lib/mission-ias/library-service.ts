@@ -1,8 +1,7 @@
 import {
   addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase/client';
+import { db, auth } from '@/lib/firebase/client';
 import { COLLECTIONS } from '@/lib/firestore/schema';
 import {
   LIBRARY_FILES_COLLECTION, LIBRARY_FOLDERS_COLLECTION,
@@ -28,21 +27,45 @@ export function subscribeLibraryFiles(uid: string, cb: (files: LibraryFile[]) =>
   });
 }
 
-/** Uploads a file to Firebase Storage and creates its Firestore metadata doc. */
+/**
+ * Uploads a file directly from the browser to Cloudinary (using a short-lived
+ * signature from our server, which never exposes the Cloudinary secret),
+ * then saves the resulting metadata to Firestore.
+ */
 export async function uploadLibraryFile(
   uid: string,
   file: File,
   opts: { subject: LibraryFile['subject']; folderId: string | null }
 ): Promise<void> {
-  const storagePath = `library/${uid}/${Date.now()}-${file.name}`;
-  const storageRef = ref(storage, storagePath);
-  await uploadBytes(storageRef, file);
-  const downloadUrl = await getDownloadURL(storageRef);
+  const idToken = await auth.currentUser?.getIdToken();
+  if (!idToken) throw new Error('Not signed in');
+
+  const signRes = await fetch('/api/library/sign-upload', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${idToken}` }
+  });
+  if (!signRes.ok) throw new Error('Could not authorize upload');
+  const { timestamp, folder, signature, apiKey, cloudName } = await signRes.json();
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('api_key', apiKey);
+  formData.append('timestamp', String(timestamp));
+  formData.append('signature', signature);
+  formData.append('folder', folder);
+
+  const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+    method: 'POST',
+    body: formData
+  });
+  if (!uploadRes.ok) throw new Error('Upload to Cloudinary failed');
+  const uploaded = await uploadRes.json();
 
   await addDoc(filesCol(uid), {
     name: file.name,
-    storagePath,
-    downloadUrl,
+    publicId: uploaded.public_id,
+    resourceType: uploaded.resource_type === 'image' ? 'image' : 'raw',
+    downloadUrl: uploaded.secure_url,
     size: file.size,
     type: file.type || 'application/octet-stream',
     subject: opts.subject,
@@ -61,10 +84,18 @@ export async function moveLibraryFile(uid: string, fileId: string, folderId: str
 }
 
 export async function deleteLibraryFile(uid: string, file: LibraryFile) {
-  try {
-    await deleteObject(ref(storage, file.storagePath));
-  } catch {
-    // File may already be gone from Storage; still remove the metadata doc.
+  const idToken = await auth.currentUser?.getIdToken();
+  if (idToken) {
+    try {
+      await fetch('/api/library/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ publicId: file.publicId, resourceType: file.resourceType })
+      });
+    } catch {
+      // Continue removing the Firestore record even if the Cloudinary delete call fails —
+      // an orphaned file in Cloudinary storage is a minor cleanup issue, not a UX blocker.
+    }
   }
   await deleteDoc(doc(filesCol(uid), file.id));
 }
