@@ -20,6 +20,7 @@ import type { LibraryFile, LibraryFolder } from '@/lib/mission-ias/library-schem
 import type { UpscCategory } from '@/lib/mission-ias/current-affairs-schema';
 import { AskAiButton } from '@/components/ai/ask-ai-button';
 import { createNote } from '@/lib/notes/notes-service';
+import { OFFICIAL_RESOURCES } from '@/lib/mission-ias/official-resources';
 
 const SUBJECT_LABELS: Record<UpscCategory, string> = {
   polity: 'Polity', economy: 'Economy', 'international-relations': 'Int\u2019l Relations',
@@ -58,6 +59,9 @@ export default function DigitalLibraryPage() {
   const [uploadSubject, setUploadSubject] = useState<UpscCategory>('other');
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [officialSearch, setOfficialSearch] = useState('');
+  const [officialSubject, setOfficialSubject] = useState<UpscCategory | 'all'>('all');
+
 
   useEffect(() => {
     if (!user) return;
@@ -77,7 +81,15 @@ export default function DigitalLibraryPage() {
     if (sortBy === 'size') sorted.sort((a, b) => b.size - a.size);
     return sorted;
   }, [files, activeFolder, subjectFilter, search, sortBy]);
-
+const filteredOfficial = useMemo(() => {
+    let result = OFFICIAL_RESOURCES;
+    if (officialSubject !== 'all') result = result.filter((r) => r.subject === officialSubject);
+    if (officialSearch.trim()) {
+      const q = officialSearch.trim().toLowerCase();
+      result = result.filter((r) => r.title.toLowerCase().includes(q) || r.description.toLowerCase().includes(q));
+    }
+    return result;
+  }, [officialSearch, officialSubject]);
   const totalSize = useMemo(() => files.reduce((sum, f) => sum + f.size, 0), [files]);
   const favoritesCount = useMemo(() => files.filter((f) => f.favorite).length, [files]);
 
