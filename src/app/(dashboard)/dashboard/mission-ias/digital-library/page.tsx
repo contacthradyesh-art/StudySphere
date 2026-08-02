@@ -59,9 +59,9 @@ export default function DigitalLibraryPage() {
   const [uploadSubject, setUploadSubject] = useState<UpscCategory>('other');
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
   const [officialSearch, setOfficialSearch] = useState('');
   const [officialSubject, setOfficialSubject] = useState<UpscCategory | 'all'>('all');
-
 
   useEffect(() => {
     if (!user) return;
@@ -81,7 +81,8 @@ export default function DigitalLibraryPage() {
     if (sortBy === 'size') sorted.sort((a, b) => b.size - a.size);
     return sorted;
   }, [files, activeFolder, subjectFilter, search, sortBy]);
-const filteredOfficial = useMemo(() => {
+
+  const filteredOfficial = useMemo(() => {
     let result = OFFICIAL_RESOURCES;
     if (officialSubject !== 'all') result = result.filter((r) => r.subject === officialSubject);
     if (officialSearch.trim()) {
@@ -90,27 +91,53 @@ const filteredOfficial = useMemo(() => {
     }
     return result;
   }, [officialSearch, officialSubject]);
+
   const totalSize = useMemo(() => files.reduce((sum, f) => sum + f.size, 0), [files]);
   const favoritesCount = useMemo(() => files.filter((f) => f.favorite).length, [files]);
 
-  async function handleFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file || !requireAuth(user)) return;
-    if (file.size > 25 * 1024 * 1024) { toast.error('File must be under 25MB'); return; }
+  async function uploadFiles(fileList: FileList | File[]) {
+    if (!requireAuth(user)) return;
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
+
+    const tooBig = files.filter((f) => f.size > 25 * 1024 * 1024);
+    if (tooBig.length > 0) toast.error(`${tooBig.length} file(s) skipped \u2014 over the 25MB limit`);
+
+    const toUpload = files.filter((f) => f.size <= 25 * 1024 * 1024);
+    if (toUpload.length === 0) return;
+
     setUploading(true);
-    try {
-      await uploadLibraryFile(user.uid, file, {
-        subject: uploadSubject,
-        folderId: activeFolder === 'all' ? null : activeFolder
-      });
-      toast.success('Uploaded to your library');
-    } catch {
-      toast.error('Upload failed. Please try again.');
-    } finally {
-      setUploading(false);
+    let succeeded = 0;
+    let failed = 0;
+    for (const file of toUpload) {
+      try {
+        await uploadLibraryFile(user.uid, file, {
+          subject: uploadSubject,
+          folderId: activeFolder === 'all' ? null : activeFolder
+        });
+        succeeded++;
+      } catch {
+        failed++;
+      }
     }
+    setUploading(false);
+    if (succeeded > 0) toast.success(`Uploaded ${succeeded} file${succeeded > 1 ? 's' : ''}`);
+    if (failed > 0) toast.error(`${failed} file${failed > 1 ? 's' : ''} failed to upload`);
   }
+
+  async function handleFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    e.target.value = '';
+    if (!files) return;
+    await uploadFiles(files);
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragActive(false);
+    if (e.dataTransfer.files) uploadFiles(e.dataTransfer.files);
+  }
+
   async function handleDeleteFolder(folder: LibraryFolder, e: React.MouseEvent) {
     e.stopPropagation();
     if (!requireAuth(user)) return;
@@ -180,7 +207,7 @@ const filteredOfficial = useMemo(() => {
           <p className="text-sm text-muted-foreground">Your personal study library — upload, organize, and revisit your material.</p>
         </div>
         <div className="flex gap-2">
-          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChosen} accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg" />
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileChosen} accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg" />
           <Button variant="outline" size="sm" onClick={() => setShowNewFolder(true)}>
             <FolderPlus className="h-4 w-4" /> New Folder
           </Button>
@@ -213,13 +240,97 @@ const filteredOfficial = useMemo(() => {
       </div>
 
       {tab === 'official' ? (
-        <GlassCard>
-          <p className="text-sm text-muted-foreground">
-            🚧 Curated official resources (NCERT, PIB archives, Yojana, etc.) are planned for a future phase — not built yet.
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5">
+              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <input
+                value={officialSearch} onChange={(e) => setOfficialSearch(e.target.value)} placeholder="Search official resources..."
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+            <select value={officialSubject} onChange={(e) => setOfficialSubject(e.target.value as UpscCategory | 'all')} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs">
+              <option value="all">All Subjects</option>
+              {(Object.keys(SUBJECT_LABELS) as UpscCategory[]).map((s) => <option key={s} value={s}>{SUBJECT_LABELS[s]}</option>)}
+            </select>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Every resource below links to its own official government/institutional website — StudySphere never re-hosts or copies these documents.
           </p>
-        </GlassCard>
+
+          {filteredOfficial.length === 0 ? (
+            <GlassCard><p className="text-sm text-muted-foreground">No resources match your search/filter.</p></GlassCard>
+          ) : (
+            <div className="space-y-5">
+              {(Object.keys(SUBJECT_LABELS) as UpscCategory[])
+                .map((subject) => ({ subject, items: filteredOfficial.filter((r) => r.subject === subject) }))
+                .filter((group) => group.items.length > 0)
+                .map((group) => (
+                  <div key={group.subject} className="space-y-2">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                      {SUBJECT_LABELS[group.subject]}
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px]">{group.items.length}</span>
+                    </h3>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {group.items.map((r) => (
+                        <GlassCard key={r.id} className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="text-sm font-semibold leading-snug">{r.title}</h3>
+                            <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-muted-foreground">{r.type}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{r.description}</p>
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <a href={r.officialUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                              <ExternalLink className="h-3.5 w-3.5" /> Visit official site
+                            </a>
+                            <AskAiButton
+                              label="Ask AI"
+                              prompt={`Give me a UPSC-focused overview of what to study from "${r.title}" (subject: ${SUBJECT_LABELS[r.subject]}). What are the most important topics from this source?`}
+                            />
+                          </div>
+                        </GlassCard>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
       ) : (
         <>
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={handleDrop}
+            className={cn(
+              'flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center transition-colors',
+              dragActive ? 'border-primary bg-primary/10' : 'border-white/10 text-muted-foreground'
+            )}
+          >
+            <Upload className="h-6 w-6" />
+            <p className="text-sm">Drag & drop files here, or</p>
+            <Button variant="outline" size="sm" onClick={() => { if (!requireAuth(user)) return; fileInputRef.current?.click(); }}>
+              Browse files
+            </Button>
+            <p className="text-xs text-muted-foreground">PDF, Word, PowerPoint, or images \u2014 up to 25MB each, multiple at once</p>
+          </div>
+
+          <GlassCard className="space-y-2">
+            <h2 className="font-semibold">Where to find free, legal study material</h2>
+            <p className="text-sm text-muted-foreground">
+              Download official PDFs yourself from these free sources, then upload them here to keep everything in one place.
+            </p>
+            <ul className="space-y-1 text-sm">
+              <li><a href="https://ncert.nic.in/textbook.php" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">NCERT Textbooks (Class VI\u2013XII) \u2192</a></li>
+              <li><a href="https://publicationsdivision.nic.in/journals" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Yojana & Kurukshetra (free e-journals) \u2192</a></li>
+              <li><a href="https://upsc.gov.in" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">UPSC Syllabus & Previous Year Papers \u2192</a></li>
+            </ul>
+            <button onClick={() => setTab('official')} className="text-xs text-muted-foreground underline hover:text-foreground">
+              See all {OFFICIAL_RESOURCES.length} official resources \u2192
+            </button>
+          </GlassCard>
+
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <GlassCard className="p-4"><p className="text-xs text-muted-foreground">Total Files</p><p className="text-xl font-bold">{files.length}</p></GlassCard>
             <GlassCard className="p-4"><p className="text-xs text-muted-foreground">Total Size</p><p className="text-xl font-bold">{formatBytes(totalSize)}</p></GlassCard>
@@ -235,7 +346,7 @@ const filteredOfficial = useMemo(() => {
               >
                 All Files
               </button>
-             {folders.map((f) => (
+              {folders.map((f) => (
                 <span
                   key={f.id}
                   className={cn('group flex items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium', activeFolder === f.id ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-muted-foreground')}
