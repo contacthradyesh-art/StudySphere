@@ -36,7 +36,7 @@ const MODULES: ModuleCard[] = [
   { label: 'PYQ Explorer', icon: ListChecks },
   { label: 'Prelims Test Engine', icon: ListChecks },
   { label: 'Revision Engine', icon: Repeat },
-  { label: 'Vocabulary Lab', icon: Languages },
+  { label: 'Vocabulary Lab', icon: Languages, href: '/dashboard/mission-ias/vocabulary-lab' },
   { label: 'Interview Room', icon: Mic },
   { label: 'Knowledge Graph', icon: Network },
   { label: 'Digital Library', icon: Library, href: '/dashboard/mission-ias/digital-library' },

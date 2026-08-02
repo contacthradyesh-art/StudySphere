@@ -67,12 +67,22 @@ service cloud.firestore {
       match /libraryFolders/{folderId} {
         allow read, write: if isOwner(uid);
       }
+      // Mission IAS: per-user vocabulary "learned" tracking
+      match /vocabProgress/{wordId} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // Mission IAS: current affairs items are populated server-side only
     // (via the Admin SDK, which bypasses these rules); any signed-in
     // student can read them.
     match /currentAffairs/{itemId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Mission IAS: vocabulary bank — same pattern as currentAffairs.
+    match /vocabulary/{wordId} {
       allow read: if request.auth != null;
       allow write: if false;
     }
