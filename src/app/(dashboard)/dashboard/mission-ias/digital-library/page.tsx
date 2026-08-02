@@ -110,8 +110,6 @@ export default function DigitalLibraryPage() {
   }
 
   async function handleCreateFolder() {
-
-  async function handleCreateFolder() {
     if (!requireAuth(user) || !newFolderName.trim()) return;
     try {
       await createLibraryFolder(user.uid, newFolderName.trim());
