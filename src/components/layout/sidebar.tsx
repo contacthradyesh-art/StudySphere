@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, CalendarCheck, Timer, ShieldCheck, NotebookPen,
-  BookOpen, Sparkles, GraduationCap, BookHeart, Layers, Rocket, Landmark
+  BookOpen, Sparkles, GraduationCap, BookHeart, Layers, Rocket, Landmark, Languages
 } from 'lucide-react';
 
 const NAV = [
@@ -13,6 +13,7 @@ const NAV = [
   { href: '/dashboard/planner', label: 'Life Planner', icon: CalendarCheck, ready: true },
   { href: '/dashboard/mock-tests', label: 'Mock Tests', icon: GraduationCap, ready: true },
   { href: '/dashboard/mission-ias', label: 'Mission IAS', icon: Landmark, ready: true },
+  { href: '/dashboard/english-lab', label: 'English Lab', icon: Languages, ready: true },
   { href: '/dashboard/growth-os', label: 'Growth OS', icon: Rocket, ready: true },
   { href: '/dashboard/pomodoro', label: 'Pomodoro', icon: Timer, ready: true },
   { href: '/dashboard/focus', label: 'Focus Shield', icon: ShieldCheck, ready: true },
@@ -20,7 +21,6 @@ const NAV = [
   { href: '/dashboard/subjects', label: 'Subjects', icon: BookOpen, ready: true },
   { href: '/dashboard/journal', label: 'Journal', icon: BookHeart, ready: true },
   { href: '/dashboard/flashcards', label: 'Flashcards', icon: Layers, ready: true },
-  { href: '/dashboard/bushido', label: 'Bushido', icon: ShieldCheck, ready: true },
   { href: '/dashboard/ai', label: 'AI Doubt Solver', icon: Sparkles, ready: true },
   { href: '/dashboard/analytics', label: 'Analytics', icon: LayoutDashboard, ready: true },
   { href: '/dashboard/syllabus', label: 'Syllabus', icon: BookOpen, ready: true },

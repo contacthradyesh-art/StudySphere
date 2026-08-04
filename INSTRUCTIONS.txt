@@ -1,0 +1,56 @@
+StudySphere — Bushido removed, English Communication Lab added
+================================================================
+
+WHAT'S IN THIS ZIP
+-------------------
+Only the NEW and CHANGED files (8 total). Same folder structure as your
+project — extract and overwrite directly into your project root
+(D:\Downloads\studysphere-lifeos-complete (1)\studysphere-main\).
+
+  NEW:
+    src/lib/english-lab/english-lab-schema.ts
+    src/lib/english-lab/english-lab-service.ts
+    src/app/api/english-lab/writing-feedback/route.ts
+    src/app/api/english-lab/speaking-feedback/route.ts
+    src/app/(dashboard)/dashboard/english-lab/page.tsx
+
+  CHANGED (overwrite the existing file):
+    src/lib/gamification/xp.ts
+    src/components/layout/sidebar.tsx
+    src/components/layout/more-sheet.tsx
+
+HOW TO APPLY
+------------
+1. Extract this zip.
+2. Copy the "src" folder from the extracted zip into your project root,
+   letting it MERGE/overwrite — your file manager or VS Code will ask
+   "replace these files?" for the 3 changed ones. Say yes.
+3. DELETE this folder manually (not included in the zip, since deleting
+   can't be done by adding files):
+       src/app/(dashboard)/dashboard/bushido/
+4. In VS Code terminal, run:
+       git add .
+       git commit -m "Remove Bushido, add English Communication Lab"
+       git push
+
+WHAT THIS ADDS
+--------------
+- Bushido is fully removed (page + both nav menus).
+- New "English Lab" section in the sidebar and More menu.
+- Writing Practice: AI-scored essay/paragraph feedback (grammar, vocabulary,
+  corrected version).
+- Speaking Practice: record your voice, AI transcribes + scores fluency,
+  grammar, vocabulary, with tips.
+- XP from both feeds directly into the existing Dashboard "Total XP" —
+  no separate/disconnected XP system this time.
+
+IMPORTANT — MICROPHONE ON THE ANDROID APP
+------------------------------------------
+Speaking Practice needs the microphone. It will work immediately on any
+regular browser (Chrome, desktop, etc.). Inside your packaged Android app
+(the WebView wrapper), the mic is blocked by default until we add one
+small permission-handling change to MainActivity.kt. Writing Practice
+needs no extra Android work and will work everywhere right away.
+
+Let me know once this is pushed and I'll walk through the MainActivity.kt
+microphone fix for the Android app.

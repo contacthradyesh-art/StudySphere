@@ -14,7 +14,11 @@ export const XP_REWARDS = {
   completeHabit: 5,
   completeMilestone: 30,
   completeGoal: 100,
-  completeMockTest: 25
+  completeMockTest: 25,
+  // English Communication Lab — same XP pool as everything else, no
+  // separate counter, so it contributes directly to the dashboard's
+  // existing Total XP / level display.
+  englishPractice: 12
 } as const;
 
 export type XpAction = keyof typeof XP_REWARDS;
