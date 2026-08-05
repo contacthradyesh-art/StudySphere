@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Landmark, Newspaper, Library, Languages } from 'lucide-react';
+import { Landmark, Newspaper, Library, Languages, Map } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * Every future Mission IAS feature (Editorial Hub, PIB Hub, Vocabulary Lab,
- * PYQ Explorer, Answer Writing, Revision Engine, ...) gets one entry here
- * and a matching folder under src/app/(dashboard)/dashboard/mission-ias/.
+ * Every future Mission IAS feature (Editorial Hub, PIB Hub, PYQ Explorer,
+ * Answer Writing, Revision Engine, ...) gets one entry here and a matching
+ * folder under src/app/(dashboard)/dashboard/mission-ias/.
  * `ready: false` entries render as disabled "Coming soon" tabs so the nav
  * shape is visible without pretending unbuilt features exist.
  */
@@ -16,7 +16,8 @@ const MISSION_IAS_NAV = [
   { href: '/dashboard/mission-ias', label: 'Mission Dashboard', icon: Landmark, ready: true },
   { href: '/dashboard/mission-ias/current-affairs', label: 'Current Affairs', icon: Newspaper, ready: true },
   { href: '/dashboard/mission-ias/digital-library', label: 'Digital Library', icon: Library, ready: true },
-  { href: '/dashboard/mission-ias/vocabulary-lab', label: 'Vocabulary Lab', icon: Languages, ready: true }
+  { href: '/dashboard/mission-ias/vocabulary-lab', label: 'Vocabulary Lab', icon: Languages, ready: true },
+  { href: '/dashboard/mission-ias/map-practice', label: 'Map Practice', icon: Map, ready: true }
 ];
 
 export default function MissionIasLayout({ children }: { children: React.ReactNode }) {

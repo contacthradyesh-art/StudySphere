@@ -42,7 +42,7 @@ const MODULES: ModuleCard[] = [
   { label: 'Digital Library', icon: Library, href: '/dashboard/mission-ias/digital-library' },
   { label: 'Mission Analytics', icon: BarChart3 },
   { label: 'Bookmarks', icon: Bookmark },
-  { label: 'Map Practice', icon: Map }
+  { label: 'Map Practice', icon: Map, href: '/dashboard/mission-ias/map-practice' },
 ];
 
 export default function MissionIasDashboardPage() {
