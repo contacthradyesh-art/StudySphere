@@ -62,7 +62,10 @@ export default function MapPracticePage() {
     return geoPath(projection);
   }, [features, featureCollection]);
 
-  const stateInfo = useCallback((name: string) => INDIA_STATES.find((s) => s.name === name), []);
+  const stateInfo = useCallback(
+    (name: string) => INDIA_STATES.find((s) => normalizeName(s.name) === normalizeName(name)),
+    []
+  );
 
   const startIdentifyRound = useCallback((q: string[]) => {
     if (q.length === 0) {
@@ -82,7 +85,7 @@ export default function MapPracticePage() {
     setScore(0);
     setAttempted(0);
     setSelected(null);
-    startIdentifyRound(shuffle(features.map((f) => f.properties.name)));
+    startIdentifyRound(shuffle(features.map((f) => getFeatureName(f.properties))));
   }
 
   function handleStateClick(name: string) {
@@ -168,7 +171,7 @@ export default function MapPracticePage() {
           ) : pathGen ? (
             <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="mx-auto w-full max-w-md">
               {features.map((f) => {
-                const name = f.properties.name;
+                const name = getFeatureName(f.properties);
                 const isSelected = mode === 'explore' && selected === name;
                 const isWrong = mode === 'identify' && wrongState === name;
                 const isCorrectReveal = mode === 'identify' && feedback === 'correct' && target === name;
