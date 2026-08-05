@@ -62,6 +62,11 @@ function playAlarmTune() {
   }
 }
 
+function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
 function getFiredSet(): Set<string> {
   try {
     const raw = localStorage.getItem(FIRED_KEY);
@@ -141,17 +146,25 @@ export function useGoalReminders() {
       for (const goal of goalsRef.current) {
         if (!goal.reminderAt || goal.status !== 'active') continue;
         if (goal.reminderAt > now) continue;
-        const key = `goal:${goal.id}`;
+        const key = `goal:${goal.id}:${todayKey()}`;
         if (fired.has(key)) continue;
-        fire(key, goal.title, goal.examTag || 'Time to work on this goal.');
+        const overdueDays = Math.floor((now - goal.reminderAt) / 86400000);
+        const subtitle = overdueDays > 0
+          ? `Overdue by ${overdueDays} day${overdueDays > 1 ? 's' : ''} — ${goal.examTag || 'still not done'}.`
+          : goal.examTag || 'Time to work on this goal.';
+        fire(key, goal.title, subtitle);
       }
 
       for (const task of tasksRef.current) {
         if (!task.reminderAt || task.completed) continue;
         if (task.reminderAt > now) continue;
-        const key = `task:${task.id}`;
+        const key = `task:${task.id}:${todayKey()}`;
         if (fired.has(key)) continue;
-        fire(key, task.title, task.subject || 'Time for this task.');
+        const overdueDays = Math.floor((now - task.reminderAt) / 86400000);
+        const subtitle = overdueDays > 0
+          ? `Overdue by ${overdueDays} day${overdueDays > 1 ? 's' : ''} — still not done.`
+          : task.subject || 'Time for this task.';
+        fire(key, task.title, subtitle);
       }
     }, CHECK_INTERVAL_MS);
 

@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
   }
 
   const now = Date.now();
+  const todayKey = new Date(now).toISOString().slice(0, 10); // YYYY-MM-DD
   const results = { checked: 0, sent: 0, skippedAlreadyFired: 0, noSubscriptions: 0, errors: 0 };
 
   async function processItem(opts: {
@@ -33,7 +34,10 @@ export async function GET(req: NextRequest) {
     subtitle: string;
   }) {
     results.checked++;
-    const firedKey = `${opts.type}:${opts.uid}:${opts.id}`;
+    // Scoped to today's date, not just the item id — this is intentional:
+    // an incomplete goal/task should keep nagging the student daily rather
+    // than sending exactly one push notification for its entire lifetime.
+    const firedKey = `${opts.type}:${opts.uid}:${opts.id}:${todayKey}`;
     const firedRef = adminDb!.collection('pushRemindersFired').doc(firedKey);
     const firedSnap = await firedRef.get();
     if (firedSnap.exists) {
@@ -83,13 +87,16 @@ export async function GET(req: NextRequest) {
     if (!uid) continue;
     const g = doc.data() as { title?: string; examTag?: string; reminderAt?: number };
     if (!g.reminderAt) continue;
+    const overdueDays = Math.floor((now - g.reminderAt) / 86400000);
     await processItem({
       type: 'goal',
       uid,
       id: doc.id,
       reminderAt: g.reminderAt,
       title: g.title || 'Goal reminder',
-      subtitle: g.examTag || 'Time to work on this goal.'
+      subtitle: overdueDays > 0
+        ? `Overdue by ${overdueDays} day${overdueDays > 1 ? 's' : ''} — ${g.examTag || 'still not done'}.`
+        : g.examTag || 'Time to work on this goal.'
     });
   }
 
@@ -105,13 +112,16 @@ export async function GET(req: NextRequest) {
     if (!uid) continue;
     const t = doc.data() as { title?: string; subject?: string; reminderAt?: number };
     if (!t.reminderAt) continue;
+    const overdueDays = Math.floor((now - t.reminderAt) / 86400000);
     await processItem({
       type: 'task',
       uid,
       id: doc.id,
       reminderAt: t.reminderAt,
       title: t.title || 'Task reminder',
-      subtitle: t.subject || 'Time for this task.'
+      subtitle: overdueDays > 0
+        ? `Overdue by ${overdueDays} day${overdueDays > 1 ? 's' : ''} — still not done.`
+        : t.subject || 'Time for this task.'
     });
   }
 

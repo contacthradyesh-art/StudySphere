@@ -116,6 +116,27 @@ export default function PlannerPage() {
     toast.success('Task deleted');
   }
 
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const overdueTasks = useMemo(
+    () => tasks.filter((t) => !t.completed && t.dueDate < todayIso).sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
+    [tasks, todayIso]
+  );
+
+  const weeklyCompletion = useMemo(() => {
+    const weekAgoIso = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const dueThisWeek = tasks.filter((t) => t.dueDate >= weekAgoIso && t.dueDate <= todayIso);
+    if (dueThisWeek.length === 0) return null;
+    const done = dueThisWeek.filter((t) => t.completed).length;
+    return Math.round((done / dueThisWeek.length) * 100);
+  }, [tasks, todayIso]);
+
+  async function handleQuickComplete(task: Task) {
+    if (!requireAuth(user)) return;
+    await toggleTask(user.uid, task.id, true);
+    void awardXp(user.uid, 'completeTask');
+    toast.success(`"${task.title}" done — no more nagging about it!`);
+  }
+
   return (
     <div className="space-y-5 animate-fade-in">
       {/* ── Habits overview (shows when habits exist) ── */}
@@ -127,12 +148,58 @@ export default function PlannerPage() {
           <h1 className="text-2xl font-bold tracking-tight">Life Planner</h1>
           <p className="text-sm text-muted-foreground">Your AI-powered life operating system.</p>
         </div>
-        {tab === 'tasks' && (
-          <Button variant="gradient" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4" /> New task
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {weeklyCompletion !== null && (
+            <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 sm:flex">
+              <span className={cn('text-sm font-bold', weeklyCompletion >= 80 ? 'text-emerald-400' : weeklyCompletion >= 50 ? 'text-amber-400' : 'text-red-400')}>
+                {weeklyCompletion}%
+              </span>
+              <span className="text-xs text-muted-foreground">completion this week</span>
+            </div>
+          )}
+          {tab === 'tasks' && (
+            <Button variant="gradient" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+              <Plus className="h-4 w-4" /> New task
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* ── STRICT: overdue tasks are impossible to miss, on every tab ── */}
+      {overdueTasks.length > 0 && (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/[0.07] p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-2 w-2 animate-pulse rounded-full bg-red-500" />
+            <h2 className="text-sm font-bold text-red-300">
+              {overdueTasks.length} overdue task{overdueTasks.length > 1 ? 's' : ''} — you committed to these
+            </h2>
+          </div>
+          <div className="space-y-1.5">
+            {overdueTasks.slice(0, 5).map((t) => {
+              const daysLate = Math.floor((new Date(todayIso).getTime() - new Date(t.dueDate).getTime()) / 86400000);
+              return (
+                <div key={t.id} className="flex items-center justify-between gap-3 rounded-xl bg-charcoal-900/60 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{t.title}</p>
+                    <p className="text-xs text-red-400">{daysLate} day{daysLate > 1 ? 's' : ''} late</p>
+                  </div>
+                  <button
+                    onClick={() => handleQuickComplete(t)}
+                    className="shrink-0 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25"
+                  >
+                    Mark done
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          {overdueTasks.length > 5 && (
+            <button onClick={() => setTab('tasks')} className="mt-2 text-xs text-red-300 hover:underline">
+              +{overdueTasks.length - 5} more overdue \u2192
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Tabs ── */}
       <div className="overflow-x-auto pb-1 scrollbar-hide">
