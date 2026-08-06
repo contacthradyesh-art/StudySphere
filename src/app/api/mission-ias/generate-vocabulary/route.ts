@@ -5,7 +5,7 @@ import { VOCABULARY_COLLECTION, type WordDifficulty } from '@/lib/mission-ias/vo
 export const maxDuration = 60;
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 12;
 
 const SYSTEM_PROMPT = `You are building a daily vocabulary list for UPSC (Indian civil services) aspirants — the kind of advanced English words that appear in The Hindu / Indian Express editorials.
 Generate exactly ${BATCH_SIZE} DIFFERENT words, none of which are in the "already used" list you'll be given.
@@ -39,19 +39,30 @@ async function generateVocabularyBatch(): Promise<{ ok: true; requested: number;
         role: 'user',
         parts: [{ text: `Already used words (do NOT repeat any of these): ${existingWords.join(', ') || '(none yet)'}` }]
       }],
-      generationConfig: { maxOutputTokens: 4000, temperature: 0.8, responseMimeType: 'application/json' }
+      generationConfig: { maxOutputTokens: 8000, temperature: 0.8, responseMimeType: 'application/json' }
     })
   });
 
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error('generate-vocabulary: Gemini API error', res.status, errBody.slice(0, 500));
+    return { ok: false, error: `AI request failed (${res.status})` };
+  }
+
   const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) return { ok: false, error: 'AI did not return content' };
+  const candidate = data.candidates?.[0];
+  const text = candidate?.content?.parts?.[0]?.text;
+  if (!text) {
+    console.error('generate-vocabulary: no content in response', JSON.stringify(data).slice(0, 500));
+    return { ok: false, error: `AI did not return content (finishReason: ${candidate?.finishReason || 'unknown'})` };
+  }
 
   let parsed: { words: any[] };
   try {
     parsed = JSON.parse(text);
-  } catch {
-    return { ok: false, error: 'AI returned invalid JSON' };
+  } catch (e) {
+    console.error('generate-vocabulary: JSON parse failed', String(e), 'raw text (last 300 chars):', text.slice(-300));
+    return { ok: false, error: 'AI returned invalid JSON (likely truncated — try again)' };
   }
 
   const validDifficulties: WordDifficulty[] = ['easy', 'medium', 'hard'];
@@ -100,9 +111,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const result = await generateVocabularyBatch();
-  if (!result.ok) return NextResponse.json(result, { status: 500 });
-  return NextResponse.json(result);
+  try {
+    const result = await generateVocabularyBatch();
+    if (!result.ok) return NextResponse.json(result, { status: 500 });
+    return NextResponse.json(result);
+  } catch (e) {
+    console.error('generate-vocabulary GET: unexpected error', e);
+    return NextResponse.json({ ok: false, error: 'Unexpected server error' }, { status: 500 });
+  }
 }
 
 /**
@@ -122,7 +138,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const result = await generateVocabularyBatch();
-  if (!result.ok) return NextResponse.json(result, { status: 500 });
-  return NextResponse.json(result);
+  try {
+    const result = await generateVocabularyBatch();
+    if (!result.ok) return NextResponse.json(result, { status: 500 });
+    return NextResponse.json(result);
+  } catch (e) {
+    console.error('generate-vocabulary POST: unexpected error', e);
+    return NextResponse.json({ ok: false, error: 'Unexpected server error' }, { status: 500 });
+  }
 }

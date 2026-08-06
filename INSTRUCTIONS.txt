@@ -106,3 +106,28 @@ firestore.rules in the repo also needs this same manual copy-paste-publish
 step, since there's no automated deploy pipeline. If you want, I can also
 set up `firebase.json` + `.firebaserc` so `firebase deploy --only
 firestore:rules` works from the terminal instead — just ask.
+
+==================================
+FIX #3 — POST /generate-vocabulary returning 500
+==================================
+Vercel logs showed the Gemini API call actually happened, but then it
+failed with a 500 and no console output — because the old code never
+logged anything on failure.
+
+LIKELY ROOT CAUSE: BATCH_SIZE was 20 words, each with 8 rich fields
+(including Hindi meaning in Devanagari script, synonyms, antonyms, example
+sentences, editorial usage) — but maxOutputTokens was only 4000. That's
+almost certainly not enough for 20 fully-detailed words, so Gemini's
+response was getting cut off mid-JSON, and JSON.parse() failed.
+
+FIXED (generate-vocabulary/route.ts, updated again — 6th file overall):
+- BATCH_SIZE reduced 20 → 12 (safer, still fast)
+- maxOutputTokens raised 4000 → 8000 (more headroom)
+- Added console.error logging at every failure point (Gemini API error,
+  empty response, JSON parse failure, unexpected exceptions) — so if it
+  ever fails again, Vercel → Logs will show the EXACT reason instead of
+  "No logs found for this request"
+
+After pushing this, click "Generate More Words" again. If it still fails,
+check Vercel → Logs for this request — it will now show a specific error
+message. Send me that message and I'll know exactly what to fix.
