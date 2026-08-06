@@ -1,59 +1,63 @@
-STUDYSPHERE — MAP PRACTICE: RIVERS & MOUNTAINS OVERLAY
-========================================================
+STUDYSPHERE — ETHICS LAB (NEW FEATURE, GS4)
+==============================================
 
-CONTEXT: This finishes what an earlier (message-limited) session started —
-it had written the plan/code but ran out of free messages before pushing.
-I re-verified everything against your ACTUAL current repo (not the pasted
-plan) and merged it in properly, since your live map-practice/page.tsx
-already had things the plan didn't know about (Timed Challenge mode,
-color palette, search) — a blind copy-paste would have deleted those.
-I only added new code around them.
+Ethics Lab didn't exist before — it was just a "Coming soon" disabled card
+on the Mission IAS hub. This builds a full v1:
 
-WHAT'S NEW:
-1. src/lib/mission-ias/geography-schema.ts (NEW FILE)
-   - RIVERS: 10 major Indian rivers (Ganga, Yamuna, Brahmaputra, Indus,
-     Godavari, Krishna, Kaveri, Narmada, Tapi, Mahanadi) with origin,
-     length, outflow, states, tributaries, UPSC-relevant significance.
-   - MOUNTAINS: 7 ranges (Himalayas, Karakoram, Aravalli, Vindhya, Satpura,
-     Western Ghats, Eastern Ghats) with verified peak coordinates.
+1. CASE STUDY PRACTICE
+   - "Generate Case Study" -> AI writes a fresh, realistic UPSC GS4
+     Section-B style ethical dilemma (120-180 words) + the standard 3
+     sub-questions (identify issues, list options, choose & justify).
+   - You write your answer, submit, get AI feedback: score /100, ethical
+     issues identified, options evaluated, strengths, improvements, and a
+     concise model-approach to compare against.
+   - Every attempt is saved (Firestore) and awards +15 XP into your
+     existing Total XP.
+   - Recent attempts history shown at the bottom.
 
-2. public/data/world-rivers.geojson (NEW FILE, ~125 KB)
-   - Real river-line geometry from Natural Earth (public domain), filtered
-     down to only the rivers above (not the full 7MB dataset).
-   - HONEST GAP: Natural Earth's global rivers layer does NOT include the
-     Godavari or Mahanadi at all (checked directly — genuinely absent from
-     the source data, not a matching bug). So 8 of the 10 rivers render as
-     real lines on the map; Godavari and Mahanadi have full info in the
-     schema (for AI-assisted facts) but no line yet. If you want those two
-     added later, they'd need a different/higher-detail river dataset.
+2. CONCEPTS (searchable glossary)
+   - 16 core GS4 terms: Ethics, Integrity, Probity, Aptitude vs Attitude,
+     Emotional Intelligence, Foundational Values, Accountability,
+     Transparency, Objectivity, Impartiality vs Non-partisanship,
+     Corruption, Whistleblowing, Code of Ethics vs Conduct, Conscience,
+     EQ vs IQ — each with a definition + why/how it shows up in the exam.
 
-3. src/app/(dashboard)/dashboard/mission-ias/map-practice/page.tsx (UPDATED)
-   - Added a "Rivers & Mountains" toggle (only visible in India + Explore
-     mode). Blue lines = rivers, amber dots = mountain peaks — click either
-     for a detail panel + "Ask AI" button, same pattern as clicking a state.
-   - Your existing Timed Challenge mode, color palette, search, and World
-     tab are untouched.
-   - Bonus fix: the right-side info panel had no message during Timed
-     Challenge mode (only Identify Quiz showed one) — fixed.
+3. THINKERS & QUOTES
+   - 10 thinkers relevant to GS4: Kant, Aristotle, Bentham/Mill, Gandhi,
+     Kautilya, Confucius, Rawls, Socrates, Vivekananda, Amartya Sen — each
+     with their core theory, a short quotable line, and exam relevance.
+   - "More facts for GS4" button routes to your AI Assistant for deeper
+     material on that thinker.
 
-4. scripts/fetch-map-data.mjs (UPDATED)
-   - Added the rivers-fetching step, so you (or I) can regenerate
-     world-rivers.geojson from scratch later if needed:
-     node scripts/fetch-map-data.mjs
+FILES (9 total):
+  src/lib/mission-ias/ethics-schema.ts       (NEW — concepts + thinkers data)
+  src/lib/mission-ias/ethics-service.ts      (NEW — save/load + XP)
+  src/app/api/mission-ias/ethics-case-study/route.ts   (NEW)
+  src/app/api/mission-ias/ethics-feedback/route.ts     (NEW)
+  src/app/(dashboard)/dashboard/mission-ias/ethics-lab/page.tsx  (NEW)
+  src/lib/gamification/xp.ts                  (updated — +ethicsCaseStudy XP)
+  src/app/(dashboard)/dashboard/mission-ias/page.tsx    (updated — wired href)
+  firestore.rules                              (updated — see below)
 
-DELETE THIS (ZIP overwrite can't remove files, has to be manual):
-  src/app/mission-ias/  (the WHOLE folder, not the (dashboard) one)
-  This is a leftover orphan route from the very first Map Practice commit,
-  outside the (dashboard) layout group. Nothing links to it, but it still
-  gets type-checked on every build and carries old broken code — safe and
-  good practice to delete it.
+IMPORTANT BONUS FIX — English Lab Writing/Speaking was silently broken:
+While wiring Ethics Lab's Firestore rules, I checked the rules for
+englishWritingSessions/englishSpeakingSessions (used by English Lab's
+Writing & Speaking Practice, which you already pushed) and found NEITHER
+had a rule — same class of bug as the Vocabulary issue. Every Writing/
+Speaking session save has likely been silently permission-denied this
+whole time. Fixed in this same firestore.rules file.
 
 WHAT TO DO:
-1. Extract ZIP, copy src/, public/, scripts/ into your project (overwrite
-   when asked)
-2. Manually delete src/app/mission-ias/ (see above)
+1. Extract ZIP, copy src/ into your project (overwrite when asked)
+2. IMPORTANT: firestore.rules changed again — same manual step as before:
+   Firebase Console -> your project -> Firestore Database -> Rules tab ->
+   select all, paste this file's content, Publish.
+   (This single publish covers Ethics Lab AND fixes the English Lab bug.)
 3. git add .
-4. git commit -m "Add Rivers & Mountains overlay to Map Practice"
+4. git commit -m "Add Ethics Lab (GS4): case studies, concepts, thinkers; fix English Lab Firestore rules"
 5. git push
-6. After deploy: Mission IAS -> Map Practice -> India tab -> Explore mode
-   -> click "Rivers & Mountains" -> click a blue line or amber dot
+6. After deploy: Mission IAS -> Ethics Lab card should now be clickable.
+   Also re-test English Lab Writing/Speaking Practice — sessions should now
+   actually save (check the Overview tab's average score after one attempt).
+
+Compile-checked with npx tsc --noEmit — no errors.

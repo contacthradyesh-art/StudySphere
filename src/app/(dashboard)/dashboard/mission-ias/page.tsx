@@ -30,7 +30,7 @@ const MODULES: ModuleCard[] = [
   { label: 'Environment Hub', icon: Leaf },
   { label: 'Science & Technology', icon: Cpu },
   { label: 'International Relations', icon: Globe },
-  { label: 'Ethics Lab', icon: Scale },
+  { label: 'Ethics Lab', icon: Scale, href: '/dashboard/mission-ias/ethics-lab' },
   { label: 'Essay Lab', icon: PenTool },
   { label: 'Daily Answer Writing', icon: PenTool },
   { label: 'PYQ Explorer', icon: ListChecks },

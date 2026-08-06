@@ -18,7 +18,10 @@ export const XP_REWARDS = {
   // English Communication Lab — same XP pool as everything else, no
   // separate counter, so it contributes directly to the dashboard's
   // existing Total XP / level display.
-  englishPractice: 12
+  englishPractice: 12,
+  // Ethics Lab (GS4) case study practice — slightly higher than quick English
+  // practice since a full case-study answer is a bigger effort.
+  ethicsCaseStudy: 15
 } as const;
 
 export type XpAction = keyof typeof XP_REWARDS;

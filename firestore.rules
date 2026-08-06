@@ -71,6 +71,20 @@ service cloud.firestore {
       match /vocabProgress/{wordId} {
         allow read, write: if isOwner(uid);
       }
+      // Mission IAS: Ethics Lab case-study attempts
+      match /ethicsCaseStudySessions/{sessionId} {
+        allow read, write: if isOwner(uid);
+      }
+      // English Communication Lab \u2014 Writing & Speaking practice sessions.
+      // (These were referenced by the app code since the English Lab was
+      // built, but a rule for them was never added \u2014 so every save was
+      // silently permission-denied. Fixing that here.)
+      match /englishWritingSessions/{sessionId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /englishSpeakingSessions/{sessionId} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // Mission IAS: current affairs items are populated server-side only
