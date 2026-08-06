@@ -11,7 +11,8 @@ import { cn } from '@/lib/utils';
 import { INDIA_STATES } from '@/lib/mission-ias/map-schema';
 import { AskAiButton } from '@/components/ai/ask-ai-button';
 
-type StateFeature = Feature<Geometry, { name: string }>;
+type DistrictProperties = { st_nm: string; dt_code?: string; district?: string; name?: string };
+type StateFeature = Feature<Geometry, DistrictProperties>;
 
 const WIDTH = 500;
 const HEIGHT = 600;
@@ -23,6 +24,24 @@ function shuffle<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+/**
+ * The GeoJSON file is district-level (759 features, one per district), not
+ * state-level — each feature's properties carry `st_nm` (state name) plus
+ * district-specific fields, not a `name` field. This reads the effective
+ * state name for a feature, preferring `name` if a future file provides one.
+ */
+function getFeatureName(properties: { name?: string; st_nm?: string; NAME_1?: string } | null | undefined): string {
+  if (!properties) return '';
+  const raw = properties.name ?? properties.st_nm ?? properties.NAME_1 ?? '';
+  return String(raw);
+}
+
+/** Normalizes a state name for safe comparison (trim + casing only — the
+ * GeoJSON's st_nm values already match INDIA_STATES.name exactly). */
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase();
 }
 
 export default function MapPracticePage() {
@@ -41,7 +60,7 @@ export default function MapPracticePage() {
   useEffect(() => {
     fetch('/data/india-states.geojson')
       .then((r) => r.json())
-      .then((data: FeatureCollection<Geometry, { name: string }>) => {
+      .then((data: FeatureCollection<Geometry, DistrictProperties>) => {
         setFeatures(data.features as StateFeature[]);
         setLoading(false);
       })
@@ -85,7 +104,8 @@ export default function MapPracticePage() {
     setScore(0);
     setAttempted(0);
     setSelected(null);
-    startIdentifyRound(shuffle(features.map((f) => getFeatureName(f.properties))));
+    const uniqueStateNames = Array.from(new Set(features.map((f) => getFeatureName(f.properties))));
+    startIdentifyRound(shuffle(uniqueStateNames));
   }
 
   function handleStateClick(name: string) {
@@ -170,14 +190,15 @@ export default function MapPracticePage() {
             <p className="p-8 text-center text-sm text-muted-foreground">Loading map...</p>
           ) : pathGen ? (
             <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="mx-auto w-full max-w-md">
-              {features.map((f) => {
+              {features.map((f, idx) => {
                 const name = getFeatureName(f.properties);
                 const isSelected = mode === 'explore' && selected === name;
                 const isWrong = mode === 'identify' && wrongState === name;
                 const isCorrectReveal = mode === 'identify' && feedback === 'correct' && target === name;
+                const uniqueKey = String(f.properties?.dt_code ?? `${name}-${idx}`);
                 return (
                   <path
-                    key={name}
+                    key={uniqueKey}
                     d={pathGen(f) ?? ''}
                     onClick={() => handleStateClick(name)}
                     className={cn(

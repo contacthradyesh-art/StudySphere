@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminAuth, adminDb } from '@/lib/firebase/admin';
 import { VOCABULARY_COLLECTION, type WordDifficulty } from '@/lib/mission-ias/vocabulary-schema';
 
 export const maxDuration = 60;
@@ -13,16 +13,16 @@ For each word provide: the word itself, part of speech, a clear one-sentence mea
 Return ONLY valid JSON, no markdown, matching exactly:
 {"words":[{"word":"...","partOfSpeech":"...","meaning":"...","hindiMeaning":"...","synonyms":["...","...","..."],"antonyms":["...","..."],"exampleSentence":"...","editorialUsage":"...","difficulty":"easy|medium|hard"}]}`;
 
-export async function GET(req: NextRequest) {
-  if (!adminDb) return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
+/**
+ * Core generation logic, shared by both the cron-triggered GET (daily,
+ * automatic) and the session-authenticated POST (manual "Generate More"
+ * button in the Vocabulary Lab UI). Pulls the most recent 300 words so the
+ * model doesn't repeat itself, asks Gemini for a fresh batch, and writes any
+ * genuinely new words into Firestore.
+ */
+async function generateVocabularyBatch(): Promise<{ ok: true; requested: number; added: number } | { ok: false; error: string }> {
+  if (!adminDb) return { ok: false, error: 'Server not configured' };
 
-  const secret = req.nextUrl.searchParams.get('secret');
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // Avoid regenerating words already in the bank — pull the most recent
-  // 300 to keep the "already used" prompt list a reasonable size.
   const existingSnap = await adminDb
     .collection(VOCABULARY_COLLECTION)
     .orderBy('createdAt', 'desc')
@@ -45,15 +45,13 @@ export async function GET(req: NextRequest) {
 
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    return NextResponse.json({ ok: false, error: 'AI did not return content' }, { status: 500 });
-  }
+  if (!text) return { ok: false, error: 'AI did not return content' };
 
   let parsed: { words: any[] };
   try {
     parsed = JSON.parse(text);
   } catch {
-    return NextResponse.json({ ok: false, error: 'AI returned invalid JSON' }, { status: 500 });
+    return { ok: false, error: 'AI returned invalid JSON' };
   }
 
   const validDifficulties: WordDifficulty[] = ['easy', 'medium', 'hard'];
@@ -84,5 +82,47 @@ export async function GET(req: NextRequest) {
     added++;
   }
 
-  return NextResponse.json({ ok: true, requested: BATCH_SIZE, added });
+  return { ok: true, requested: BATCH_SIZE, added };
+}
+
+/**
+ * Daily automatic generation, called by Vercel Cron (see vercel.json), which
+ * sends the CRON_SECRET as an Authorization: Bearer header. The `secret`
+ * query param is also accepted, for manual/browser testing.
+ */
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get('authorization') || '';
+  const bearerSecret = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const querySecret = req.nextUrl.searchParams.get('secret');
+  const provided = bearerSecret || querySecret;
+
+  if (!process.env.CRON_SECRET || provided !== process.env.CRON_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const result = await generateVocabularyBatch();
+  if (!result.ok) return NextResponse.json(result, { status: 500 });
+  return NextResponse.json(result);
+}
+
+/**
+ * Manual generation, called from the "Generate More Words" button in the
+ * Vocabulary Lab UI. Any signed-in user (this app has a single owner) can
+ * trigger it — protected by a valid Firebase ID token instead of the cron
+ * secret, since the browser can't safely hold that secret.
+ */
+export async function POST(req: NextRequest) {
+  const authHeader = req.headers.get('authorization') || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!idToken || !adminAuth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    await adminAuth.verifyIdToken(idToken);
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const result = await generateVocabularyBatch();
+  if (!result.ok) return NextResponse.json(result, { status: 500 });
+  return NextResponse.json(result);
 }

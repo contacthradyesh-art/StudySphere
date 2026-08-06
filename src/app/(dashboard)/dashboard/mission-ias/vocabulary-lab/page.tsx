@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Languages, Search, CheckCircle2, Circle, Shuffle } from 'lucide-react';
+import { Languages, Search, CheckCircle2, Circle, Shuffle, Sparkles, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { requireAuth } from '@/lib/require-auth';
 import { GlassCard } from '@/components/shared/glass-card';
@@ -35,6 +35,26 @@ export default function VocabularyLabPage() {
   const [mode, setMode] = useState<Mode>('browse');
   const [decks, setDecks] = useState<Deck[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+
+  async function handleGenerateMore() {
+    if (!requireAuth(user)) return;
+    setGenerating(true);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/mission-ias/generate-vocabulary', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Failed');
+      toast.success(data.added > 0 ? `Added ${data.added} new words!` : 'No new words this time — try again in a bit.');
+    } catch {
+      toast.error('Could not generate words. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   useEffect(() => {
     const unsub = subscribeVocabulary((data) => { setWords(data); setLoading(false); });
@@ -100,7 +120,12 @@ export default function VocabularyLabPage() {
             Advanced words for UPSC-level reading, with Hindi meanings and editorial usage. {words.length} words in the bank.
           </p>
         </div>
-        <div className="flex gap-1 rounded-xl bg-secondary p-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleGenerateMore} disabled={generating}>
+            {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {generating ? 'Generating...' : 'Generate More Words'}
+          </Button>
+          <div className="flex gap-1 rounded-xl bg-secondary p-1">
           <button
             onClick={() => setMode('browse')}
             className={cn('rounded-lg px-3 py-1.5 text-sm font-medium transition-colors', mode === 'browse' ? 'bg-gradient-brand text-white shadow' : 'text-muted-foreground')}
@@ -113,6 +138,7 @@ export default function VocabularyLabPage() {
           >
             Quiz Me
           </button>
+          </div>
         </div>
       </div>
 

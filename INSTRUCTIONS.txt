@@ -1,61 +1,78 @@
-StudySphere — English Lab (Complete: Overview, Vocabulary, Grammar, Writing, Speaking, Quick Tools)
-=====================================================================================================
+STUDYSPHERE — VOCABULARY BANK FIX
+==================================
 
-This is a COMPLETE drop-in — it includes everything from before PLUS the new
-Grammar Quiz, Quick Tools (Synonym/Antonym/One-Word-Sub/Idioms/Sentence
-Improvement/Paraphrase), and the redesigned tabbed page with Overview and
-Vocabulary (which reuses your existing Vocabulary Lab — nothing duplicated).
-Safe to extract even if you already applied an earlier version — it will
-just overwrite with the latest.
+PROBLEM FOUND:
+Vocabulary auto-generation code already existed in your repo
+(src/app/api/mission-ias/generate-vocabulary/route.ts) but it was NEVER
+being triggered — it wasn't in vercel.json's cron list, and there was no
+button anywhere to run it manually. So the vocabulary bank stayed empty.
 
-FILES IN THIS ZIP (10 total)
-------------------------------
-  src/lib/gamification/xp.ts                              (changed)
-  src/lib/english-lab/english-lab-schema.ts                (new)
-  src/lib/english-lab/english-lab-service.ts                (new)
-  src/app/api/english-lab/writing-feedback/route.ts         (new)
-  src/app/api/english-lab/speaking-feedback/route.ts        (new)
-  src/app/api/english-lab/quick-tool/route.ts                (new)
-  src/app/api/english-lab/grammar-quiz/route.ts               (new)
-  src/app/(dashboard)/dashboard/english-lab/page.tsx         (new/replaced)
-  src/components/layout/sidebar.tsx                         (changed)
-  src/components/layout/more-sheet.tsx                      (changed)
+WHAT CHANGED (3 files):
+1. src/app/api/mission-ias/generate-vocabulary/route.ts
+   - Refactored so the core "ask Gemini for 20 new words, save unique ones"
+     logic is shared.
+   - GET  = used by Vercel Cron (automatic, once a day, protected by
+     CRON_SECRET, same pattern as your existing fetch-news route).
+   - POST = NEW. Used by a button in the UI. Protected by your normal
+     Firebase login (any signed-in user can trigger it — you're the only
+     user of this app).
 
-HOW TO APPLY
-------------
-1. Extract this zip.
-2. Copy the "src" folder into your project root, letting it merge/overwrite.
-3. If you haven't already: delete this folder manually (not touched by
-   the zip) --  src/app/(dashboard)/dashboard/bushido/
-4. In VS Code terminal:
-       git add .
-       git commit -m "English Lab: add Vocabulary, Grammar Quiz, Quick Tools"
-       git push
+2. src/app/(dashboard)/dashboard/mission-ias/vocabulary-lab/page.tsx
+   - Added a "Generate More Words" button next to Browse/Quiz toggle.
+     Click it anytime to add ~20 new UPSC-level words immediately
+     (skips duplicates automatically).
 
-WHAT'S REAL VS DEFERRED (kept honest, nothing faked)
-------------------------------------------------------
-REAL & working:
-  - Overview: live stats from your own sessions, Word of the Day
-  - Vocabulary: pulls from your existing Vocabulary Lab data, mark-as-learned,
-    links to the full lab (browse/quiz/flashcards) instead of duplicating it
-  - Grammar: AI generates a fresh 5-question quiz on any topic, scored live
-  - Writing: AI-scored feedback, corrected version, vocabulary suggestions
-  - Speaking: record your voice, AI transcribes + scores fluency/grammar/vocab
-  - Quick Tools: Synonym Finder, Antonym Finder, One Word Substitution,
-    Idioms & Phrases, Sentence Improvement, Paraphrasing \u2014 all real AI calls
-  - XP from Writing/Speaking feeds the app's existing Total XP (no separate
-    disconnected counter)
+3. vercel.json
+   - Added a second cron entry so generate-vocabulary now runs
+     automatically every day at 4 AM UTC (fetch-news already runs at 3 AM),
+     same secure pattern (Vercel sends CRON_SECRET as a Bearer header
+     automatically — nothing exposed in the URL).
 
-Deferred (shown honestly, not faked with placeholder data):
-  - Leaderboard \u2014 needs a shared cross-user ranking system, bigger backend
-    piece for a later phase
-  - Comprehension passages, Translate tool, Word Streak ring / Word Progress
-    donut, Today's Goal widget \u2014 not built this round; say the word if you
-    want these next and I'll scope them the same way
+WHAT TO DO:
+1. Extract this ZIP, copy the "src" folder and "vercel.json" into your
+   project root (overwrite when asked — only 3 files touched, nothing
+   else affected).
+2. Make sure these two env vars are set in Vercel project settings
+   (Production + Preview):
+     - GEMINI_API_KEY   (already needed for the rest of English Lab —
+       should already be set)
+     - CRON_SECRET      (any random string you choose, e.g. a UUID —
+       check if you already have one set for fetch-news; if yes, reuse it)
+3. git add .
+4. git commit -m "Fix vocabulary auto-generation: add cron + manual trigger button"
+5. git push
+6. After deploy, open Vocabulary Lab in the app and click
+   "Generate More Words" a few times to seed the bank right away
+   (each click adds up to 20 new unique words, ~5-10 seconds each).
+   After that, it'll also keep growing on its own every day automatically.
 
-MICROPHONE ON THE ANDROID APP (same note as before)
-------------------------------------------------------
-Speaking Practice works immediately in any regular browser. Inside your
-packaged Android WebView app, the mic needs one small MainActivity.kt
-permission change first \u2014 let me know once this is pushed and I'll walk
-through that.
+Compile-checked with `npx tsc --noEmit` — no errors in the changed files.
+
+==================================
+BONUS FIX — Map Practice page.tsx
+==================================
+Your screenshot showed 4 TypeScript errors in map-practice/page.tsx:
+"Cannot find name 'normalizeName'" and "Cannot find name 'getFeatureName'".
+
+ROOT CAUSE: the GeoJSON file (public/data/india-states.geojson) is actually
+DISTRICT-level (759 features), not state-level. Its properties look like
+{ st_nm: "Mizoram", district: "Aizawl", dt_code: "261", ... } — there's no
+"name" field. The page's type declared `{ name: string }` and called two
+helper functions that were never written, so it never compiled.
+
+FIXED:
+- Added getFeatureName() — reads st_nm (falls back to name/NAME_1 for
+  future-proofing).
+- Added normalizeName() — trim + lowercase for safe comparisons (the st_nm
+  values already match your INDIA_STATES list exactly, so no fuzzy matching
+  needed).
+- Fixed the StateFeature type to reflect the real properties shape.
+- De-duplicated state names before starting the "Identify Quiz" — since the
+  file has ~20 district polygons per state, without this a state could be
+  asked multiple times in one round.
+- Fixed a React key collision — every district polygon of the same state
+  was using the state name as its key; now uses dt_code (unique per
+  district) instead.
+
+This file is now added to the ZIP (4th file total). Same steps apply — just
+copy the src folder over and it's included automatically.
