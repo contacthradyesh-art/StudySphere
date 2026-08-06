@@ -4,14 +4,16 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { geoMercator, geoPath } from 'd3-geo';
 import type { Feature, Geometry, FeatureCollection } from 'geojson';
-import { Map, Target, Compass, RotateCcw, Trophy, Globe2, Landmark, Zap, Search } from 'lucide-react';
+import { Map, Target, Compass, RotateCcw, Trophy, Globe2, Landmark, Zap, Search, Waves, Mountain as MountainIcon } from 'lucide-react';
 import { GlassCard } from '@/components/shared/glass-card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { INDIA_STATES } from '@/lib/mission-ias/map-schema';
+import { RIVERS, MOUNTAINS, type RiverInfo, type MountainInfo } from '@/lib/mission-ias/geography-schema';
 import { AskAiButton } from '@/components/ai/ask-ai-button';
 
 type MapFeature = Feature<Geometry, { name: string }>;
+type RiverFeature = Feature<Geometry, { name?: string }>;
 type Region = 'india' | 'world';
 
 const WIDTH = 500;
@@ -69,6 +71,12 @@ export default function MapPracticePage() {
   const [timedSecondsLeft, setTimedSecondsLeft] = useState<number | null>(null);
   const [timedBestScore, setTimedBestScore] = useState(0);
 
+  // Physical geography overlay (rivers + mountain peaks), India only.
+  const [showPhysical, setShowPhysical] = useState(false);
+  const [allRiverFeatures, setAllRiverFeatures] = useState<RiverFeature[]>([]);
+  const [selectedRiver, setSelectedRiver] = useState<RiverInfo | null>(null);
+  const [selectedMountain, setSelectedMountain] = useState<MountainInfo | null>(null);
+
   const regionConfig = REGIONS.find((r) => r.id === region)!;
 
   useEffect(() => {
@@ -77,6 +85,9 @@ export default function MapPracticePage() {
     setMode('explore');
     setTarget(null);
     setQueue([]);
+    setShowPhysical(false);
+    setSelectedRiver(null);
+    setSelectedMountain(null);
     fetch(regionConfig.dataUrl)
       .then((r) => r.json())
       .then((data: FeatureCollection<Geometry, { name: string }>) => {
@@ -90,16 +101,51 @@ export default function MapPracticePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [region]);
 
+  // Rivers dataset loaded once, independent of the India/World toggle.
+  useEffect(() => {
+    fetch('/data/world-rivers.geojson')
+      .then((r) => r.json())
+      .then((data: FeatureCollection) => setAllRiverFeatures(data.features as RiverFeature[]))
+      .catch(() => { /* Rivers overlay is optional \u2014 fail silently if unavailable. */ });
+  }, []);
+
+  // Groups ALL matching line segments per curated river (some rivers, like
+  // the Krishna and Cauvery, are split into multiple segments in the source
+  // data) rather than picking just one, so the full river renders.
+  const curatedRiverGroups = useMemo(() => {
+    if (allRiverFeatures.length === 0) return [];
+    const groups: { info: RiverInfo; segments: RiverFeature[] }[] = [];
+    for (const info of RIVERS) {
+      const segments = allRiverFeatures.filter((f) =>
+        info.matchNames.some((mn) => (f.properties?.name || '').toLowerCase() === mn.toLowerCase())
+      );
+      if (segments.length > 0) groups.push({ info, segments });
+    }
+    return groups;
+  }, [allRiverFeatures]);
+
   const featureCollection = useMemo<FeatureCollection>(
     () => ({ type: 'FeatureCollection', features }),
     [features]
   );
 
-  const pathGen = useMemo(() => {
+  const projection = useMemo(() => {
     if (features.length === 0) return null;
-    const projection = geoMercator().fitSize([WIDTH, HEIGHT], featureCollection);
-    return geoPath(projection);
+    return geoMercator().fitSize([WIDTH, HEIGHT], featureCollection);
   }, [features, featureCollection]);
+
+  const pathGen = useMemo(() => {
+    if (!projection) return null;
+    return geoPath(projection);
+  }, [projection]);
+
+  const projectPoint = useCallback(
+    (lng: number, lat: number): [number, number] | null => {
+      if (!projection) return null;
+      return projection([lng, lat]) as [number, number] | null;
+    },
+    [projection]
+  );
 
   const stateInfo = useCallback(
     (name: string) => INDIA_STATES.find((s) => normalizeName(s.name) === normalizeName(name)),
@@ -168,6 +214,8 @@ export default function MapPracticePage() {
   function handleFeatureClick(name: string) {
     if (mode === 'explore') {
       setSelected(name);
+      setSelectedRiver(null);
+      setSelectedMountain(null);
       return;
     }
     if (!target || feedback) return;
@@ -188,6 +236,18 @@ export default function MapPracticePage() {
         toast.error(`That's ${name} \u2014 looking for ${target}`);
       }
     }
+  }
+
+  function handleRiverClick(info: RiverInfo) {
+    setSelected(null);
+    setSelectedMountain(null);
+    setSelectedRiver(info);
+  }
+
+  function handleMountainClick(info: MountainInfo) {
+    setSelected(null);
+    setSelectedRiver(null);
+    setSelectedMountain(info);
   }
 
   const searchMatch = useMemo(() => {
@@ -262,6 +322,17 @@ export default function MapPracticePage() {
               <Zap className="h-4 w-4" /> Timed Challenge
             </button>
           </div>
+          {region === 'india' && mode === 'explore' && (
+            <button
+              onClick={() => setShowPhysical((v) => !v)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium transition-colors',
+                showPhysical ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Waves className="h-4 w-4" /> Rivers & Mountains
+            </button>
+          )}
         </div>
       </div>
 
@@ -344,7 +415,7 @@ export default function MapPracticePage() {
                     d={pathGen(f) ?? ''}
                     onClick={() => handleFeatureClick(name)}
                     fill={isWrong ? '#ef4444' : isCorrectReveal ? '#22c55e' : baseColor}
-                    fillOpacity={isSelected ? 0.95 : isWrong || isCorrectReveal ? 0.9 : 0.55}
+                    fillOpacity={isSelected ? 0.95 : isWrong || isCorrectReveal ? 0.9 : showPhysical ? 0.3 : 0.55}
                     className={cn(
                       'cursor-pointer stroke-white/30 [stroke-width:0.5px] transition-all duration-200 hover:fill-opacity-90',
                       isSelected && 'stroke-white [stroke-width:1.5px]'
@@ -354,60 +425,144 @@ export default function MapPracticePage() {
                   </path>
                 );
               })}
+
+              {showPhysical && region === 'india' && curatedRiverGroups.map(({ info, segments }) => (
+                <g key={info.id} onClick={() => handleRiverClick(info)} className="cursor-pointer">
+                  {segments.map((seg, si) => (
+                    <path
+                      key={`${info.id}-${si}`}
+                      d={pathGen(seg) ?? ''}
+                      fill="none"
+                      stroke="#38bdf8"
+                      strokeWidth={selectedRiver?.id === info.id ? 2.5 : 1.5}
+                      strokeOpacity={selectedRiver && selectedRiver.id !== info.id ? 0.4 : 0.9}
+                    />
+                  ))}
+                  <title>{info.name}</title>
+                </g>
+              ))}
+
+              {showPhysical && region === 'india' && MOUNTAINS.map((m) => {
+                const p = projectPoint(m.peakLng, m.peakLat);
+                if (!p) return null;
+                const isSel = selectedMountain?.id === m.id;
+                return (
+                  <g key={m.id} onClick={() => handleMountainClick(m)} className="cursor-pointer">
+                    <circle
+                      cx={p[0]} cy={p[1]} r={isSel ? 6 : 4.5}
+                      fill="#f59e0b"
+                      fillOpacity={selectedMountain && !isSel ? 0.4 : 1}
+                      stroke="white" strokeWidth={isSel ? 1.5 : 1}
+                    />
+                    <title>{m.name}</title>
+                  </g>
+                );
+              })}
             </svg>
           ) : null}
         </GlassCard>
 
         <div className="space-y-3">
-          {mode === 'explore' && region === 'india' &&
-            (info ? (
-              <GlassCard className="space-y-3">
-                <h2 className="text-lg font-bold">{info.name}</h2>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  {info.type === 'state' ? 'State' : 'Union Territory'}
-                </p>
-                <div>
-                  <p className="text-xs text-muted-foreground">Capital</p>
-                  <p className="font-medium">{info.capital}</p>
-                </div>
-                {info.neighbors.length > 0 && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Borders</p>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {info.neighbors.map((n) => (
-                        <span key={n} className="rounded-full border border-white/10 px-2 py-0.5 text-[11px]">{n}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <AskAiButton
-                  label="UPSC facts about this state"
-                  prompt={`Give me the most UPSC-relevant facts about ${info.name} (capital: ${info.capital}) \u2014 geography, key rivers/mountains, major schemes or issues associated with it, and anything notable for prelims or mains.`}
-                />
-              </GlassCard>
-            ) : (
-              <GlassCard><p className="text-sm text-muted-foreground">Click any state or union territory on the map to see its details.</p></GlassCard>
-            ))}
-
-          {mode === 'explore' && region === 'world' &&
-            (selected ? (
-              <GlassCard className="space-y-3">
-                <h2 className="text-lg font-bold">{selected}</h2>
-                <AskAiButton
-                  label="Facts about this country"
-                  prompt={`Give me the most useful facts about ${selected} for UPSC International Relations \u2014 capital, geography, its relationship with India, and any current-affairs relevance.`}
-                />
-              </GlassCard>
-            ) : (
-              <GlassCard><p className="text-sm text-muted-foreground">Click any country on the map to see it, then ask AI for details.</p></GlassCard>
-            ))}
-
-          {mode === 'identify' && (
-            <GlassCard>
-              <p className="text-sm text-muted-foreground">
-                A name is shown above \u2014 click it on the map. You&apos;ll get instant feedback, then move to the next one automatically. Complete all {features.length} to finish a round.
+          {selectedRiver ? (
+            <GlassCard className="space-y-3">
+              <h2 className="flex items-center gap-2 text-lg font-bold"><Waves className="h-5 w-5 text-sky-400" /> {selectedRiver.name}</h2>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                {selectedRiver.type === 'himalayan' ? 'Himalayan River' : 'Peninsular River'}
               </p>
+              <div><p className="text-xs text-muted-foreground">Origin</p><p className="font-medium">{selectedRiver.origin}</p></div>
+              <div><p className="text-xs text-muted-foreground">Length</p><p className="font-medium">{selectedRiver.lengthKm} km</p></div>
+              <div><p className="text-xs text-muted-foreground">Outflow</p><p className="font-medium">{selectedRiver.outflow}</p></div>
+              <div>
+                <p className="text-xs text-muted-foreground">Tributaries</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {selectedRiver.tributaries.map((t) => (
+                    <span key={t} className="rounded-full border border-white/10 px-2 py-0.5 text-[11px]">{t}</span>
+                  ))}
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">{selectedRiver.significance}</p>
+              <AskAiButton
+                label="UPSC facts about this river"
+                prompt={`Give me the most UPSC-relevant facts about the ${selectedRiver.name} river system \u2014 basin states, dams/projects on it, interstate disputes if any, and its GS1/GS3 exam relevance.`}
+              />
             </GlassCard>
+          ) : selectedMountain ? (
+            <GlassCard className="space-y-3">
+              <h2 className="flex items-center gap-2 text-lg font-bold"><MountainIcon className="h-5 w-5 text-amber-400" /> {selectedMountain.name}</h2>
+              <div><p className="text-xs text-muted-foreground">Highest Point</p><p className="font-medium">{selectedMountain.highestPoint}{selectedMountain.highestElevationM ? ` (${selectedMountain.highestElevationM} m)` : ''}</p></div>
+              <div>
+                <p className="text-xs text-muted-foreground">States</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {selectedMountain.states.map((s) => (
+                    <span key={s} className="rounded-full border border-white/10 px-2 py-0.5 text-[11px]">{s}</span>
+                  ))}
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">{selectedMountain.significance}</p>
+              <AskAiButton
+                label="UPSC facts about this range"
+                prompt={`Give me the most UPSC-relevant facts about the ${selectedMountain.name} \u2014 formation/geology, climatic significance, and any GS1 exam angle.`}
+              />
+            </GlassCard>
+          ) : (
+            <>
+              {mode === 'explore' && region === 'india' &&
+                (info ? (
+                  <GlassCard className="space-y-3">
+                    <h2 className="text-lg font-bold">{info.name}</h2>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      {info.type === 'state' ? 'State' : 'Union Territory'}
+                    </p>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Capital</p>
+                      <p className="font-medium">{info.capital}</p>
+                    </div>
+                    {info.neighbors.length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Borders</p>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {info.neighbors.map((n) => (
+                            <span key={n} className="rounded-full border border-white/10 px-2 py-0.5 text-[11px]">{n}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <AskAiButton
+                      label="UPSC facts about this state"
+                      prompt={`Give me the most UPSC-relevant facts about ${info.name} (capital: ${info.capital}) \u2014 geography, key rivers/mountains, major schemes or issues associated with it, and anything notable for prelims or mains.`}
+                    />
+                  </GlassCard>
+                ) : (
+                  <GlassCard>
+                    <p className="text-sm text-muted-foreground">
+                      {showPhysical
+                        ? 'Click a blue river line or an amber peak marker to learn about it.'
+                        : 'Click any state or union territory on the map to see its details.'}
+                    </p>
+                  </GlassCard>
+                ))}
+
+              {mode === 'explore' && region === 'world' &&
+                (selected ? (
+                  <GlassCard className="space-y-3">
+                    <h2 className="text-lg font-bold">{selected}</h2>
+                    <AskAiButton
+                      label="Facts about this country"
+                      prompt={`Give me the most useful facts about ${selected} for UPSC International Relations \u2014 capital, geography, its relationship with India, and any current-affairs relevance.`}
+                    />
+                  </GlassCard>
+                ) : (
+                  <GlassCard><p className="text-sm text-muted-foreground">Click any country on the map to see it, then ask AI for details.</p></GlassCard>
+                ))}
+
+              {(mode === 'identify' || mode === 'timed') && (
+                <GlassCard>
+                  <p className="text-sm text-muted-foreground">
+                    A name is shown above \u2014 click it on the map. Complete all {features.length} to finish a round.
+                  </p>
+                </GlassCard>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -1,133 +1,59 @@
-STUDYSPHERE — VOCABULARY BANK FIX
-==================================
+STUDYSPHERE — MAP PRACTICE: RIVERS & MOUNTAINS OVERLAY
+========================================================
 
-PROBLEM FOUND:
-Vocabulary auto-generation code already existed in your repo
-(src/app/api/mission-ias/generate-vocabulary/route.ts) but it was NEVER
-being triggered — it wasn't in vercel.json's cron list, and there was no
-button anywhere to run it manually. So the vocabulary bank stayed empty.
+CONTEXT: This finishes what an earlier (message-limited) session started —
+it had written the plan/code but ran out of free messages before pushing.
+I re-verified everything against your ACTUAL current repo (not the pasted
+plan) and merged it in properly, since your live map-practice/page.tsx
+already had things the plan didn't know about (Timed Challenge mode,
+color palette, search) — a blind copy-paste would have deleted those.
+I only added new code around them.
 
-WHAT CHANGED (3 files):
-1. src/app/api/mission-ias/generate-vocabulary/route.ts
-   - Refactored so the core "ask Gemini for 20 new words, save unique ones"
-     logic is shared.
-   - GET  = used by Vercel Cron (automatic, once a day, protected by
-     CRON_SECRET, same pattern as your existing fetch-news route).
-   - POST = NEW. Used by a button in the UI. Protected by your normal
-     Firebase login (any signed-in user can trigger it — you're the only
-     user of this app).
+WHAT'S NEW:
+1. src/lib/mission-ias/geography-schema.ts (NEW FILE)
+   - RIVERS: 10 major Indian rivers (Ganga, Yamuna, Brahmaputra, Indus,
+     Godavari, Krishna, Kaveri, Narmada, Tapi, Mahanadi) with origin,
+     length, outflow, states, tributaries, UPSC-relevant significance.
+   - MOUNTAINS: 7 ranges (Himalayas, Karakoram, Aravalli, Vindhya, Satpura,
+     Western Ghats, Eastern Ghats) with verified peak coordinates.
 
-2. src/app/(dashboard)/dashboard/mission-ias/vocabulary-lab/page.tsx
-   - Added a "Generate More Words" button next to Browse/Quiz toggle.
-     Click it anytime to add ~20 new UPSC-level words immediately
-     (skips duplicates automatically).
+2. public/data/world-rivers.geojson (NEW FILE, ~125 KB)
+   - Real river-line geometry from Natural Earth (public domain), filtered
+     down to only the rivers above (not the full 7MB dataset).
+   - HONEST GAP: Natural Earth's global rivers layer does NOT include the
+     Godavari or Mahanadi at all (checked directly — genuinely absent from
+     the source data, not a matching bug). So 8 of the 10 rivers render as
+     real lines on the map; Godavari and Mahanadi have full info in the
+     schema (for AI-assisted facts) but no line yet. If you want those two
+     added later, they'd need a different/higher-detail river dataset.
 
-3. vercel.json
-   - Added a second cron entry so generate-vocabulary now runs
-     automatically every day at 4 AM UTC (fetch-news already runs at 3 AM),
-     same secure pattern (Vercel sends CRON_SECRET as a Bearer header
-     automatically — nothing exposed in the URL).
+3. src/app/(dashboard)/dashboard/mission-ias/map-practice/page.tsx (UPDATED)
+   - Added a "Rivers & Mountains" toggle (only visible in India + Explore
+     mode). Blue lines = rivers, amber dots = mountain peaks — click either
+     for a detail panel + "Ask AI" button, same pattern as clicking a state.
+   - Your existing Timed Challenge mode, color palette, search, and World
+     tab are untouched.
+   - Bonus fix: the right-side info panel had no message during Timed
+     Challenge mode (only Identify Quiz showed one) — fixed.
+
+4. scripts/fetch-map-data.mjs (UPDATED)
+   - Added the rivers-fetching step, so you (or I) can regenerate
+     world-rivers.geojson from scratch later if needed:
+     node scripts/fetch-map-data.mjs
+
+DELETE THIS (ZIP overwrite can't remove files, has to be manual):
+  src/app/mission-ias/  (the WHOLE folder, not the (dashboard) one)
+  This is a leftover orphan route from the very first Map Practice commit,
+  outside the (dashboard) layout group. Nothing links to it, but it still
+  gets type-checked on every build and carries old broken code — safe and
+  good practice to delete it.
 
 WHAT TO DO:
-1. Extract this ZIP, copy the "src" folder and "vercel.json" into your
-   project root (overwrite when asked — only 3 files touched, nothing
-   else affected).
-2. Make sure these two env vars are set in Vercel project settings
-   (Production + Preview):
-     - GEMINI_API_KEY   (already needed for the rest of English Lab —
-       should already be set)
-     - CRON_SECRET      (any random string you choose, e.g. a UUID —
-       check if you already have one set for fetch-news; if yes, reuse it)
+1. Extract ZIP, copy src/, public/, scripts/ into your project (overwrite
+   when asked)
+2. Manually delete src/app/mission-ias/ (see above)
 3. git add .
-4. git commit -m "Fix vocabulary auto-generation: add cron + manual trigger button"
+4. git commit -m "Add Rivers & Mountains overlay to Map Practice"
 5. git push
-6. After deploy, open Vocabulary Lab in the app and click
-   "Generate More Words" a few times to seed the bank right away
-   (each click adds up to 20 new unique words, ~5-10 seconds each).
-   After that, it'll also keep growing on its own every day automatically.
-
-Compile-checked with `npx tsc --noEmit` — no errors in the changed files.
-
-==================================
-BONUS FIX — Map Practice page.tsx
-==================================
-Your screenshot showed 4 TypeScript errors in map-practice/page.tsx:
-"Cannot find name 'normalizeName'" and "Cannot find name 'getFeatureName'".
-
-ROOT CAUSE: the GeoJSON file (public/data/india-states.geojson) is actually
-DISTRICT-level (759 features), not state-level. Its properties look like
-{ st_nm: "Mizoram", district: "Aizawl", dt_code: "261", ... } — there's no
-"name" field. The page's type declared `{ name: string }` and called two
-helper functions that were never written, so it never compiled.
-
-FIXED:
-- Added getFeatureName() — reads st_nm (falls back to name/NAME_1 for
-  future-proofing).
-- Added normalizeName() — trim + lowercase for safe comparisons (the st_nm
-  values already match your INDIA_STATES list exactly, so no fuzzy matching
-  needed).
-- Fixed the StateFeature type to reflect the real properties shape.
-- De-duplicated state names before starting the "Identify Quiz" — since the
-  file has ~20 district polygons per state, without this a state could be
-  asked multiple times in one round.
-- Fixed a React key collision — every district polygon of the same state
-  was using the state name as its key; now uses dt_code (unique per
-  district) instead.
-
-This file is now added to the ZIP (4th file total). Same steps apply — just
-copy the src folder over and it's included automatically.
-
-==================================
-CRITICAL — "Loading vocabulary..." stuck forever
-==================================
-ROOT CAUSE: Your repo has no firebase.json/.firebaserc — meaning
-firestore.rules has NEVER been deployed via CLI. The "vocabulary" collection
-read-rule exists only in your git file, not on the live Firebase project.
-So Firestore blocks the read (permission-denied), and because the old code
-had no error handler on the listener, it just hung on "Loading..." forever
-with zero error shown.
-
-CODE FIX (included, 5th file): vocabulary-service.ts now has an error
-handler that stops the spinner instead of hanging silently.
-
-MANUAL STEP YOU MUST DO (this is NOT in the zip, can't be — it's a Firebase
-Console action, not a code file):
-1. Go to https://console.firebase.google.com → your StudySphere project
-2. Firestore Database (left sidebar) → "Rules" tab
-3. Open your local firestore.rules file (repo root) in VS Code, select all,
-   copy it
-4. Paste it into the Firebase Console rules editor, REPLACING what's there
-5. Click "Publish"
-6. Reload the Vocabulary Lab page — "Loading vocabulary..." should resolve
-   immediately (to 0 words, until you click Generate More Words)
-
-This is a one-time fix — but it means any FUTURE change you make to
-firestore.rules in the repo also needs this same manual copy-paste-publish
-step, since there's no automated deploy pipeline. If you want, I can also
-set up `firebase.json` + `.firebaserc` so `firebase deploy --only
-firestore:rules` works from the terminal instead — just ask.
-
-==================================
-FIX #3 — POST /generate-vocabulary returning 500
-==================================
-Vercel logs showed the Gemini API call actually happened, but then it
-failed with a 500 and no console output — because the old code never
-logged anything on failure.
-
-LIKELY ROOT CAUSE: BATCH_SIZE was 20 words, each with 8 rich fields
-(including Hindi meaning in Devanagari script, synonyms, antonyms, example
-sentences, editorial usage) — but maxOutputTokens was only 4000. That's
-almost certainly not enough for 20 fully-detailed words, so Gemini's
-response was getting cut off mid-JSON, and JSON.parse() failed.
-
-FIXED (generate-vocabulary/route.ts, updated again — 6th file overall):
-- BATCH_SIZE reduced 20 → 12 (safer, still fast)
-- maxOutputTokens raised 4000 → 8000 (more headroom)
-- Added console.error logging at every failure point (Gemini API error,
-  empty response, JSON parse failure, unexpected exceptions) — so if it
-  ever fails again, Vercel → Logs will show the EXACT reason instead of
-  "No logs found for this request"
-
-After pushing this, click "Generate More Words" again. If it still fails,
-check Vercel → Logs for this request — it will now show a specific error
-message. Send me that message and I'll know exactly what to fix.
+6. After deploy: Mission IAS -> Map Practice -> India tab -> Explore mode
+   -> click "Rivers & Mountains" -> click a blue line or amber dot

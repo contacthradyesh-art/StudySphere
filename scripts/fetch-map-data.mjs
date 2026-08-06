@@ -77,7 +77,28 @@ async function main() {
   writeFileSync('public/data/world-countries.geojson', worldText);
   console.log('Saved public/data/world-countries.geojson');
 
-  console.log('\nDone. Both files are ready in public/data/');
+  // --- Rivers: Natural Earth 10m rivers, filtered to only the rivers we
+  //     curate in geography-schema.ts (keeps the shipped file small). Note:
+  //     Natural Earth's global-scale layer doesn't include every mid-size
+  //     Indian river \u2014 Godavari and Mahanadi are known gaps as of writing.
+  console.log('Fetching world rivers...');
+  const riversRes = await fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_rivers_lake_centerlines.geojson');
+  if (!riversRes.ok) throw new Error(`Failed to fetch rivers data: ${riversRes.status}`);
+  const riversData = await riversRes.json();
+  const RIVER_MATCH_NAMES = [
+    'Ganges', 'Ganga', 'Yamuna', 'Brahmaputra', 'Indus', 'Godavari', 'Krishna',
+    'Cauvery', 'Kaveri', 'Narmada', 'Tapi', 'Tapti', 'Mahanadi'
+  ];
+  const riverFeatures = riversData.features
+    .filter((f) => RIVER_MATCH_NAMES.some((mn) => (f.properties?.name || '').toLowerCase() === mn.toLowerCase()))
+    .map((f) => ({ type: 'Feature', properties: { name: f.properties.name }, geometry: f.geometry }));
+  writeFileSync(
+    'public/data/world-rivers.geojson',
+    JSON.stringify({ type: 'FeatureCollection', features: riverFeatures })
+  );
+  console.log(`Saved public/data/world-rivers.geojson (${riverFeatures.length} features)`);
+
+  console.log('\nDone. All three files are ready in public/data/');
 }
 
 main().catch((err) => {
