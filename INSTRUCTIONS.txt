@@ -76,3 +76,33 @@ FIXED:
 
 This file is now added to the ZIP (4th file total). Same steps apply — just
 copy the src folder over and it's included automatically.
+
+==================================
+CRITICAL — "Loading vocabulary..." stuck forever
+==================================
+ROOT CAUSE: Your repo has no firebase.json/.firebaserc — meaning
+firestore.rules has NEVER been deployed via CLI. The "vocabulary" collection
+read-rule exists only in your git file, not on the live Firebase project.
+So Firestore blocks the read (permission-denied), and because the old code
+had no error handler on the listener, it just hung on "Loading..." forever
+with zero error shown.
+
+CODE FIX (included, 5th file): vocabulary-service.ts now has an error
+handler that stops the spinner instead of hanging silently.
+
+MANUAL STEP YOU MUST DO (this is NOT in the zip, can't be — it's a Firebase
+Console action, not a code file):
+1. Go to https://console.firebase.google.com → your StudySphere project
+2. Firestore Database (left sidebar) → "Rules" tab
+3. Open your local firestore.rules file (repo root) in VS Code, select all,
+   copy it
+4. Paste it into the Firebase Console rules editor, REPLACING what's there
+5. Click "Publish"
+6. Reload the Vocabulary Lab page — "Loading vocabulary..." should resolve
+   immediately (to 0 words, until you click Generate More Words)
+
+This is a one-time fix — but it means any FUTURE change you make to
+firestore.rules in the repo also needs this same manual copy-paste-publish
+step, since there's no automated deploy pipeline. If you want, I can also
+set up `firebase.json` + `.firebaserc` so `firebase deploy --only
+firestore:rules` works from the terminal instead — just ask.

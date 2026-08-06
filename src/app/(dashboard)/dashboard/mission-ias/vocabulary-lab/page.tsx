@@ -57,7 +57,10 @@ export default function VocabularyLabPage() {
   }
 
   useEffect(() => {
-    const unsub = subscribeVocabulary((data) => { setWords(data); setLoading(false); });
+    const unsub = subscribeVocabulary((data) => {
+      setWords(data);
+      setLoading(false);
+    });
     return () => unsub();
   }, []);
 

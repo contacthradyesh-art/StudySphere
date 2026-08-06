@@ -7,7 +7,14 @@ import { VOCABULARY_COLLECTION, type VocabWord } from '@/lib/mission-ias/vocabul
 
 export function subscribeVocabulary(cb: (words: VocabWord[]) => void, max = 300) {
   const q = query(collection(db, VOCABULARY_COLLECTION), orderBy('createdAt', 'desc'), fbLimit(max));
-  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => d.data() as VocabWord)));
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map((d) => d.data() as VocabWord)),
+    (error) => {
+      console.error('subscribeVocabulary error:', error);
+      cb([]); // stop the "Loading vocabulary..." spinner instead of hanging forever
+    }
+  );
 }
 
 function progressCol(uid: string) {
