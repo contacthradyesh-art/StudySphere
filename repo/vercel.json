@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/mission-ias/fetch-news",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/mission-ias/generate-vocabulary",
+      "schedule": "0 4 * * *"
+    }
+  ]
+}
