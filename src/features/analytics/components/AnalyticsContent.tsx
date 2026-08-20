@@ -1,10 +1,10 @@
 "use client";
-import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/shared/Card";
 import { BarChart, DonutChart, Sparkline } from "@/components/shared/Charts";
+import { Skeleton } from "@/components/shared/SkeletonLoader";
 import { cn } from "@/utils/cn";
-import { getMockAnalyticsData } from "../utils/mockAnalyticsData";
+import { useAnalyticsData } from "@/hooks/use-analytics-data";
 
 const intensityColors: Record<string, string> = {
   critical: "bg-red-500/30 border-red-500/40 text-red-300", high: "bg-orange-500/20 border-orange-500/30 text-orange-300",
@@ -12,7 +12,32 @@ const intensityColors: Record<string, string> = {
 };
 
 export function AnalyticsContent() {
-  const data = useMemo(() => getMockAnalyticsData(), []);
+  const { data, loading, hasActivity } = useAnalyticsData();
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div><h2 className="text-2xl font-bold text-charcoal-50 mb-1">Analytics</h2><p className="text-charcoal-400 text-sm">Track your performance and progress</p></div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} variant="card" height={90} />)}
+        </div>
+        <Skeleton variant="card" height={180} />
+      </div>
+    );
+  }
+
+  if (!hasActivity) {
+    return (
+      <div className="space-y-6">
+        <div><h2 className="text-2xl font-bold text-charcoal-50 mb-1">Analytics</h2><p className="text-charcoal-400 text-sm">Track your performance and progress</p></div>
+        <Card variant="glass" padding="lg" className="text-center py-12">
+          <p className="text-charcoal-300 font-medium">No activity yet</p>
+          <p className="text-sm text-charcoal-500 mt-1">Complete a mock test or a focus session to see your analytics here.</p>
+        </Card>
+      </div>
+    );
+  }
+
   const statCards = [
     { label: "Predicted Score", value: `${data.predictedScore}/200`, variant: "electric" as const, icon: "🎯" },
     { label: "Accuracy", value: `${data.accuracy}%`, variant: data.accuracy >= 70 ? "neon" as const : "electric" as const, icon: "✅" },
@@ -38,12 +63,16 @@ export function AnalyticsContent() {
         ))}
       </div>
 
+      {(data.recentTestScores.length > 0 || data.subjectAccuracy.length > 0) && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {data.recentTestScores.length > 0 && (
         <Card variant="glass">
           <h4 className="text-sm font-semibold text-charcoal-200 mb-4">Test Score Trend</h4>
           <Sparkline data={data.recentTestScores} color="#007edc" height={80} />
           <div className="flex justify-between mt-2 text-[10px] text-charcoal-500"><span>8 tests ago</span><span>Latest</span></div>
         </Card>
+        )}
+        {data.subjectAccuracy.length > 0 && (
         <Card variant="glass">
           <h4 className="text-sm font-semibold text-charcoal-200 mb-4">Subject Accuracy</h4>
           <DonutChart segments={data.subjectAccuracy.map((s) => ({ label: s.subject, value: s.accuracy, color: s.color }))} size={100} strokeWidth={10} centerValue={`${data.accuracy}%`} centerLabel="Overall" className="mx-auto mb-4" />
@@ -56,7 +85,9 @@ export function AnalyticsContent() {
             ))}
           </div>
         </Card>
+        )}
       </div>
+      )}
 
       <Card variant="glass">
         <h4 className="text-sm font-semibold text-charcoal-200 mb-4">Study Trends (14 days)</h4>
@@ -64,6 +95,7 @@ export function AnalyticsContent() {
         <p className="text-[10px] text-charcoal-500 mt-2 text-center">Daily study minutes</p>
       </Card>
 
+      {data.weakTopicHeatmap.length > 0 && (
       <Card variant="glass">
         <h4 className="text-sm font-semibold text-charcoal-200 mb-4">Weak Topic Heatmap</h4>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
@@ -81,6 +113,7 @@ export function AnalyticsContent() {
           ))}
         </div>
       </Card>
+      )}
     </motion.div>
   );
 }
