@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // A user can only read/write their own profile and subcollections.
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /sessions/{sessionId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /studyStats/{period} {
+        allow read, write: if isOwner(uid);
+      }
+      // Smart Study Planner (Milestone 2)
+      match /tasks/{taskId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /weeklyPlan/{weekId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /monthlyPlan/{monthId} {
+        allow read, write: if isOwner(uid);
+      }
+      // Pomodoro + Focus Shield (Milestone 3)
+      match /pomodoroSessions/{sessionId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /focusSettings/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      // Notes + Subjects (Milestone 4)
+      match /notes/{noteId} {
+        allow read, write: if isOwner(uid);
+        match /versions/{versionId} {
+          allow read, write: if isOwner(uid);
+        }
+      }
+      match /subjects/{subjectId} {
+        allow read, write: if isOwner(uid);
+      }
+      // Digital Diary & Journal (Milestone 5)
+      match /journalEntries/{entryId} {
+        allow read, write: if isOwner(uid);
+      }
+      // AI Assistant + Flashcards (Milestone 6)
+      match /flashcardDecks/{deckId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /flashcards/{cardId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /aiConversations/{conversationId} {
+        allow read, write: if isOwner(uid);
+      }
+      // Mission IAS: per-user bookmarked current-affairs items
+      match /bookmarkedNews/{itemId} {
+        allow read, write: if isOwner(uid);
+      }
+      // Mission IAS: Digital Library
+      match /libraryFiles/{fileId} {
+        allow read, write: if isOwner(uid);
+        match /notes/{noteId} {
+          allow read, write: if isOwner(uid);
+        }
+        match /bookmarks/{bookmarkId} {
+          allow read, write: if isOwner(uid);
+        }
+      }
+      match /libraryFolders/{folderId} {
+        allow read, write: if isOwner(uid);
+      }
+      // Mission IAS: per-user vocabulary "learned" tracking
+      match /vocabProgress/{wordId} {
+        allow read, write: if isOwner(uid);
+      }
+      // Mission IAS: Ethics Lab case-study attempts
+      match /ethicsCaseStudySessions/{sessionId} {
+        allow read, write: if isOwner(uid);
+      }
+      // English Communication Lab \u2014 Writing & Speaking practice sessions.
+      // (These were referenced by the app code since the English Lab was
+      // built, but a rule for them was never added \u2014 so every save was
+      // silently permission-denied. Fixing that here.)
+      match /englishWritingSessions/{sessionId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /englishSpeakingSessions/{sessionId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Mission IAS: current affairs items are populated server-side only
+    // (via the Admin SDK, which bypasses these rules); any signed-in
+    // student can read them.
+    match /currentAffairs/{itemId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Mission IAS: vocabulary bank — same pattern as currentAffairs.
+    match /vocabulary/{wordId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}
