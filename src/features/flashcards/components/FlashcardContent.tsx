@@ -8,7 +8,7 @@ import { Button } from "@/components/shared/Button";
 import { Badge } from "@/components/shared/Badge";
 import { Card } from "@/components/shared/Card";
 import { showToast } from "@/components/shared/Toast";
-import { useUserStore } from "@/stores/useUserStore";
+import { useUserStore } from "@/store/useUserStore";
 import { XP_REWARDS } from "@/utils/constants";
 import { getMockDecks, getMockCards, getMockSM2Data } from "../utils/mockFlashcardData";
 import { isDue } from "../utils/sm2Algorithm";

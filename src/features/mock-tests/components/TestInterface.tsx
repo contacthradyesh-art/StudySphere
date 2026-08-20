@@ -5,7 +5,7 @@ import { Button } from "@/components/shared/Button";
 import { Badge } from "@/components/shared/Badge";
 import { Card } from "@/components/shared/Card";
 import { Dialog } from "@/components/shared/Dialog";
-import { useMockTestStore } from "@/stores/useMockTestStore";
+import { useMockTestStore } from "@/store/useMockTestStore";
 import { formatDuration } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
 

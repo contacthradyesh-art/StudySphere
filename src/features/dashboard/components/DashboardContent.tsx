@@ -10,7 +10,7 @@ import { StreakCard } from "./StreakCard";
 import { StudyStatsCard } from "./StudyStatsCard";
 import { getMockDashboardData } from "../utils/mockDashboardData";
 import { showToast } from "@/components/shared/Toast";
-import { useUserStore } from "@/stores/useUserStore";
+import { useUserStore } from "@/store/useUserStore";
 import { XP_REWARDS } from "@/utils/constants";
 
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };

@@ -8,7 +8,7 @@ import { TestCard } from "./TestCard";
 import { TestInterface } from "./TestInterface";
 import { TestResultView } from "./TestResultView";
 import { CreateTestDialog } from "./CreateTestDialog";
-import { useMockTestStore } from "@/stores/useMockTestStore";
+import { useMockTestStore } from "@/store/useMockTestStore";
 import { useAuth } from "@/hooks/use-auth";
 import { requireAuth } from "@/lib/require-auth";
 import { getAvailableTests, getMockTestConfig } from "../utils/mockTestData";

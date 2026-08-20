@@ -7,7 +7,7 @@ import { Button } from "@/components/shared/Button";
 import { Tabs } from "@/components/shared/Tabs";
 import { DonutChart } from "@/components/shared/Charts";
 import { showToast } from "@/components/shared/Toast";
-import { useUserStore } from "@/stores/useUserStore";
+import { useUserStore } from "@/store/useUserStore";
 import { XP_REWARDS } from "@/utils/constants";
 import { formatDate } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
