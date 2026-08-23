@@ -5,10 +5,13 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
   signOut as fbSignOut,
   type User
 } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase/client';
 import { COLLECTIONS } from '@/lib/firestore/schema';
 
@@ -163,4 +166,73 @@ export async function resendVerification() {
 export async function signOut() {
   await fbSignOut(auth);
   await fetch('/api/auth/session', { method: 'DELETE' });
+}
+
+/** Update the signed-in user's display name in both Auth and Firestore. */
+export async function updateUserProfile(displayName: string) {
+  const user = auth.currentUser;
+  if (!user) throw mapAuthError({ code: 'auth/user-not-found' });
+  try {
+    await updateProfile(user, { displayName });
+    await updateDoc(doc(db, COLLECTIONS.users, user.uid), {
+      displayName,
+      updatedAt: serverTimestamp()
+    });
+  } catch (err) {
+    throw mapAuthError(err);
+  }
+}
+
+/**
+ * Change the signed-in user's password. Requires the current password to
+ * re-authenticate first — Firebase rejects sensitive updates on a stale
+ * session, so this avoids a confusing `auth/requires-recent-login` failure.
+ */
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const user = auth.currentUser;
+  if (!user?.email) throw mapAuthError({ code: 'auth/user-not-found' });
+  try {
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+    await updatePassword(user, newPassword);
+  } catch (err) {
+    throw mapAuthError(err);
+  }
+}
+
+/** True if the signed-in user authenticates with Google (no password to re-enter). */
+export function isGoogleAccount(): boolean {
+  return auth.currentUser?.providerData.some((p) => p.providerId === 'google.com') ?? false;
+}
+
+/**
+ * Permanently delete the signed-in user's account: re-authenticates (via
+ * password for email accounts, or a fresh Google popup for Google accounts),
+ * then calls the server-side deletion route (cascades Firestore cleanup and
+ * deletes the Auth user), then clears the local session.
+ */
+export async function deleteAccount(currentPassword?: string) {
+  const user = auth.currentUser;
+  if (!user) throw mapAuthError({ code: 'auth/user-not-found' });
+  try {
+    if (isGoogleAccount()) {
+      await signInWithPopup(auth, googleProvider);
+    } else {
+      if (!user.email || !currentPassword) throw mapAuthError({ code: 'auth/user-not-found' });
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+    }
+    const idToken = await user.getIdToken();
+    const res = await fetch('/api/account/delete', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${idToken}` }
+    });
+    if (!res.ok) throw new Error('delete-failed');
+    await fetch('/api/auth/session', { method: 'DELETE' });
+  } catch (err) {
+    if (err instanceof Error && err.message === 'delete-failed') {
+      throw new AuthError('account/delete-failed', 'Could not delete your account. Please try again or contact support.');
+    }
+    throw mapAuthError(err);
+  }
 }

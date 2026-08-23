@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, CalendarCheck, Timer, ShieldCheck, NotebookPen,
-  BookOpen, Sparkles, GraduationCap, BookHeart, Layers, Rocket, Landmark, Languages, Brain
+  BookOpen, Sparkles, GraduationCap, BookHeart, Layers, Rocket, Landmark, Languages, Brain, Settings
 } from 'lucide-react';
 
 const NAV = [
@@ -25,7 +25,8 @@ const NAV = [
   { href: '/dashboard/ai', label: 'AI Doubt Solver', icon: Sparkles, ready: true },
   { href: '/dashboard/analytics', label: 'Analytics', icon: LayoutDashboard, ready: true },
   { href: '/dashboard/syllabus', label: 'Syllabus', icon: BookOpen, ready: true },
-  { href: '/dashboard/wellbeing', label: 'Wellbeing', icon: BookHeart, ready: true }
+  { href: '/dashboard/wellbeing', label: 'Wellbeing', icon: BookHeart, ready: true },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings, ready: true }
 ];
 
 export function Sidebar() {
