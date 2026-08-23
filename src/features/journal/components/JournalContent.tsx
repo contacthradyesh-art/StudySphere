@@ -1,17 +1,34 @@
 "use client";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/shared/Card";
 import { Badge } from "@/components/shared/Badge";
 import { Button } from "@/components/shared/Button";
 import { Tabs } from "@/components/shared/Tabs";
 import { DonutChart } from "@/components/shared/Charts";
+import { Skeleton } from "@/components/shared/SkeletonLoader";
 import { showToast } from "@/components/shared/Toast";
 import { useUserStore } from "@/store/useUserStore";
 import { XP_REWARDS } from "@/utils/constants";
 import { formatDate } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
-import { getMockJournalEntries, getJournalStats } from "../utils/mockJournalData";
+import { useAuth } from "@/hooks/use-auth";
+import { getJournalEntries, addJournalEntry, resolveJournalEntry } from "@/lib/repositories/mistakeJournalRepository";
+import type { JournalEntry, ErrorType } from "../types";
+
+function getJournalStats(entries: JournalEntry[]) {
+  const resolved = entries.filter((e) => e.resolved).length;
+  const byErrorType: Record<ErrorType, number> = {
+    conceptual: entries.filter((e) => e.errorType === "conceptual").length,
+    silly: entries.filter((e) => e.errorType === "silly").length,
+    "time-pressure": entries.filter((e) => e.errorType === "time-pressure").length,
+    guessing: entries.filter((e) => e.errorType === "guessing").length,
+  };
+  const topicCounts = new Map<string, number>();
+  entries.forEach((e) => { topicCounts.set(e.topic, (topicCounts.get(e.topic) || 0) + 1); });
+  const topWeakTopics = Array.from(topicCounts.entries()).map(([topic, count]) => ({ topic, count })).sort((a, b) => b.count - a.count).slice(0, 5);
+  return { total: entries.length, resolved, unresolved: entries.length - resolved, byErrorType, topWeakTopics };
+}
 
 const filterTabs = [{ id: "all", label: "All" }, { id: "unresolved", label: "Unresolved" }, { id: "resolved", label: "Resolved" }];
 const errorTypeConfig: Record<string, { label: string; variant: "danger" | "warning" | "electric" | "default"; color: string }> = {
@@ -19,11 +36,30 @@ const errorTypeConfig: Record<string, { label: string; variant: "danger" | "warn
   "time-pressure": { label: "Time Pressure", variant: "electric", color: "#007edc" }, guessing: { label: "Guessing", variant: "default", color: "#5c5e6a" },
 };
 
+const emptyForm = { questionText: "", correctAnswer: "", userAnswer: "", topic: "", subject: "quantitative-aptitude", errorType: "conceptual" as ErrorType, examId: "ssc-cgl", notes: "" };
+
 export function JournalContent() {
+  const { user, loading: authLoading } = useAuth();
   const [filter, setFilter] = useState("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [entries, setEntries] = useState(() => getMockJournalEntries());
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
   const addXp = useUserStore((s) => s.addXp);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) { setEntries([]); setLoading(false); return; }
+    let cancelled = false;
+    getJournalEntries()
+      .then((data) => { if (!cancelled) setEntries(data); })
+      .catch(() => { if (!cancelled) showToast("Could not load journal entries", "error"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [user, authLoading]);
+
   const stats = useMemo(() => getJournalStats(entries), [entries]);
 
   const filteredEntries = useMemo(() => {
@@ -32,17 +68,79 @@ export function JournalContent() {
     return entries;
   }, [entries, filter]);
 
-  const handleResolve = useCallback((id: string) => {
-    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, resolved: true, resolvedAt: new Date() } : e)));
-    addXp(XP_REWARDS.MISTAKE_CORRECTION);
-    showToast(`Mistake resolved! +${XP_REWARDS.MISTAKE_CORRECTION} XP`, "success");
-  }, [addXp]);
+  const handleResolve = useCallback(async (id: string) => {
+    const prev = entries;
+    setEntries((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true, resolvedAt: new Date() } : e)));
+    try {
+      await resolveJournalEntry(id);
+      addXp(XP_REWARDS.MISTAKE_CORRECTION);
+      showToast(`Mistake resolved! +${XP_REWARDS.MISTAKE_CORRECTION} XP`, "success");
+    } catch {
+      setEntries(prev);
+      showToast("Could not resolve — try again", "error");
+    }
+  }, [entries, addXp]);
+
+  const handleAddEntry = useCallback(async () => {
+    if (!form.questionText.trim() || !form.correctAnswer.trim() || !form.topic.trim()) {
+      showToast("Fill in the question, correct answer, and topic", "error");
+      return;
+    }
+    setSaving(true);
+    try {
+      await addJournalEntry(form as Omit<JournalEntry, "id" | "resolved" | "resolvedAt" | "createdAt">);
+      const fresh = await getJournalEntries();
+      setEntries(fresh);
+      setForm(emptyForm);
+      setShowAddForm(false);
+      showToast("Mistake logged", "success");
+    } catch {
+      showToast("Could not save — try again", "error");
+    } finally {
+      setSaving(false);
+    }
+  }, [form]);
 
   const donutSegments = Object.entries(stats.byErrorType).filter(([, count]) => count > 0).map(([type, count]) => ({ label: errorTypeConfig[type].label, value: count, color: errorTypeConfig[type].color }));
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div><h2 className="text-2xl font-bold text-charcoal-50 mb-1">Mistake Journal</h2><p className="text-charcoal-400 text-sm">Track, understand, and resolve your mistakes</p></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} variant="card" height={80} />)}</div>
+        <Skeleton variant="card" height={120} />
+      </div>
+    );
+  }
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div><h2 className="text-2xl font-bold text-charcoal-50 mb-1">Mistake Journal</h2><p className="text-charcoal-400 text-sm">Track, understand, and resolve your mistakes</p></div>
+      <div className="flex items-start justify-between gap-3">
+        <div><h2 className="text-2xl font-bold text-charcoal-50 mb-1">Mistake Journal</h2><p className="text-charcoal-400 text-sm">Track, understand, and resolve your mistakes</p></div>
+        <Button variant="neon" size="sm" onClick={() => setShowAddForm((s) => !s)}>{showAddForm ? "Cancel" : "+ Log Mistake"}</Button>
+      </div>
+
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <Card variant="glass" padding="sm" className="space-y-3">
+              <input className="w-full bg-charcoal-800/60 border border-charcoal-700/40 rounded-lg px-3 py-2 text-sm text-charcoal-100" placeholder="Question text" value={form.questionText} onChange={(e) => setForm((f) => ({ ...f, questionText: e.target.value }))} />
+              <div className="grid grid-cols-2 gap-3">
+                <input className="bg-charcoal-800/60 border border-charcoal-700/40 rounded-lg px-3 py-2 text-sm text-charcoal-100" placeholder="Your answer" value={form.userAnswer} onChange={(e) => setForm((f) => ({ ...f, userAnswer: e.target.value }))} />
+                <input className="bg-charcoal-800/60 border border-charcoal-700/40 rounded-lg px-3 py-2 text-sm text-charcoal-100" placeholder="Correct answer" value={form.correctAnswer} onChange={(e) => setForm((f) => ({ ...f, correctAnswer: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input className="bg-charcoal-800/60 border border-charcoal-700/40 rounded-lg px-3 py-2 text-sm text-charcoal-100" placeholder="Topic" value={form.topic} onChange={(e) => setForm((f) => ({ ...f, topic: e.target.value }))} />
+                <select className="bg-charcoal-800/60 border border-charcoal-700/40 rounded-lg px-3 py-2 text-sm text-charcoal-100" value={form.errorType} onChange={(e) => setForm((f) => ({ ...f, errorType: e.target.value as ErrorType }))}>
+                  {Object.entries(errorTypeConfig).map(([key, cfg]) => <option key={key} value={key}>{cfg.label}</option>)}
+                </select>
+              </div>
+              <textarea className="w-full bg-charcoal-800/60 border border-charcoal-700/40 rounded-lg px-3 py-2 text-sm text-charcoal-100" placeholder="Notes (optional)" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+              <Button variant="neon" size="sm" onClick={handleAddEntry} disabled={saving}>{saving ? "Saving..." : "Save mistake"}</Button>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card variant="glass" padding="sm">
@@ -105,7 +203,7 @@ export function JournalContent() {
           );
         })}
         {filteredEntries.length === 0 && (
-          <div className="text-center py-12"><span className="text-4xl block mb-3">🎉</span><p className="text-charcoal-400">{filter === "unresolved" ? "All mistakes resolved! Great work!" : "No entries yet."}</p></div>
+          <div className="text-center py-12"><span className="text-4xl block mb-3">🎉</span><p className="text-charcoal-400">{filter === "unresolved" ? "All mistakes resolved! Great work!" : "No entries yet — log a mistake to start tracking."}</p></div>
         )}
       </div>
     </motion.div>

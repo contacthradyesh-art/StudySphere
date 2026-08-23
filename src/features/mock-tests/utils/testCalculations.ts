@@ -24,7 +24,7 @@ export function calculateTestResult(session: TestSession): TestResult {
   const topicResults = calculateTopicResults(config.sections, answers);
 
   return {
-    id: `result-${Date.now()}`, testId: config.id, userId: "demo-user", examId: config.examId, mode: config.mode,
+    id: `result-${Date.now()}`, testId: config.id, userId: "", examId: config.examId, mode: config.mode,
     totalQuestions: allQuestions.length, attempted, correct, incorrect, unanswered,
     marksObtained: Math.max(marksObtained, 0), totalMarks, negativeMarks, percentage: Math.max(percentage, 0),
     timeTaken: totalTimeSpent, averageTimePerQuestion: attempted > 0 ? totalTimeSpent / attempted : 0,

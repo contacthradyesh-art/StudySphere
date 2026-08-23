@@ -24,10 +24,10 @@ function generateMoreQuestions(count: number): Question[] {
 
 export function getAvailableTests(): AvailableTest[] {
   return [
-    { id: "mt-ssc-full-1", title: "SSC CGL Tier-I Full Mock #1", examId: "ssc-cgl", examName: "SSC CGL", mode: "full", totalQuestions: 25, durationMinutes: 15, difficulty: "medium", attempted: true, bestScore: 72 },
+    { id: "mt-ssc-full-1", title: "SSC CGL Tier-I Full Mock #1", examId: "ssc-cgl", examName: "SSC CGL", mode: "full", totalQuestions: 25, durationMinutes: 15, difficulty: "medium", attempted: false },
     { id: "mt-ssc-quant-1", title: "SSC CGL Quantitative Aptitude", examId: "ssc-cgl", examName: "SSC CGL", mode: "sectional", totalQuestions: 10, durationMinutes: 8, difficulty: "medium", attempted: false, topics: ["Profit & Loss", "CI/SI", "Time & Work"] },
     { id: "mt-ibps-full-1", title: "IBPS PO Prelims Mock #1", examId: "ibps-po", examName: "IBPS PO", mode: "full", totalQuestions: 20, durationMinutes: 12, difficulty: "medium", attempted: false },
-    { id: "mt-ssc-speed-1", title: "Speed Drill: Quant Basics", examId: "ssc-cgl", examName: "SSC CGL", mode: "speed-drill", totalQuestions: 10, durationMinutes: 5, difficulty: "easy", attempted: true, bestScore: 80 },
+    { id: "mt-ssc-speed-1", title: "Speed Drill: Quant Basics", examId: "ssc-cgl", examName: "SSC CGL", mode: "speed-drill", totalQuestions: 10, durationMinutes: 5, difficulty: "easy", attempted: false },
     { id: "mt-ssc-weak-1", title: "Weak Topic: Syllogism Practice", examId: "ssc-cgl", examName: "SSC CGL", mode: "weak-topic", totalQuestions: 10, durationMinutes: 8, difficulty: "medium", attempted: false, topics: ["Syllogism"] },
     { id: "mt-rrb-full-1", title: "RRB NTPC CBT-1 Mock #1", examId: "rrb-ntpc", examName: "RRB NTPC", mode: "full", totalQuestions: 20, durationMinutes: 12, difficulty: "easy", attempted: false },
   ];

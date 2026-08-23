@@ -14,6 +14,7 @@ import { requireAuth } from "@/lib/require-auth";
 import { getAvailableTests, getMockTestConfig } from "../utils/mockTestData";
 import { calculateTestResult, generateFourStepAnalysis, calculateTimeSplit } from "../utils/testCalculations";
 import { subscribeCustomTests, saveTestResult } from "@/lib/mock-tests/mock-test-service";
+import { getTestResults } from "@/lib/repositories/mockTestRepository";
 import { awardXp } from "@/lib/gamification/xp-service";
 import { showToast } from "@/components/shared/Toast";
 import type { AvailableTest, TestResult, FourStepAnalysis, TimeSplit, MockTestConfig } from "../types";
@@ -61,6 +62,8 @@ export function MockTestContent() {
   const [pendingDuration, setPendingDuration] = useState(15);
 
   const { session, startTest, resetTest, isTestActive } = useMockTestStore();
+  // testId -> best percentage seen across this user's real saved results.
+  const [bestScoreByTestId, setBestScoreByTestId] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (!user) return;
@@ -68,13 +71,37 @@ export function MockTestContent() {
     return unsub;
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    getTestResults()
+      .then((results) => {
+        if (cancelled) return;
+        const best = new Map<string, number>();
+        for (const r of results) {
+          const prev = best.get(r.testId);
+          const score = Math.round(r.percentage ?? 0);
+          if (prev === undefined || score > prev) best.set(r.testId, score);
+        }
+        setBestScoreByTestId(best);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user]);
+
   const customMap = useMemo(() => new Map(customTests.map((t) => [t.id, t])), [customTests]);
 
   const availableTests = useMemo(() => {
-    const tests = [...customTests.map(customToAvailable), ...getAvailableTests()];
+    // Built-in sample tests never carry real attempted/bestScore — only what
+    // this user's own saved results (bestScoreByTestId) actually show.
+    const builtIn = getAvailableTests().map((t) => {
+      const best = bestScoreByTestId.get(t.id);
+      return best !== undefined ? { ...t, attempted: true, bestScore: best } : t;
+    });
+    const tests = [...customTests.map(customToAvailable), ...builtIn];
     if (activeMode === "all") return tests;
     return tests.filter((t) => t.mode === activeMode);
-  }, [activeMode, customTests]);
+  }, [activeMode, customTests, bestScoreByTestId]);
 
   const buildConfig = useCallback((testId: string): MockTestConfig => {
     const custom = customMap.get(testId);
@@ -109,6 +136,12 @@ export function MockTestContent() {
       void saveTestResult(user.uid, title, result);
       void awardXp(user.uid, "completeMockTest");
       showToast(`Mock test completed! +25 XP`, "success");
+      const score = Math.round(result.percentage);
+      setBestScoreByTestId((prev) => {
+        const existing = prev.get(result.testId);
+        if (existing !== undefined && existing >= score) return prev;
+        return new Map(prev).set(result.testId, score);
+      });
     }
   }, [session, user, customMap]);
 

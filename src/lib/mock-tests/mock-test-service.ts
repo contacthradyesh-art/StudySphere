@@ -1,5 +1,5 @@
 import {
-  collection, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, deleteDoc, addDoc
+  collection, doc, onSnapshot, orderBy, query, where, serverTimestamp, setDoc, deleteDoc, addDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { COLLECTIONS } from '@/lib/firestore/schema';
@@ -9,8 +9,12 @@ import type { Question, MockTestMode, TestResult } from '@/features/mock-tests/t
 function testsCol(uid: string) {
   return collection(db, COLLECTIONS.users, uid, MOCK_TEST_COLLECTIONS.customTests);
 }
-function resultsCol(uid: string) {
-  return collection(db, COLLECTIONS.users, uid, MOCK_TEST_COLLECTIONS.results);
+// Top-level (not a users/{uid} subcollection) — this MUST match the collection
+// mockTestRepository.ts reads from (filtered by a `userId` field), since that
+// repository is what feeds Analytics. Keeping these in sync is what makes a
+// completed test actually show up in Analytics.
+function resultsCol() {
+  return collection(db, MOCK_TEST_COLLECTIONS.results);
 }
 
 /** Live-subscribe to this user's custom (AI-generated + manually uploaded) tests. */
@@ -46,14 +50,14 @@ export async function deleteCustomTest(uid: string, testId: string) {
 /** Save a completed test's result to history. */
 export async function saveTestResult(uid: string, testTitle: string, result: TestResult) {
   await setDoc(
-    doc(db, COLLECTIONS.users, uid, MOCK_TEST_COLLECTIONS.results, result.id),
-    { ...result, testTitle, completedAt: serverTimestamp() }
+    doc(db, MOCK_TEST_COLLECTIONS.results, `${uid}_${result.id}`),
+    { ...result, userId: uid, testTitle, completedAt: serverTimestamp() }
   );
 }
 
 /** Live-subscribe to this user's test result history. */
 export function subscribeTestResults(uid: string, cb: (results: StoredTestResult[]) => void) {
-  const q = query(resultsCol(uid), orderBy('completedAt', 'desc'));
+  const q = query(resultsCol(), where('userId', '==', uid), orderBy('completedAt', 'desc'));
   return onSnapshot(q, (snap) => {
     cb(snap.docs.map((d) => d.data() as StoredTestResult));
   });
