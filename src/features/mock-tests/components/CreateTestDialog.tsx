@@ -76,8 +76,8 @@ export function CreateTestDialog({ isOpen, onClose }: CreateTestDialogProps) {
       showToast("AI test created!", "success");
       setExamName(""); setTopic(""); setCount(10);
       onClose();
-    } catch {
-      showToast("Could not generate test. Try again.", "error");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Could not generate test. Try again.", "error");
     } finally {
       setGenerating(false);
     }
@@ -110,8 +110,13 @@ export function CreateTestDialog({ isOpen, onClose }: CreateTestDialogProps) {
       showToast(`Test added with ${data.questions.length} question(s)`, "success");
       setManualTitle(""); setManualExam(""); setManualRaw("");
       onClose();
-    } catch {
-      showToast("Could not read the pasted text — try adding more structure (Q, options, correct answer)", "error");
+    } catch (err) {
+      showToast(
+        err instanceof Error && err.message
+          ? err.message
+          : "Could not read the pasted text — try adding more structure (Q, options, correct answer)",
+        "error"
+      );
     } finally {
       setSavingManual(false);
     }
