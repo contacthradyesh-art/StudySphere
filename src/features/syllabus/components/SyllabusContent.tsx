@@ -1,11 +1,12 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/shared/Card";
 import { Badge } from "@/components/shared/Badge";
 import { ProgressBar } from "@/components/shared/ProgressBar";
 import { Tabs } from "@/components/shared/Tabs";
-import { getMockSyllabusData, getCrossExamMappings } from "../utils/mockSyllabusData";
+import { Skeleton } from "@/components/shared/SkeletonLoader";
+import { useSyllabusData } from "@/hooks/use-syllabus-data";
 
 const masteryConfig: Record<string, { label: string; variant: "danger" | "warning" | "electric" | "neon" | "default" }> = {
   "not-started": { label: "Not Started", variant: "default" }, learning: { label: "Learning", variant: "danger" },
@@ -16,8 +17,11 @@ const viewTabs = [{ id: "subjects", label: "By Subject" }, { id: "overlap", labe
 export function SyllabusContent() {
   const [activeView, setActiveView] = useState("subjects");
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
-  const subjects = useMemo(() => getMockSyllabusData(), []);
-  const crossExamMaps = useMemo(() => getCrossExamMappings(), []);
+  const { subjects, crossExamMaps, loading, cycleMastery } = useSyllabusData();
+
+  if (loading) {
+    return <div className="space-y-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="card" height={80} />)}</div>;
+  }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
@@ -45,7 +49,7 @@ export function SyllabusContent() {
                               <div className="flex items-center gap-2"><p className="text-sm font-medium text-charcoal-100">{topic.name}</p>{topic.isOverlap && <Badge variant="electric" size="sm">{topic.overlapCount} exams</Badge>}</div>
                               <div className="flex flex-wrap gap-1 mt-1">{topic.subtopics.map((st) => <span key={st} className="text-[10px] px-1.5 py-0.5 rounded bg-charcoal-800/50 text-charcoal-500">{st}</span>)}</div>
                             </div>
-                            <Badge variant={mastery.variant} size="sm">{mastery.label}</Badge>
+                          <span className="cursor-pointer select-none" onClick={(e) => { e.stopPropagation(); cycleMastery(topic.id); }}><Badge variant={mastery.variant} size="sm">{mastery.label}</Badge></span>
                           </div>
                           <ProgressBar value={topic.accuracy} variant={topic.accuracy >= 70 ? "neon" : topic.accuracy >= 40 ? "electric" : "danger"} size="sm" showLabel label="Accuracy" />
                         </div>

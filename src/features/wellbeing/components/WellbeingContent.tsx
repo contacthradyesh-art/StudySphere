@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
@@ -7,18 +7,20 @@ import { Badge } from "@/components/shared/Badge";
 import { ProgressRing } from "@/components/shared/ProgressRing";
 import { showToast } from "@/components/shared/Toast";
 import { cn } from "@/utils/cn";
-import { getMockWellbeingData } from "../utils/mockWellbeingData";
-import type { Mood, FocusSession } from "../types";
+import { getMoodHistory, saveMoodEntry, getFocusSessions, saveFocusSession } from "@/lib/repositories/wellbeingRepository";
+import type { Mood, FocusSession, MoodEntry } from "../types";
 
 const moodConfig: Record<Mood, { emoji: string; label: string; color: string }> = {
   great: { emoji: "😄", label: "Great", color: "text-neon" }, good: { emoji: "🙂", label: "Good", color: "text-electric-300" },
   okay: { emoji: "😐", label: "Okay", color: "text-yellow-400" }, low: { emoji: "😔", label: "Low", color: "text-orange-400" },
   stressed: { emoji: "😰", label: "Stressed", color: "text-red-400" },
 };
+const moodValue: Record<Mood, number> = { great: 5, good: 4, okay: 3, low: 2, stressed: 1 };
 
 export function WellbeingContent() {
-  const data = useMemo(() => getMockWellbeingData(), []);
-  const [selectedMood, setSelectedMood] = useState<Mood | null>(data.todayMood?.mood || null);
+  const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([]);
+  const [focusStats, setFocusStats] = useState({ today: 0, week: 0 });
+  const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
   const [focusState, setFocusState] = useState<FocusSession["status"]>("idle");
   const [focusSeconds, setFocusSeconds] = useState(0);
   const [focusDuration, setFocusDuration] = useState(25);
@@ -26,10 +28,32 @@ export function WellbeingContent() {
   const focusProgress = focusDuration > 0 ? (focusSeconds / (focusDuration * 60)) * 100 : 0;
 
   useEffect(() => {
+    (async () => {
+      const [moods, sessions] = await Promise.all([getMoodHistory(7).catch(() => []), getFocusSessions(7).catch(() => [])]);
+      const typedMoods = moods as unknown as (MoodEntry & { date: string })[];
+      setMoodHistory(typedMoods);
+      const today = new Date().toISOString().split("T")[0];
+      const typedSessions = sessions as unknown as { durationMinutes: number; date: string }[];
+      setFocusStats({
+        today: typedSessions.filter((s) => s.date === today).reduce((sum, s) => sum + s.durationMinutes, 0),
+        week: typedSessions.reduce((sum, s) => sum + s.durationMinutes, 0),
+      });
+      const last = typedMoods[typedMoods.length - 1];
+      if (last) setSelectedMood(last.mood);
+    })();
+  }, []);
+
+  useEffect(() => {
     if (focusState === "active") {
       timerRef.current = setInterval(() => {
         setFocusSeconds((prev) => {
-          if (prev >= focusDuration * 60 - 1) { setFocusState("completed"); showToast("Focus session complete! Take a break 🎉", "success"); return focusDuration * 60; }
+          if (prev >= focusDuration * 60 - 1) {
+            setFocusState("completed");
+            showToast("Focus session complete! Take a break 🎉", "success");
+            saveFocusSession({ durationMinutes: focusDuration, date: new Date().toISOString().split("T")[0] }).catch(() => {});
+            setFocusStats((s) => ({ today: s.today + focusDuration, week: s.week + focusDuration }));
+            return focusDuration * 60;
+          }
           return prev + 1;
         });
       }, 1000);
@@ -40,7 +64,21 @@ export function WellbeingContent() {
   const handleStartFocus = useCallback(() => { setFocusSeconds(0); setFocusState("active"); }, []);
   const handlePauseFocus = useCallback(() => { setFocusState((s) => (s === "active" ? "paused" : "active")); }, []);
   const handleResetFocus = useCallback(() => { setFocusState("idle"); setFocusSeconds(0); }, []);
-  const handleMoodSelect = useCallback((mood: Mood) => { setSelectedMood(mood); showToast(`Mood logged: ${moodConfig[mood].label}`, "success"); }, []);
+  const handleMoodSelect = useCallback((mood: Mood) => {
+    setSelectedMood(mood);
+    const now = new Date();
+    const entry = { mood, date: now.toISOString().split("T")[0], time: now.toTimeString().slice(0, 5) };
+    saveMoodEntry(entry).then(() => setMoodHistory((h) => [...h, { id: `${entry.date}_${entry.time}`, ...entry }])).catch(() => showToast("Couldn't save mood, try again", "error"));
+    showToast(`Mood logged: ${moodConfig[mood].label}`, "success");
+  }, []);
+
+  const moodAverage = moodHistory.length ? moodHistory.reduce((sum, m) => sum + moodValue[m.mood], 0) / moodHistory.length : 0;
+  const moodStreak = (() => {
+    const dates = new Set(moodHistory.map((m) => m.date));
+    let streak = 0; const d = new Date();
+    while (dates.has(d.toISOString().split("T")[0])) { streak++; d.setDate(d.getDate() - 1); }
+    return streak;
+  })();
 
   const formatTimer = (totalSecs: number) => {
     const m = Math.floor(totalSecs / 60); const s = totalSecs % 60;
@@ -64,7 +102,7 @@ export function WellbeingContent() {
           <div className="pt-3 border-t border-charcoal-700/30">
             <p className="text-xs text-charcoal-500 mb-2">This week</p>
             <div className="flex justify-between">
-              {data.moodHistory.map((entry) => {
+              {moodHistory.map((entry) => {
                 const config = moodConfig[entry.mood];
                 return (<div key={entry.id} className="flex flex-col items-center gap-1"><span className="text-lg">{config.emoji}</span><span className="text-[10px] text-charcoal-600">{new Date(entry.date).toLocaleDateString("en-IN", { weekday: "short" })}</span></div>);
               })}
@@ -101,17 +139,17 @@ export function WellbeingContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card variant="glass">
           <div className="flex items-center gap-2 mb-3"><span className="text-lg">☕</span><h3 className="text-sm font-semibold text-charcoal-100">Break Reminder</h3></div>
-          <p className="text-sm text-charcoal-300 mb-3">Gentle reminders to take breaks every <strong className="text-electric-300">{data.breakReminder.intervalMinutes} minutes</strong>.</p>
+          <p className="text-sm text-charcoal-300 mb-3">Gentle reminders to take breaks every <strong className="text-electric-300">{45} minutes</strong>.</p>
           <p className="text-xs text-charcoal-500">Your brain needs rest to consolidate learning. Short breaks improve focus and retention.</p>
-          <div className="mt-3 pt-3 border-t border-charcoal-700/30"><Badge variant={data.breakReminder.enabled ? "neon" : "default"} size="sm">{data.breakReminder.enabled ? "Active" : "Disabled"}</Badge></div>
+          <div className="mt-3 pt-3 border-t border-charcoal-700/30"><Badge variant={moodHistory.length > 0 ? "neon" : "default"} size="sm">{moodHistory.length > 0 ? "Active" : "Not started"}</Badge></div>
         </Card>
         <Card variant="glass">
           <div className="flex items-center gap-2 mb-3"><span className="text-lg">📊</span><h3 className="text-sm font-semibold text-charcoal-100">Wellbeing Stats</h3></div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-charcoal-800/40 p-3 text-center"><p className="text-lg font-bold text-electric-300">{data.stats.totalFocusMinutesToday}m</p><p className="text-[10px] text-charcoal-500">Focus Today</p></div>
-            <div className="rounded-xl bg-charcoal-800/40 p-3 text-center"><p className="text-lg font-bold text-neon">{Math.floor(data.stats.totalFocusMinutesWeek / 60)}h</p><p className="text-[10px] text-charcoal-500">Focus This Week</p></div>
-            <div className="rounded-xl bg-charcoal-800/40 p-3 text-center"><p className="text-lg font-bold text-yellow-400">{data.stats.moodAverage.toFixed(1)}/5</p><p className="text-[10px] text-charcoal-500">Mood Average</p></div>
-            <div className="rounded-xl bg-charcoal-800/40 p-3 text-center"><p className="text-lg font-bold text-orange-300">{data.stats.streakDaysWithMoodLog}d</p><p className="text-[10px] text-charcoal-500">Mood Streak</p></div>
+            <div className="rounded-xl bg-charcoal-800/40 p-3 text-center"><p className="text-lg font-bold text-electric-300">{focusStats.today}m</p><p className="text-[10px] text-charcoal-500">Focus Today</p></div>
+            <div className="rounded-xl bg-charcoal-800/40 p-3 text-center"><p className="text-lg font-bold text-neon">{Math.floor(focusStats.week / 60)}h</p><p className="text-[10px] text-charcoal-500">Focus This Week</p></div>
+            <div className="rounded-xl bg-charcoal-800/40 p-3 text-center"><p className="text-lg font-bold text-yellow-400">{moodAverage.toFixed(1)}/5</p><p className="text-[10px] text-charcoal-500">Mood Average</p></div>
+            <div className="rounded-xl bg-charcoal-800/40 p-3 text-center"><p className="text-lg font-bold text-orange-300">{moodStreak}d</p><p className="text-[10px] text-charcoal-500">Mood Streak</p></div>
           </div>
         </Card>
       </div>
