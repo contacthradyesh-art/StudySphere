@@ -45,8 +45,12 @@ export default function JournalPage() {
 
   async function newEntry() {
     if (!requireAuth(user)) return;
+    const today = new Date().toISOString().slice(0, 10);
+    // Reuse today's entry if it already exists, instead of creating a
+    // duplicate blank entry every time "New Entry" is clicked.
+    const existing = entries.find((e) => e.date === today);
+    if (existing) { router.push(`/dashboard/journal/${existing.id}`); return; }
     try {
-      const today = new Date().toISOString().slice(0, 10);
       const id = await createEntry(user.uid, {
         date: today, title: '', content: '', mood: null,
         gratitude: [], reflection: '', locked: false,
@@ -95,6 +99,7 @@ export default function JournalPage() {
         stats={stats}
         todayMood={todayMood}
         onMoodSelect={handleMoodSelect}
+        entries={entries}
       />
 
       {/* Quick Actions */}

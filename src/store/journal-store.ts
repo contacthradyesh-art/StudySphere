@@ -24,6 +24,11 @@ export function filterEntries(entries: JournalEntry[], q: string): JournalEntry[
   if (!term) return entries;
   return entries.filter((e) => {
     if (e.title.toLowerCase().includes(term) || e.date.includes(term)) return true;
-    return !e.locked && e.content.toLowerCase().includes(term);
+    if (e.locked) return false;
+    return (
+      e.content.toLowerCase().includes(term) ||
+      e.reflection.toLowerCase().includes(term) ||
+      e.gratitude.some((g) => g.toLowerCase().includes(term))
+    );
   });
 }

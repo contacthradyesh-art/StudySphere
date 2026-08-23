@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Patrick_Hand, Caveat, Kalam, Dancing_Script } from 'next/font/google';
-import { BookOpenText, Feather, Flame } from 'lucide-react';
+import { BookOpenText, Feather, Flame, Shuffle } from 'lucide-react';
 import { GlassCard } from '@/components/shared/glass-card';
 import { cn } from '@/lib/utils';
 
@@ -35,6 +35,21 @@ const WRITING_STYLES: Array<{
 const PAPER_GRAIN =
   'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'160\' height=\'160\'><filter id=\'n\'><feTurbulence type=\'fractalNoise\' baseFrequency=\'0.85\' numOctaves=\'2\' stitchTiles=\'stitch\'/><feColorMatrix type=\'saturate\' values=\'0\'/></filter><rect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/></svg>")';
 
+// Rotating writing prompts, shown only while the page is blank. The blank
+// page is the single biggest drop-off point in journaling apps — a gentle
+// starting question (rather than an empty "Dear Diary,") measurably improves
+// how often people actually write something.
+const WRITING_PROMPTS = [
+  'What was the hardest part of today, and how did you handle it?',
+  'What is one thing you understood better today than yesterday?',
+  'If tomorrow went perfectly, what would be different from today?',
+  'What almost went wrong today — and what did it teach you?',
+  'Who or what made today a little easier?',
+  'What did you avoid today that you should tackle tomorrow?',
+  'Rate your focus today out of 10. What pulled it down?',
+  'What is one small win you are proud of, even if no one noticed?',
+];
+
 function diaryStamp(date: Date) {
   const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
   const day = date.getDate();
@@ -56,6 +71,7 @@ interface DiaryEditorProps {
 export function DiaryEditor({ value, onChange, streak, className }: DiaryEditorProps) {
   const [styleId, setStyleId] = useState<WritingStyleId>('classic');
   const [now, setNow] = useState<Date | null>(null);
+  const [promptIndex, setPromptIndex] = useState(() => Math.floor(Math.random() * WRITING_PROMPTS.length));
   const reduceMotion = useReducedMotion();
 
   // Live clock — mounted client-side only to avoid SSR/client hydration mismatch.
@@ -119,6 +135,23 @@ export function DiaryEditor({ value, onChange, streak, className }: DiaryEditorP
             </button>
           ))}
         </div>
+
+        {/* Writing prompt — only shown while the page is blank, to break through
+            the "what do I even write" freeze. Disappears the moment typing starts. */}
+        {!value.trim() && (
+          <div className="relative flex items-center justify-center gap-2 rounded-lg border border-amber-300/20 bg-amber-300/[0.06] px-3 py-2 text-center">
+            <p className="text-xs italic text-amber-100/70">💭 {WRITING_PROMPTS[promptIndex]}</p>
+            <button
+              type="button"
+              onClick={() => setPromptIndex((i) => (i + 1 + Math.floor(Math.random() * (WRITING_PROMPTS.length - 1))) % WRITING_PROMPTS.length)}
+              aria-label="Try another prompt"
+              title="Try another prompt"
+              className="shrink-0 rounded-full p-1 text-amber-200/60 hover:bg-amber-300/10 hover:text-amber-200"
+            >
+              <Shuffle className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* The page itself */}
         <motion.div

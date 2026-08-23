@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowLeft, Lock, LockOpen, Save, Trash2, Sparkles, Calendar, Heart, Lightbulb } from 'lucide-react';
+import { ArrowLeft, Lock, LockOpen, Save, Trash2, Sparkles, Calendar, Heart, Lightbulb, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { GlassCard } from '@/components/shared/glass-card';
@@ -16,15 +16,8 @@ import { decryptText, encryptText } from '@/lib/journal/journal-crypto';
 import { cn } from '@/lib/utils';
 import { useJournalStore } from '@/store/journal-store';
 import { summarizeJournal } from '@/lib/journal/stats';
+import { MOODS } from '@/lib/firestore/journal-schema';
 import type { JournalEntry, Mood } from '@/lib/firestore/journal-schema';
-
-const MOODS: { value: Mood; emoji: string; label: string }[] = [
-  { value: 'great', emoji: '😄', label: 'Great' },
-  { value: 'good', emoji: '🙂', label: 'Good' },
-  { value: 'okay', emoji: '😐', label: 'Okay' },
-  { value: 'bad', emoji: '😔', label: 'Bad' },
-  { value: 'bad', emoji: '😣', label: 'Awful' },
-];
 
 const QUOTES = [
   'Small steps every day lead to big changes.',
@@ -55,6 +48,15 @@ export default function JournalEntryPage() {
   const { entries: allEntries } = useJournalStore();
   const stats = summarizeJournal(allEntries);
   const streak = (stats as any)?.streak ?? (stats as any)?.currentStreak ?? 0;
+
+  // Other years' entries that fall on this same month+day — "On this day".
+  const onThisDay = entry
+    ? allEntries.filter((e) => {
+        if (e.id === entry.id) return false;
+        const a = new Date(e.date), b = new Date(entry.date);
+        return a.getMonth() === b.getMonth() && a.getDate() === b.getDate() && a.getFullYear() !== b.getFullYear();
+      }).slice(0, 3)
+    : [];
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -193,12 +195,12 @@ export default function JournalEntryPage() {
         <div className="grid grid-cols-5 gap-2">
           {MOODS.map((m) => (
             <button
-              key={m.value}
+              key={m.id}
               type="button"
-              onClick={() => setMood(m.value)}
+              onClick={() => setMood(m.id)}
               className={cn(
                 'flex flex-col items-center gap-1 rounded-xl border-2 py-3 transition-colors',
-                mood === m.value ? 'border-primary bg-primary/10' : 'border-input hover:border-primary/40'
+                mood === m.id ? 'border-primary bg-primary/10' : 'border-input hover:border-primary/40'
               )}
             >
               <span className="text-2xl">{m.emoji}</span>
@@ -207,6 +209,35 @@ export default function JournalEntryPage() {
           ))}
         </div>
       </div>
+
+      {/* On this day — surfaces past entries from the same calendar day, a
+          proven journaling-engagement pattern (Day One's "On This Day",
+          Reflectly's memories): re-reading old entries is what makes a diary
+          feel worth keeping, not just writing into a void. */}
+      {onThisDay.length > 0 && (
+        <GlassCard className="space-y-2">
+          <h2 className="flex items-center gap-1.5 font-semibold text-sky-400">
+            <History className="h-4 w-4" /> On this day
+          </h2>
+          <div className="space-y-1.5">
+            {onThisDay.map((e) => (
+              <button
+                key={e.id}
+                type="button"
+                onClick={() => router.push(`/dashboard/journal/${e.id}`)}
+                className="flex w-full items-center justify-between gap-2 rounded-lg border border-input px-3 py-2 text-left text-sm hover:bg-accent"
+              >
+                <span className="truncate">
+                  {e.title || (e.locked ? 'Locked entry' : 'Untitled entry')}
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {new Date(e.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </button>
+            ))}
+          </div>
+        </GlassCard>
+      )}
 
       {locked && !unlocked ? (
         <GlassCard className="flex flex-col items-center gap-3 py-10 text-center">
