@@ -156,7 +156,7 @@ function VocabularyTab({ uid, words, wordOfDay }: { uid: string; words: VocabWor
           <p className="font-medium">Full Vocabulary Lab</p>
           <p className="text-xs text-muted-foreground">Browse all {words.length} words, quiz mode, and turn words into flashcards.</p>
         </div>
-        <Link href="/dashboard/mission-ias/vocabulary-lab">
+        <Link href="/dashboard/english-lab/vocabulary-lab">
           <Button variant="gradient" size="sm">Open <ArrowRight className="h-3.5 w-3.5" /></Button>
         </Link>
       </GlassCard>

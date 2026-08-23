@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Landmark, Newspaper, Library, Languages, Map, Sparkles, Scale, FileText, TrendingUp, Leaf, Cpu, Globe, Bookmark, BarChart3 } from 'lucide-react';
+import { Landmark, Newspaper, Library, Map, Sparkles, Scale, FileText, TrendingUp, Leaf, Cpu, Globe, Bookmark, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -23,7 +23,6 @@ const MISSION_IAS_NAV = [
   { href: '/dashboard/mission-ias/international-relations', label: 'Int\u2019l Relations', icon: Globe, ready: true },
   { href: '/dashboard/mission-ias/ethics-lab', label: 'Ethics Lab', icon: Scale, ready: true },
   { href: '/dashboard/mission-ias/digital-library', label: 'Digital Library', icon: Library, ready: true },
-  { href: '/dashboard/mission-ias/vocabulary-lab', label: 'Vocabulary Lab', icon: Languages, ready: true },
   { href: '/dashboard/mission-ias/map-practice', label: 'Map Practice', icon: Map, ready: true },
   { href: '/dashboard/mission-ias/bookmarks', label: 'Bookmarks', icon: Bookmark, ready: true },
   { href: '/dashboard/mission-ias/mission-analytics', label: 'Mission Analytics', icon: BarChart3, ready: true },

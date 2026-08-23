@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import {
   Landmark, Newspaper, BookOpen, FileText, Landmark as GovIcon, TrendingUp,
-  Leaf, Cpu, Globe, Scale, PenTool, ListChecks, Repeat, Languages, Mic,
+  Leaf, Cpu, Globe, Scale, PenTool, ListChecks, Repeat, Mic,
   Network, Library, BarChart3, Bookmark, Map, Sparkles
 } from 'lucide-react';
 import { GlassCard } from '@/components/shared/glass-card';
@@ -37,7 +37,6 @@ const MODULES: ModuleCard[] = [
   { label: 'PYQ Explorer', icon: ListChecks },
   { label: 'Prelims Test Engine', icon: ListChecks },
   { label: 'Revision Engine', icon: Repeat },
-  { label: 'Vocabulary Lab', icon: Languages, href: '/dashboard/mission-ias/vocabulary-lab' },
   { label: 'Interview Room', icon: Mic },
   { label: 'Knowledge Graph', icon: Network },
   { label: 'Digital Library', icon: Library, href: '/dashboard/mission-ias/digital-library' },
