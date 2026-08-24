@@ -1,0 +1,16 @@
+StudySphere dead-code cleanup — 29 files removed
+=================================================
+
+Terminal me (repo folder ke andar) chalao:
+
+git rm -r --cached --ignore-unmatch src/features/journal src/features/planner src/features/flashcards src/features/dashboard src/lib/repositories/journalRepository.ts src/lib/repositories/mistakeJournalRepository.ts src/features/wellbeing/utils/mockWellbeingData.ts src/features/syllabus/utils/mockSyllabusData.ts replay_pid14288.log "src/app/(dashboard)/dashboard/mission-ias/vocabulary-lab/page.tsx"
+
+rm -rf src/features/journal src/features/planner src/features/flashcards src/features/dashboard src/lib/repositories/journalRepository.ts src/lib/repositories/mistakeJournalRepository.ts src/features/wellbeing/utils/mockWellbeingData.ts src/features/syllabus/utils/mockSyllabusData.ts replay_pid14288.log "src/app/(dashboard)/dashboard/mission-ias/vocabulary-lab/page.tsx"
+
+Fir .gitignore me manually ye 2 lines add karo (ya niche di gayi file se copy kar lo):
+*.log
+tsconfig.tsbuildinfo
+
+git add .gitignore
+git commit -m "Remove dead code: orphaned features/journal, planner, flashcards, dashboard clusters (27 unused files), duplicate vocab-lab route, and a 5.7MB stray JVM log"
+git push origin main
