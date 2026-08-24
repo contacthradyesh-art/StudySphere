@@ -45,7 +45,7 @@
     },
     {
       "src": "/screenshots/planner.png",
-      "sizes": "1920x913",
+      "sizes": "1920x910",
       "type": "image/png",
       "form_factor": "wide",
       "label": "StudySphere Life Planner showing tasks, goals and study schedule"
