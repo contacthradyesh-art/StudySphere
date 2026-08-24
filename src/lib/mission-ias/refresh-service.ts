@@ -2,7 +2,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { fetchRssItems } from './rss-parser';
 import { CURRENT_AFFAIRS_COLLECTION, type UpscCategory } from './current-affairs-schema';
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
 // Broad spread across UPSC's GS papers: background/explainer pieces (best for
 // exam prep, not just headlines), plus dedicated international, economy,
@@ -70,9 +70,13 @@ async function summarize(
   title: string,
   description: string
 ): Promise<{ summary: string; topic: string; examRelevance: string; category: UpscCategory; gsPaper: string }> {
-  const apiKey = process.env.GEMINI_API_KEY_MISSION_IAS;
+  // Falls back to the shared GEMINI_API_KEY if a dedicated Mission IAS key
+  // isn't set — GEMINI_API_KEY_MISSION_IAS was never documented in
+  // .env.example, so on most deployments it simply doesn't exist and this
+  // whole refresh pipeline was silently failing every run.
+  const apiKey = process.env.GEMINI_API_KEY_MISSION_IAS || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new GeminiError('GEMINI_API_KEY_MISSION_IAS is not set in this environment');
+    throw new GeminiError('Neither GEMINI_API_KEY_MISSION_IAS nor GEMINI_API_KEY is set in this environment');
   }
 
   const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
@@ -195,9 +199,9 @@ export interface RefreshResults {
  */
 export async function runCurrentAffairsRefresh(timeBudgetMs = 42000): Promise<RefreshResults> {
   if (!adminDb) throw new Error('Server not configured');
-  if (!process.env.GEMINI_API_KEY_MISSION_IAS) {
-    console.error('runCurrentAffairsRefresh: GEMINI_API_KEY_MISSION_IAS is not set in this environment');
-    return { fetched: 0, added: 0, skippedExisting: 0, errors: 0, stoppedEarly: false, fatalError: 'GEMINI_API_KEY_MISSION_IAS is not set' };
+  if (!process.env.GEMINI_API_KEY_MISSION_IAS && !process.env.GEMINI_API_KEY) {
+    console.error('runCurrentAffairsRefresh: no Gemini API key set (GEMINI_API_KEY_MISSION_IAS or GEMINI_API_KEY)');
+    return { fetched: 0, added: 0, skippedExisting: 0, errors: 0, stoppedEarly: false, fatalError: 'No Gemini API key set' };
   }
 
   const start = Date.now();

@@ -46,6 +46,13 @@ const MODULES: ModuleCard[] = [
 ];
 
 export default function MissionIasDashboardPage() {
+  // Built modules first — scanning a mixed grid of live/"coming soon" cards
+  // makes the section feel more unfinished than it is; grouping live ones
+  // up front shows what's actually usable right away.
+  const sortedModules = [...MODULES].sort((a, b) => (a.href ? 0 : 1) - (b.href ? 0 : 1));
+  const builtCount = MODULES.filter((m) => m.href).length;
+  const plannedCount = MODULES.length - builtCount;
+
   return (
     <div className="space-y-5 animate-fade-in">
       <div>
@@ -58,16 +65,17 @@ export default function MissionIasDashboardPage() {
         </p>
       </div>
 
-      <GlassCard className="border-primary/20 bg-primary/5">
-        <p className="text-sm">
-          🚧 <span className="font-medium">Phase 1 of many.</span> Only <strong>Current Affairs</strong> is live
-          right now. Every other module below is planned and will plug into this same architecture
-          (see the sub-navigation bar above) as it's built, one phase at a time.
-        </p>
-      </GlassCard>
+      {plannedCount > 0 && (
+        <GlassCard className="border-primary/20 bg-primary/5">
+          <p className="text-sm">
+            🚧 <strong>{builtCount} of {MODULES.length} modules are live</strong> — {plannedCount} more
+            are planned and will plug into this same architecture as they're built.
+          </p>
+        </GlassCard>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {MODULES.map((m) => {
+        {sortedModules.map((m) => {
           const Icon = m.icon;
           const card = (
             <div
