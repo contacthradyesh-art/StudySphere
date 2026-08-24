@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyRequestAuth } from '@/lib/auth/verify-request';
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
 
@@ -48,6 +49,9 @@ async function callGemini(messages: IncomingMessage[], mode: string, imageDataUr
 }
 
 export async function POST(req: NextRequest) {
+  const authResult = await verifyRequestAuth(req);
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const { messages, mode, image } = await req.json();
     if (!Array.isArray(messages) || messages.length === 0) {

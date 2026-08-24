@@ -8,6 +8,7 @@ import { Tabs } from "@/components/shared/Tabs";
 import { showToast } from "@/components/shared/Toast";
 import { cn } from "@/utils/cn";
 import { consumePendingAiPrompt } from "@/lib/ai/pending-prompt";
+import { authedFetch } from "@/lib/auth/authed-fetch";
 import type { ChatMessage, DoubtMode } from "../types";
 
 const modeTabs = [{ id: "standard", label: "Standard" }, { id: "explain-like-confused", label: "Explain Like I'm Confused" }];
@@ -35,7 +36,7 @@ function DoubtSolverInner() {
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/ai/chat', {
+      const res = await authedFetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,3 +1,4 @@
+import { authedFetch } from '@/lib/auth/authed-fetch';
 import type { ChatMessage } from '@/lib/firestore/flashcard-schema';
 
 export type AiTask = 'chat' | 'summarize' | 'flashcards' | 'quiz';
@@ -18,7 +19,7 @@ export interface AiResponse {
 
 /** Call the server-side AI route. The API key stays on the server. */
 export async function askAi(req: AiRequest): Promise<AiResponse> {
-  const res = await fetch('/api/ai/chat', {
+  const res = await authedFetch('/api/ai/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req)

@@ -7,6 +7,7 @@ import { Button } from "@/components/shared/Button";
 import { showToast } from "@/components/shared/Toast";
 import { useAuth } from "@/hooks/use-auth";
 import { createCustomTest } from "@/lib/mock-tests/mock-test-service";
+import { authedFetch } from "@/lib/auth/authed-fetch";
 import type { Question } from "../types";
 
 interface CreateTestDialogProps {
@@ -54,7 +55,7 @@ export function CreateTestDialog({ isOpen, onClose }: CreateTestDialogProps) {
     if (!examName.trim()) { showToast("Enter an exam name", "error"); return; }
     setGenerating(true);
     try {
-      const res = await fetch("/api/ai/mock-test", {
+      const res = await authedFetch("/api/ai/mock-test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ examName: examName.trim(), topic: topic.trim(), difficulty: "medium", count }),
@@ -89,7 +90,7 @@ export function CreateTestDialog({ isOpen, onClose }: CreateTestDialogProps) {
     if (!manualRaw.trim()) { showToast("Paste your questions first", "error"); return; }
     setSavingManual(true);
     try {
-      const res = await fetch("/api/ai/mock-test", {
+      const res = await authedFetch("/api/ai/mock-test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rawText: manualRaw }),
