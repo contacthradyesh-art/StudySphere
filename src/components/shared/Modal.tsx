@@ -41,10 +41,10 @@ export function Modal({ isOpen, onClose, title, children, size = "md", showClose
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }} transition={{ duration: 0.2, ease: "easeOut" }}
-            className={cn("relative w-full glass rounded-2xl shadow-elevated", sizeStyles[size], className)}
+            className={cn("relative flex max-h-[85vh] w-full flex-col glass rounded-2xl shadow-elevated", sizeStyles[size], className)}
           >
             {(title || showCloseButton) && (
-              <div className="flex items-center justify-between p-4 md:p-6 pb-0">
+              <div className="flex items-center justify-between p-4 md:p-6 pb-0 shrink-0">
                 {title && <h2 className="text-lg font-semibold text-charcoal-50">{title}</h2>}
                 {showCloseButton && (
                   <button onClick={onClose} className="p-1.5 rounded-lg text-charcoal-400 hover:text-charcoal-200 hover:bg-charcoal-800/50 transition-colors" aria-label="Close modal">
@@ -55,7 +55,7 @@ export function Modal({ isOpen, onClose, title, children, size = "md", showClose
                 )}
               </div>
             )}
-            <div className="p-4 md:p-6">{children}</div>
+            <div className="overflow-y-auto p-4 md:p-6">{children}</div>
           </motion.div>
         </div>
       )}

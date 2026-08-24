@@ -17,12 +17,12 @@ interface TabsProps {
 export function Tabs({ tabs, activeTab, onChange, variant = "default", fullWidth = false, className }: TabsProps) {
   const currentTab = activeTab || tabs[0]?.id;
   return (
-    <div className={cn("flex gap-1 p-1 rounded-xl", variant === "default" && "bg-charcoal-900/50 border border-charcoal-700/30", fullWidth && "w-full", className)}>
+    <div className={cn("flex gap-1 overflow-x-auto scrollbar-hide p-1 rounded-xl", variant === "default" && "bg-charcoal-900/50 border border-charcoal-700/30", fullWidth && "w-full", className)}>
       {tabs.map((tab) => (
         <button
           key={tab.id} onClick={() => onChange(tab.id)}
           className={cn(
-            "relative flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+            "relative flex shrink-0 items-center justify-center gap-2 whitespace-nowrap px-4 py-2 text-sm font-medium rounded-lg transition-colors",
             fullWidth && "flex-1",
             currentTab === tab.id ? "text-charcoal-50" : "text-charcoal-400 hover:text-charcoal-200"
           )}
