@@ -16,6 +16,7 @@ export function GlassCard({ children, className, delay = 0 }: GlassCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -2 }}
       transition={{ duration: 0.4, delay, ease: 'easeOut' }}
       className={cn('glass rounded-2xl p-5', className)}
     >
