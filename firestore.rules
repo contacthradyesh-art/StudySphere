@@ -91,6 +91,95 @@ service cloud.firestore {
       match /englishSpeakingSessions/{sessionId} {
         allow read, write: if isOwner(uid);
       }
+      // Mock Tests: AI-generated + manually-uploaded custom tests.
+      match /customMockTests/{testId} {
+        allow read, write: if isOwner(uid);
+      }
+      // Gamification profile (XP, level, badges).
+      match /gamification/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      // Map Practice: per-state quiz accuracy, used for Quick Stats
+      // (accuracy %, states mastered) and the Continue Learning card.
+      match /mapProgress/{stateKey} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // --- Top-level, userId-scoped collections ---
+    // These repositories (lib/repositories/*.ts) store documents in
+    // top-level collections filtered by a `userId` field, NOT as
+    // subcollections under users/{uid}.
+    function isOwnerOfDoc() {
+      return request.auth != null && request.auth.uid == resource.data.userId;
+    }
+    function isCreatingOwnDoc() {
+      return request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+
+    match /mockTestResults/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /testSessions/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /analyticsSnapshots/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /studyLogs/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /plans/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /missions/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /syllabusProgress/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /moodEntries/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /focusSessions/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /topicMastery/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /xpTransactions/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /flashcardDecks/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /flashcards/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /sm2Data/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /journalEntries/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
+    }
+    match /mistakeEntries/{docId} {
+      allow read, update, delete: if isOwnerOfDoc();
+      allow create: if isCreatingOwnDoc();
     }
 
     // Mission IAS: current affairs items are populated server-side only

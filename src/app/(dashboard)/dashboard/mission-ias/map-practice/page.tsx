@@ -4,13 +4,16 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { geoMercator, geoPath } from 'd3-geo';
 import type { Feature, Geometry, FeatureCollection } from 'geojson';
-import { Map, Target, Compass, RotateCcw, Trophy, Globe2, Landmark, Zap, Search, Waves, Mountain as MountainIcon } from 'lucide-react';
+import { Map, Target, Compass, RotateCcw, Trophy, Globe2, Landmark, Zap, Search, Waves, Mountain as MountainIcon, ZoomIn, ZoomOut, Crosshair, Percent, Star, Award } from 'lucide-react';
 import { GlassCard } from '@/components/shared/glass-card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { INDIA_STATES } from '@/lib/mission-ias/map-schema';
 import { RIVERS, MOUNTAINS, type RiverInfo, type MountainInfo } from '@/lib/mission-ias/geography-schema';
 import { AskAiButton } from '@/components/ai/ask-ai-button';
+import { useAuth } from '@/hooks/use-auth';
+import { getMapProgress, recordMapAttempt, summarizeMapProgress, type StateProgress } from '@/lib/repositories/mapProgressRepository';
+import { awardXp } from '@/lib/gamification/xp-service';
 
 type MapFeature = Feature<Geometry, { name: string }>;
 type RiverFeature = Feature<Geometry, { name?: string }>;
@@ -55,11 +58,21 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function MapPracticePage() {
+  const { user } = useAuth();
   const [region, setRegion] = useState<Region>('india');
   const [features, setFeatures] = useState<MapFeature[]>([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'explore' | 'identify' | 'timed'>('explore');
   const [selected, setSelected] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<'overview' | 'rivers' | 'mountains'>('overview');
+
+  // Real progress (Quick Stats + Continue Learning), backed by Firestore.
+  const [progress, setProgress] = useState<StateProgress[]>([]);
+  const [lastExplored, setLastExplored] = useState<string | null>(null);
+
+  // Zoom/pan for the map panel.
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const [queue, setQueue] = useState<string[]>([]);
   const [target, setTarget] = useState<string | null>(null);
@@ -100,6 +113,17 @@ export default function MapPracticePage() {
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [region]);
+
+  useEffect(() => {
+    if (!user) return;
+    getMapProgress().then(setProgress).catch(() => { /* Quick Stats just show 0 if this fails */ });
+    try {
+      const saved = localStorage.getItem('ss_map_last_explored');
+      if (saved) setLastExplored(saved);
+    } catch { /* ignore */ }
+  }, [user]);
+
+  const quickStats = useMemo(() => summarizeMapProgress(progress), [progress]);
 
   // Rivers dataset loaded once, independent of the India/World toggle.
   useEffect(() => {
@@ -216,6 +240,11 @@ export default function MapPracticePage() {
       setSelected(name);
       setSelectedRiver(null);
       setSelectedMountain(null);
+      setDetailTab('overview');
+      if (region === 'india') {
+        try { localStorage.setItem('ss_map_last_explored', name); } catch { /* ignore */ }
+        setLastExplored(name);
+      }
       return;
     }
     if (!target || feedback) return;
@@ -224,11 +253,21 @@ export default function MapPracticePage() {
     if (name === target) {
       setScore((s) => s + 1);
       setFeedback('correct');
+      if (region === 'india' && user) {
+        recordMapAttempt(target, true)
+          .then(() => getMapProgress())
+          .then(setProgress)
+          .catch(() => { /* Quick Stats just won't update this round if this fails */ });
+        void awardXp(user.uid, 'mapPracticeCorrect');
+      }
       const nextQueue = queue;
       setTimeout(() => startIdentifyRound(nextQueue, mode === 'timed'), mode === 'timed' ? 300 : 700);
     } else {
       setFeedback('wrong');
       setWrongState(name);
+      if (region === 'india' && user) {
+        recordMapAttempt(target, false).catch(() => { /* non-critical */ });
+      }
       if (mode === 'timed') {
         const nextQueue = queue;
         setTimeout(() => startIdentifyRound(nextQueue, true), 500);
@@ -262,6 +301,9 @@ export default function MapPracticePage() {
 
   const info = selected ? stateInfo(selected) : null;
   const unitLabel = region === 'india' ? 'states and union territories' : 'countries';
+  const stateRivers = useMemo(() => (info ? RIVERS.filter((r) => r.states.includes(info.name)) : []), [info]);
+  const stateMountains = useMemo(() => (info ? MOUNTAINS.filter((m) => m.states.includes(info.name)) : []), [info]);
+  const lastExploredInfo = lastExplored ? stateInfo(lastExplored) : null;
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -336,6 +378,54 @@ export default function MapPracticePage() {
         </div>
       </div>
 
+      {region === 'india' && user && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <GlassCard>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick Stats</p>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col items-center gap-1 rounded-lg bg-white/5 py-2">
+                <Percent className="h-4 w-4 text-primary" />
+                <span className="text-lg font-bold">{quickStats.accuracyPct}%</span>
+                <span className="text-[10px] text-muted-foreground">Accuracy</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 rounded-lg bg-white/5 py-2">
+                <Star className="h-4 w-4 text-amber-400" />
+                <span className="text-lg font-bold">{progress.reduce((s, p) => s + p.correctCount, 0) * 3}</span>
+                <span className="text-[10px] text-muted-foreground">XP Earned</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 rounded-lg bg-white/5 py-2">
+                <Award className="h-4 w-4 text-fuchsia-400" />
+                <span className="text-lg font-bold">{quickStats.statesMastered}</span>
+                <span className="text-[10px] text-muted-foreground">States Mastered</span>
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard className="md:col-span-2">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Continue Learning</p>
+            {lastExploredInfo ? (
+              <button
+                onClick={() => { setMode('explore'); setSelected(lastExploredInfo.name); setDetailTab('overview'); }}
+                className="flex w-full items-center justify-between gap-3 rounded-lg bg-white/5 p-2.5 text-left hover:bg-white/10"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-brand text-white">
+                    <Map className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{lastExploredInfo.name}</p>
+                    <p className="text-xs text-muted-foreground">Explore again</p>
+                  </div>
+                </div>
+                <span className="text-primary">&rarr;</span>
+              </button>
+            ) : (
+              <p className="text-sm text-muted-foreground">Explore a state to pick up where you left off next time.</p>
+            )}
+          </GlassCard>
+        </div>
+      )}
+
       {mode === 'identify' && (
         <GlassCard className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -403,10 +493,34 @@ export default function MapPracticePage() {
             className="pointer-events-none absolute inset-0 opacity-40"
             style={{ background: 'radial-gradient(ellipse at center, hsl(var(--primary)/0.12) 0%, transparent 70%)' }}
           />
+          <div className="absolute right-3 top-3 z-10 flex flex-col gap-1 rounded-lg bg-secondary/80 p-1 backdrop-blur">
+            <button
+              onClick={() => setZoom((z) => Math.min(4, z + 0.5))}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              title="Zoom in"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setZoom((z) => Math.max(1, z - 0.5))}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              title="Zoom out"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              title="Reset view"
+            >
+              <Crosshair className="h-4 w-4" />
+            </button>
+          </div>
           {loading ? (
             <p className="p-8 text-center text-sm text-muted-foreground">Loading map...</p>
           ) : pathGen ? (
             <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="relative mx-auto w-full max-w-md drop-shadow-[0_8px_24px_rgba(139,92,246,0.15)]">
+              <g transform={`translate(${WIDTH / 2}, ${HEIGHT / 2}) scale(${zoom}) translate(${-WIDTH / 2 + pan.x}, ${-HEIGHT / 2 + pan.y})`}>
               <defs>
                 <filter id="stateGlow" x="-50%" y="-50%" width="200%" height="200%">
                   <feGaussianBlur stdDeviation="3" result="blur" />
@@ -479,6 +593,7 @@ export default function MapPracticePage() {
                   </g>
                 );
               })}
+            </g>
             </svg>
           ) : null}
         </GlassCard>
@@ -530,28 +645,91 @@ export default function MapPracticePage() {
               {mode === 'explore' && region === 'india' &&
                 (info ? (
                   <GlassCard className="space-y-3">
-                    <h2 className="text-lg font-bold">{info.name}</h2>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {info.type === 'state' ? 'State' : 'Union Territory'}
-                    </p>
                     <div>
-                      <p className="text-xs text-muted-foreground">Capital</p>
-                      <p className="font-medium">{info.capital}</p>
+                      <h2 className="text-lg font-bold">{info.name}</h2>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {info.type === 'state' ? 'State' : 'Union Territory'}
+                      </p>
                     </div>
-                    {info.neighbors.length > 0 && (
-                      <div>
-                        <p className="text-xs text-muted-foreground">Borders</p>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {info.neighbors.map((n) => (
-                            <span key={n} className="rounded-full border border-white/10 px-2 py-0.5 text-[11px]">{n}</span>
+                    <div className="flex gap-1 rounded-lg bg-secondary p-1">
+                      {([
+                        { id: 'overview', label: 'Overview' },
+                        { id: 'rivers', label: `Rivers (${stateRivers.length})` },
+                        { id: 'mountains', label: `Mountains (${stateMountains.length})` },
+                      ] as const).map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => setDetailTab(t.id)}
+                          className={cn(
+                            'flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors',
+                            detailTab === t.id ? 'bg-gradient-brand text-white shadow' : 'text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {detailTab === 'overview' && (
+                      <>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Capital</p>
+                          <p className="font-medium">{info.capital}</p>
+                        </div>
+                        {info.neighbors.length > 0 && (
+                          <div>
+                            <p className="text-xs text-muted-foreground">Borders ({info.neighbors.length})</p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {info.neighbors.map((n) => (
+                                <span key={n} className="rounded-full border border-white/10 px-2 py-0.5 text-[11px]">{n}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <AskAiButton
+                          label="UPSC facts about this state"
+                          prompt={`Give me the most UPSC-relevant facts about ${info.name} (capital: ${info.capital}) \u2014 geography, key rivers/mountains, major schemes or issues associated with it, and anything notable for prelims or mains.`}
+                        />
+                      </>
+                    )}
+
+                    {detailTab === 'rivers' && (
+                      stateRivers.length > 0 ? (
+                        <div className="space-y-2">
+                          {stateRivers.map((r) => (
+                            <button
+                              key={r.id}
+                              onClick={() => { setSelectedRiver(r); setShowPhysical(true); }}
+                              className="flex w-full items-center gap-2 rounded-lg bg-white/5 p-2 text-left hover:bg-white/10"
+                            >
+                              <Waves className="h-4 w-4 shrink-0 text-sky-400" />
+                              <span className="text-sm font-medium">{r.name}</span>
+                            </button>
                           ))}
                         </div>
-                      </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No major rivers curated for {info.name} yet.</p>
+                      )
                     )}
-                    <AskAiButton
-                      label="UPSC facts about this state"
-                      prompt={`Give me the most UPSC-relevant facts about ${info.name} (capital: ${info.capital}) \u2014 geography, key rivers/mountains, major schemes or issues associated with it, and anything notable for prelims or mains.`}
-                    />
+
+                    {detailTab === 'mountains' && (
+                      stateMountains.length > 0 ? (
+                        <div className="space-y-2">
+                          {stateMountains.map((m) => (
+                            <button
+                              key={m.id}
+                              onClick={() => { setSelectedMountain(m); setShowPhysical(true); }}
+                              className="flex w-full items-center gap-2 rounded-lg bg-white/5 p-2 text-left hover:bg-white/10"
+                            >
+                              <MountainIcon className="h-4 w-4 shrink-0 text-amber-400" />
+                              <span className="text-sm font-medium">{m.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No major ranges/peaks curated for {info.name} yet.</p>
+                      )
+                    )}
                   </GlassCard>
                 ) : (
                   <GlassCard>

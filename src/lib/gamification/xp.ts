@@ -21,7 +21,10 @@ export const XP_REWARDS = {
   englishPractice: 12,
   // Ethics Lab (GS4) case study practice — slightly higher than quick English
   // practice since a full case-study answer is a bigger effort.
-  ethicsCaseStudy: 15
+  ethicsCaseStudy: 15,
+  // Map Practice — small reward per correct answer in Identify Quiz / Timed
+  // Challenge, so repeated practice still contributes to the account's XP/level.
+  mapPracticeCorrect: 3
 } as const;
 
 export type XpAction = keyof typeof XP_REWARDS;
