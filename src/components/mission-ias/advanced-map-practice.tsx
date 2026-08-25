@@ -47,23 +47,27 @@ type Difficulty = 'foundation' | 'upsc' | 'elite';
 
 const WIDTH = 520;
 const HEIGHT = 600;
-const MAP_COLORS = {
-  new: '#30283f',
-  weak: '#8b5cf6',
+
+// Stable per-region colors: each state/UT remains visually distinct while
+// learning status is communicated through glow/border/opacity instead.
+const STATE_PALETTE = [
+  '#f97316', '#ef4444', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#6366f1',
+  '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#fb7185', '#84cc16', '#10b981',
+  '#0ea5e9', '#7c3aed', '#c026d3', '#e11d48', '#f59e0b', '#16a34a', '#0891b2', '#2563eb',
+  '#4f46e5', '#9333ea', '#db2777', '#dc2626', '#ca8a04', '#15803d', '#0f766e', '#0369a1',
+  '#1d4ed8', '#6d28d9', '#a21caf', '#be123c',
+];
+
+const STATUS_COLORS = {
+  new: '#64748b',
+  weak: '#ef4444',
   learning: '#f59e0b',
   mastered: '#22c55e',
-  selected: '#c4b5fd',
-  target: '#f5f3ff',
+  selected: '#ffffff',
+  target: '#ffffff',
   wrong: '#ef4444',
 };
 
-function mapFill(progress?: StateProgress): string {
-  if (!progress) return MAP_COLORS.new;
-  const value = accuracy(progress);
-  if (value >= 70 && progress.correctCount >= 3) return MAP_COLORS.mastered;
-  if (value >= 50) return MAP_COLORS.learning;
-  return MAP_COLORS.weak;
-}
 const DIFFICULTY: Record<Difficulty, { label: string; seconds: number; points: number }> = {
   foundation: { label: 'Foundation', seconds: 12, points: 5 },
   upsc: { label: 'UPSC', seconds: 8, points: 10 },
@@ -86,6 +90,20 @@ function accuracy(progress?: StateProgress) {
   if (!progress) return 0;
   const attempts = progress.correctCount + progress.incorrectCount;
   return attempts ? Math.round((progress.correctCount / attempts) * 100) : 0;
+}
+
+function stateColor(name: string) {
+  let hash = 0;
+  for (let index = 0; index < name.length; index += 1) hash = (hash * 31 + name.charCodeAt(index)) | 0;
+  return STATE_PALETTE[Math.abs(hash) % STATE_PALETTE.length];
+}
+
+function stateStatus(progress?: StateProgress) {
+  if (!progress) return 'new';
+  const value = accuracy(progress);
+  if (value >= 70 && progress.correctCount >= 3) return 'mastered';
+  if (value >= 50) return 'learning';
+  return 'weak';
 }
 
 export function AdvancedMapPractice() {
@@ -185,14 +203,16 @@ export function AdvancedMapPractice() {
 
   const projection = useMemo(() => {
     if (!features.length) return null;
-    const collection: FeatureCollection<Geometry, { name: string }> = {
-      type: 'FeatureCollection',
-      features,
-    };
+    const collection: FeatureCollection<Geometry, { name: string }> = { type: 'FeatureCollection', features };
     return geoMercator().fitSize([WIDTH, HEIGHT], collection);
   }, [features]);
 
   const pathGen = useMemo(() => (projection ? geoPath(projection) : null), [projection]);
+
+  const labelPoints = useMemo(() => {
+    if (!pathGen) return new Map<string, [number, number]>();
+    return new Map(features.map((feature) => [featureName(feature), pathGen.centroid(feature)]));
+  }, [features, pathGen]);
 
   const startSmart = useCallback(() => {
     if (!features.length) return;
@@ -339,6 +359,11 @@ export function AdvancedMapPractice() {
   }, [selected, india]);
 
   const selectedProgress = selected ? progressByName.get(normalize(selected)) : undefined;
+  const selectedStatus = selectedProgress ? stateStatus(selectedProgress) : 'new';
+  const selectedArea = selectedInfo?.neighbors.length ?? 0;
+  const selectedDescription = selectedInfo
+    ? `${selectedInfo.type === 'state' ? 'State' : 'Union Territory'} with ${selectedArea} land-border neighbour${selectedArea === 1 ? '' : 's'}. Use the map to build location, border and capital recall.`
+    : 'Select a region to open its detailed explorer.';
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -379,7 +404,7 @@ export function AdvancedMapPractice() {
 
       {mode === 'explore' && <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Search ${india ? 'states and union territories' : 'countries'}...`} className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-3 text-sm outline-none focus:border-primary/40" /></div>}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.7fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(330px,0.75fr)]">
         <GlassCard className="relative overflow-hidden p-2 sm:p-4">
           <div className="absolute right-4 top-4 z-20 flex flex-col gap-1 rounded-xl border border-white/10 bg-secondary/85 p-1 backdrop-blur">
             <button type="button" aria-label="Zoom in" onClick={() => setZoom((value) => Math.min(4, value + 0.5))} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10"><Plus className="h-4 w-4" /></button>
@@ -389,21 +414,43 @@ export function AdvancedMapPractice() {
           <div className="pointer-events-none absolute bottom-4 left-4 z-20 rounded-2xl border border-white/10 bg-charcoal-950/90 px-3 py-2.5 shadow-xl backdrop-blur-md">
             <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Map mastery</p>
             <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-[10px] font-medium">
-              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: MAP_COLORS.new }} /> New</span>
-              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: MAP_COLORS.weak }} /> Weak</span>
-              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: MAP_COLORS.learning }} /> Learning</span>
-              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: MAP_COLORS.mastered }} /> Mastered</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: STATUS_COLORS.new }} /> New</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: STATUS_COLORS.weak }} /> Weak</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: STATUS_COLORS.learning }} /> Learning</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: STATUS_COLORS.mastered }} /> Mastered</span>
             </div>
           </div>
-          {loading ? <div className="flex h-[560px] items-center justify-center text-sm text-muted-foreground">Loading geography lab...</div> : pathGen ? <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="mx-auto h-auto max-h-[650px] w-full max-w-[560px]"><g transform={`translate(${WIDTH / 2} ${HEIGHT / 2}) scale(${zoom}) translate(${-WIDTH / 2} ${-HEIGHT / 2})`}><defs><filter id="mapGlow"><feGaussianBlur stdDeviation="2.5" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs>{features.map((feature, index) => { const name = featureName(feature); const item = progressByName.get(normalize(name)); const selectedHere = mode === 'explore' && selected === name; const targetHere = mode !== 'explore' && target === name; const wrongHere = wrongGuess === name; return <path key={`${name}-${index}`} d={pathGen(feature) ?? ''} onClick={() => choose(name)} fill={wrongHere ? MAP_COLORS.wrong : feedback === 'correct' && targetHere ? MAP_COLORS.mastered : selectedHere ? MAP_COLORS.selected : targetHere ? MAP_COLORS.target : mapFill(item)} fillOpacity={selectedHere ? 0.95 : mode === 'explore' ? 0.68 : 0.6} stroke={selectedHere || targetHere ? 'white' : 'rgba(255,255,255,.10)'} strokeWidth={selectedHere || targetHere ? 2.2 : 0.35} filter={selectedHere || targetHere || wrongHere ? 'url(#mapGlow)' : undefined} className="cursor-pointer transition-all duration-200 hover:brightness-125" aria-label={name}><title>{name}{item ? ` • ${accuracy(item)}% accuracy` : ''}</title></path>; })}</g></svg> : null}
+          {loading ? <div className="flex h-[560px] items-center justify-center text-sm text-muted-foreground">Loading geography lab...</div> : pathGen ? <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="mx-auto h-auto max-h-[650px] w-full max-w-[600px]"><g transform={`translate(${WIDTH / 2} ${HEIGHT / 2}) scale(${zoom}) translate(${-WIDTH / 2} ${-HEIGHT / 2})`}><defs><filter id="mapGlow"><feGaussianBlur stdDeviation="2.5" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs>{features.map((feature) => { const name = featureName(feature); const item = progressByName.get(normalize(name)); const selectedHere = mode === 'explore' && selected === name; const targetHere = mode !== 'explore' && target === name; const wrongHere = wrongGuess === name; const status = stateStatus(item); const point = labelPoints.get(name); const base = stateColor(name); return <g key={name}><path d={pathGen(feature) ?? ''} onClick={() => choose(name)} fill={wrongHere ? STATUS_COLORS.wrong : base} fillOpacity={selectedHere ? 1 : mode === 'explore' ? 0.78 : 0.72} stroke={selectedHere || targetHere ? STATUS_COLORS.selected : status === 'mastered' ? STATUS_COLORS.mastered : status === 'learning' ? STATUS_COLORS.learning : status === 'weak' ? STATUS_COLORS.weak : 'rgba(255,255,255,.34)'} strokeWidth={selectedHere || targetHere ? 2.5 : status === 'mastered' ? 1.5 : 0.65} filter={selectedHere || targetHere || wrongHere ? 'url(#mapGlow)' : undefined} className="cursor-pointer transition-all duration-200 hover:brightness-125" aria-label={name}><title>{name}{item ? ` • ${accuracy(item)}% accuracy • ${status}` : ' • New'}</title></path>{india && point && zoom <= 2 && <text x={point[0]} y={point[1]} textAnchor="middle" dominantBaseline="middle" className="pointer-events-none select-none fill-white font-semibold" style={{ fontSize: name.length > 14 ? 6 : 7, paintOrder: 'stroke', stroke: 'rgba(0,0,0,.72)', strokeWidth: 2 }}>{name.replace(' and ', ' & ')}</text>}</g>; })}</g></svg> : null}
         </GlassCard>
 
         <div className="space-y-3">
-          {mode === 'explore' && selected ? <GlassCard className="space-y-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs uppercase tracking-widest text-primary">Selected region</p><h2 className="mt-1 text-xl font-bold">{selected}</h2></div>{selectedProgress && <div className="rounded-xl bg-primary/10 px-3 py-2 text-center"><p className="text-lg font-bold">{accuracy(selectedProgress)}%</p><p className="text-[10px] text-muted-foreground">accuracy</p></div>}</div>{selectedInfo && <><div className="grid grid-cols-2 gap-2 text-sm"><div className="rounded-xl bg-white/5 p-3"><p className="text-xs text-muted-foreground">Type</p><p className="mt-1 font-medium">{selectedInfo.type === 'state' ? 'State' : 'Union Territory'}</p></div><div className="rounded-xl bg-white/5 p-3"><p className="text-xs text-muted-foreground">Capital</p><p className="mt-1 font-medium">{selectedInfo.capital}</p></div></div><div><p className="text-xs text-muted-foreground">Borders</p><div className="mt-1 flex flex-wrap gap-1">{selectedInfo.neighbors.map((neighbor) => <span key={neighbor} className="rounded-full border border-white/10 px-2 py-1 text-[11px]">{neighbor}</span>)}</div></div><AskAiButton label="UPSC facts & map traps" prompt={`Give me high-yield UPSC Prelims facts about ${selectedInfo.name}: capital, neighbouring states/countries, rivers, physical geography, national parks, borders, and common map-based traps.`} /></>}</GlassCard> : <GlassCard className="space-y-4"><div className="flex items-center gap-2"><Brain className="h-5 w-5 text-primary" /><h2 className="font-bold">Adaptive Intelligence</h2></div><p className="text-sm text-muted-foreground">Practice focuses on weak recall instead of repeating what you already know.</p>{india && user && <div className="space-y-2">{weakStates.slice(0, 5).map((name, index) => <button type="button" key={name} onClick={() => { goExplore(); setSelected(name); }} className="flex w-full items-center justify-between rounded-xl bg-white/5 p-3 text-left hover:bg-white/10"><span className="flex items-center gap-2 text-sm"><span className="text-xs text-muted-foreground">#{index + 1}</span>{name}</span><span className="text-xs font-semibold text-primary">{progressByName.get(normalize(name)) ? `${accuracy(progressByName.get(normalize(name)))}%` : 'New'}</span></button>)}</div>}<Button className="w-full bg-gradient-brand" onClick={startSmart}><Brain className="h-4 w-4" /> Start Smart Practice</Button></GlassCard>}
-
-          {india && user && <GlassCard><button type="button" onClick={() => setShowMastery((value) => !value)} className="flex w-full items-center justify-between"><span className="flex items-center gap-2 font-semibold"><ShieldCheck className="h-4 w-4 text-emerald-400" /> Mastery Matrix</span><span className="text-xs text-muted-foreground">{showMastery ? 'Hide' : 'View'}</span></button>{showMastery && <div className="mt-3 grid max-h-72 grid-cols-2 gap-2 overflow-auto">{features.map((feature) => { const name = featureName(feature); const item = progressByName.get(normalize(name)); const itemAccuracy = accuracy(item); const mastered = !!item && item.correctCount >= 3 && itemAccuracy >= 70; return <div key={name} className="rounded-lg bg-white/5 p-2"><div className="flex items-center justify-between gap-2 text-[11px]"><span className="truncate">{name}</span><span className={cn('font-bold', mastered ? 'text-emerald-400' : itemAccuracy >= 50 ? 'text-amber-400' : 'text-red-400')}>{item ? `${itemAccuracy}%` : '—'}</span></div><div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-brand" style={{ width: `${itemAccuracy}%` }} /></div></div>; })}</div>}</GlassCard>}
-
-          {lastState && <GlassCard className="flex items-center justify-between gap-3"><div><p className="text-xs text-muted-foreground">Continue learning</p><p className="font-semibold">{lastState}</p></div><button type="button" onClick={() => { goExplore(); setSelected(lastState); }} className="rounded-lg bg-primary/10 p-2 text-primary" aria-label="Continue learning"><RotateCcw className="h-4 w-4" /></button></GlassCard>}
+          {mode === 'explore' && selected ? <>
+            <GlassCard className="overflow-hidden p-0">
+              <div className="relative h-28 bg-gradient-to-br from-primary/35 via-indigo-500/20 to-cyan-400/10">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,.18),transparent_35%)]" />
+                <div className="absolute bottom-3 left-4"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">Explore State / UT</p><h2 className="mt-1 text-2xl font-bold text-white">{selected}</h2></div>
+                <div className="absolute right-4 top-4 rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-right backdrop-blur"><p className="text-lg font-bold text-white">{selectedProgress ? `${accuracy(selectedProgress)}%` : 'New'}</p><p className="text-[10px] text-white/60">map accuracy</p></div>
+              </div>
+              <div className="space-y-4 p-4">
+                <div className="flex items-center justify-between"><span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">{selectedInfo?.type === 'state' ? 'State' : 'Union Territory'}</span><span className={cn('rounded-full px-2.5 py-1 text-[10px] font-bold uppercase', selectedStatus === 'mastered' ? 'bg-emerald-500/10 text-emerald-300' : selectedStatus === 'learning' ? 'bg-amber-500/10 text-amber-300' : selectedStatus === 'weak' ? 'bg-red-500/10 text-red-300' : 'bg-white/5 text-muted-foreground')}>{selectedStatus}</span></div>
+                <p className="text-sm leading-6 text-muted-foreground">{selectedDescription}</p>
+                {selectedInfo && <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-xl border border-white/7 bg-white/5 p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Capital</p><p className="mt-1 font-semibold">{selectedInfo.capital}</p></div>
+                  <div className="rounded-xl border border-white/7 bg-white/5 p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Land neighbours</p><p className="mt-1 font-semibold">{selectedArea}</p></div>
+                  <div className="rounded-xl border border-white/7 bg-white/5 p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Map attempts</p><p className="mt-1 font-semibold">{selectedProgress ? selectedProgress.correctCount + selectedProgress.incorrectCount : 0}</p></div>
+                  <div className="rounded-xl border border-white/7 bg-white/5 p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Correct</p><p className="mt-1 font-semibold">{selectedProgress?.correctCount ?? 0}</p></div>
+                </div>}
+                {selectedInfo && <div><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Neighbouring regions</p><div className="flex flex-wrap gap-1.5">{selectedInfo.neighbors.map((neighbor) => <button type="button" key={neighbor} onClick={() => setSelected(neighbor)} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] hover:border-primary/30 hover:bg-primary/10">{neighbor}</button>)}</div></div>}
+                {selectedInfo && <div className="rounded-xl border border-primary/15 bg-primary/[0.05] p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-primary">UPSC lens</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Revise {selectedInfo.capital}, its neighbouring regions, physical location, important rivers/relief features and map-based elimination traps.</p></div>}
+                {selectedInfo && <AskAiButton label="UPSC facts & map traps" prompt={`Give me high-yield UPSC Prelims facts about ${selectedInfo.name}: capital, neighbouring states/countries, rivers, physical geography, national parks, borders, important locations and common map-based traps. Keep it exam-focused.`} />}
+              </div>
+            </GlassCard>
+            <GlassCard className="space-y-3"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Compass className="h-5 w-5 text-primary" /><h3 className="font-bold">Quick Explore</h3></div><span className="text-[10px] uppercase tracking-wider text-muted-foreground">Tap neighbour</span></div><div className="grid grid-cols-2 gap-2">{selectedInfo?.neighbors.slice(0, 6).map((neighbor) => <button type="button" key={neighbor} onClick={() => setSelected(neighbor)} className="rounded-xl bg-white/5 p-2.5 text-left text-xs font-medium hover:bg-white/10">{neighbor}</button>)}</div></GlassCard>
+          </> : <>
+            <GlassCard className="space-y-4"><div className="flex items-center gap-2"><Brain className="h-5 w-5 text-primary" /><h2 className="font-bold">Adaptive Intelligence</h2></div><p className="text-sm text-muted-foreground">Practice focuses on weak recall instead of repeating what you already know.</p>{india && user && <div className="space-y-2">{weakStates.slice(0, 5).map((name, index) => <button type="button" key={name} onClick={() => { goExplore(); setSelected(name); }} className="flex w-full items-center justify-between rounded-xl bg-white/5 p-3 text-left hover:bg-white/10"><span className="flex items-center gap-2 text-sm"><span className="text-xs text-muted-foreground">#{index + 1}</span>{name}</span><span className="text-xs font-semibold text-primary">{progressByName.get(normalize(name)) ? `${accuracy(progressByName.get(normalize(name)))}%` : 'New'}</span></button>)}</div>}<Button className="w-full bg-gradient-brand" onClick={startSmart}><Brain className="h-4 w-4" /> Start Smart Practice</Button></GlassCard>
+            {india && user && <GlassCard><button type="button" onClick={() => setShowMastery((value) => !value)} className="flex w-full items-center justify-between"><span className="flex items-center gap-2 font-semibold"><ShieldCheck className="h-4 w-4 text-emerald-400" /> Mastery Matrix</span><span className="text-xs text-muted-foreground">{showMastery ? 'Hide' : 'View'}</span></button>{showMastery && <div className="mt-3 grid max-h-72 grid-cols-2 gap-2 overflow-auto">{features.map((feature) => { const name = featureName(feature); const item = progressByName.get(normalize(name)); const itemAccuracy = accuracy(item); const mastered = !!item && item.correctCount >= 3 && itemAccuracy >= 70; return <div key={name} className="rounded-lg bg-white/5 p-2"><div className="flex items-center justify-between gap-2 text-[11px]"><span className="truncate">{name}</span><span className={cn('font-bold', mastered ? 'text-emerald-400' : itemAccuracy >= 50 ? 'text-amber-400' : 'text-red-400')}>{item ? `${itemAccuracy}%` : '—'}</span></div><div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-brand" style={{ width: `${itemAccuracy}%` }} /></div></div>; })}</div>}</GlassCard>}
+            {lastState && <GlassCard className="flex items-center justify-between gap-3"><div><p className="text-xs text-muted-foreground">Continue learning</p><p className="font-semibold">{lastState}</p></div><button type="button" onClick={() => { goExplore(); setSelected(lastState); }} className="rounded-lg bg-primary/10 p-2 text-primary" aria-label="Continue learning"><RotateCcw className="h-4 w-4" /></button></GlassCard>}
+          </>}
         </div>
       </div>
 
