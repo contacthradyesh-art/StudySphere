@@ -1,6 +1,5 @@
 'use client';
-import { useAuth } from '@/hooks/use-auth';
-import { requireAuth } from '@/lib/require-auth';
+
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
@@ -10,23 +9,8 @@ import { TaskItem } from '@/components/planner/task-item';
 import { TaskDialog } from '@/components/planner/task-dialog';
 import { WeeklyGrid } from '@/components/planner/weekly-grid';
 import { MonthlyView } from '@/components/planner/monthly-view';
-import { useTasksSync } from '@/hooks/use-tasks';
-import { usePlannerPlansSync, useUpcomingGoals } from '@/hooks/use-planner-plans';
-import { usePlannerStore } from '@/store/planner-store';
-import { createTask, deleteTask, toggleTask, updateTask } from '@/lib/planner/task-service';
-import { awardXp } from '@/lib/gamification/xp-service';
-import { cn } from '@/lib/utils';
-
-// Premium components
-import { PlannerHero } from '@/components/planner/premium/planner-hero';
-import { DailyMissionCard } from '@/components/planner/premium/daily-mission-card';
-import { ExamCountdown } from '@/components/planner/premium/exam-countdown';
-import { AchievementsPanel } from '@/components/planner/premium/achievements-panel';
-import { RecentActivity } from '@/components/planner/premium/recent-activity';
-import { StudyTimeline } from '@/components/planner/premium/study-timeline';
 import { TodaySchedule } from '@/components/planner/premium/today-schedule';
-import { TodayGoalCard } from '@/components/planner/premium/today-goal-card';
-import { DailyStatsRow } from '@/components/planner/premium/daily-stats-row';
+import { DayCommandCenter } from '@/components/planner/premium/day-command-center';
 import { FocusAnalytics } from '@/components/planner/premium/focus-analytics';
 import { StudyHeatmap } from '@/components/planner/premium/study-heatmap';
 import { SubjectProgress } from '@/components/planner/premium/subject-progress';
@@ -34,34 +18,33 @@ import { AiCoachPanel } from '@/components/planner/premium/ai-coach-panel';
 import { AiSmartPlanner } from '@/components/planner/premium/ai-smart-planner';
 import { GoalsTab } from '@/components/planner/premium/goals-tab';
 import { HabitsTab } from '@/components/planner/premium/habits-tab';
-import { HabitsOverviewPanel } from '@/components/planner/premium/habits-overview-panel';
-
-// Hooks
-import { usePlannerInsights } from '@/hooks/use-planner-insights';
+import { useTasksSync } from '@/hooks/use-tasks';
+import { usePlannerPlansSync } from '@/hooks/use-planner-plans';
 import { useLifeGoalsSync } from '@/hooks/use-lifegoals';
 import { useHabitsSync } from '@/hooks/use-habits';
 import { useSessionsSync } from '@/hooks/use-sessions';
-
-// Analytics & coach
-import { buildFocusAnalytics, buildSubjectStats, buildTodayTimeline, buildHeatmap } from '@/lib/planner/analytics';
-import { computeTodayGoalStats, type TodayGoalStats } from '@/lib/planner/schedule';
-import { buildCoachReport } from '@/lib/planner/ai-coach';
+import { usePlannerInsights } from '@/hooks/use-planner-insights';
 import { useHabitInsights } from '@/hooks/use-habit-insights';
-
-// Sessions from pomodoro store
+import { useAuth } from '@/hooks/use-auth';
+import { usePlannerStore } from '@/store/planner-store';
 import { usePomodoroStore } from '@/store/pomodoro-store';
-
+import { createTask, deleteTask, toggleTask, updateTask } from '@/lib/planner/task-service';
+import { awardXp } from '@/lib/gamification/xp-service';
+import { buildFocusAnalytics, buildSubjectStats, buildHeatmap } from '@/lib/planner/analytics';
+import { buildCoachReport } from '@/lib/planner/ai-coach';
+import { requireAuth } from '@/lib/require-auth';
+import { cn } from '@/lib/utils';
 import type { NewTask, Task, WeeklySlot } from '@/lib/firestore/planner-schema';
 
-type Tab = 'overview' | 'tasks' | 'goals' | 'habits' | 'analytics' | 'coach';
+type Tab = 'today' | 'tasks' | 'goals' | 'habits' | 'insights' | 'coach';
 
-const TABS: { id: Tab; label: string; emoji: string }[] = [
-  { id: 'overview',   label: 'Overview',   emoji: '🏠' },
-  { id: 'tasks',      label: 'Tasks',      emoji: '✅' },
-  { id: 'goals',      label: 'Goals',      emoji: '🎯' },
-  { id: 'habits',     label: 'Habits',     emoji: '🔥' },
-  { id: 'analytics',  label: 'Analytics',  emoji: '📊' },
-  { id: 'coach',      label: 'AI Coach',   emoji: '🤖' },
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'today', label: 'Today' },
+  { id: 'tasks', label: 'Tasks' },
+  { id: 'goals', label: 'Goals' },
+  { id: 'habits', label: 'Habits' },
+  { id: 'insights', label: 'Insights' },
+  { id: 'coach', label: 'AI Coach' },
 ];
 
 export default function PlannerPage() {
@@ -74,12 +57,12 @@ export default function PlannerPage() {
   const { user } = useAuth();
   const { tasks, loading } = usePlannerStore();
   const weeklySlots = usePlannerStore((s) => s.weeklySlots);
+  const weeklyLoading = usePlannerStore((s) => s.weeklyLoading);
   const sessions = usePomodoroStore((s) => s.sessions);
   const insights = usePlannerInsights();
-  const upcomingGoals = useUpcomingGoals();
   const habitInsights = useHabitInsights();
 
-  const [tab, setTab] = useState<Tab>('overview');
+  const [tab, setTab] = useState<Tab>('today');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
 
@@ -89,11 +72,9 @@ export default function PlannerPage() {
   }), [tasks]);
 
   const focusAnalytics = useMemo(() => buildFocusAnalytics(sessions), [sessions]);
-  const subjectStats   = useMemo(() => buildSubjectStats(tasks, sessions), [tasks, sessions]);
-  const todayTimeline  = useMemo(() => buildTodayTimeline(weeklySlots), [weeklySlots]);
-  const todayGoalStats = useMemo(() => computeTodayGoalStats(insights.tasksToday), [insights.tasksToday]);
-  const heatmapDays    = useMemo(() => buildHeatmap(sessions), [sessions]);
-  const coachReport    = useMemo(
+  const subjectStats = useMemo(() => buildSubjectStats(tasks, sessions), [tasks, sessions]);
+  const heatmapDays = useMemo(() => buildHeatmap(sessions), [sessions]);
+  const coachReport = useMemo(
     () => buildCoachReport(insights.dashboardStats, focusAnalytics, subjectStats, habitInsights),
     [insights.dashboardStats, focusAnalytics, subjectStats, habitInsights]
   );
@@ -104,15 +85,19 @@ export default function PlannerPage() {
       if (editing) await updateTask(user.uid, editing.id, data);
       else await createTask(user.uid, data);
       toast.success(editing ? 'Task updated' : 'Task created');
-    } catch { toast.error('Could not save task'); }
-    finally { setDialogOpen(false); setEditing(null); }
+    } catch {
+      toast.error('Could not save task');
+    } finally {
+      setDialogOpen(false);
+      setEditing(null);
+    }
   }
 
   async function handleToggle(task: Task) {
     if (!requireAuth(user)) return;
-    const nowCompleted = !task.completed;
-    await toggleTask(user.uid, task.id, nowCompleted);
-    if (nowCompleted) void awardXp(user.uid, 'completeTask');
+    const completed = !task.completed;
+    await toggleTask(user.uid, task.id, completed);
+    if (completed) void awardXp(user.uid, 'completeTask');
   }
 
   async function handleDelete(task: Task) {
@@ -122,262 +107,55 @@ export default function PlannerPage() {
   }
 
   const todayIso = new Date().toISOString().slice(0, 10);
-  const overdueTasks = useMemo(
-    () => tasks.filter((t) => !t.completed && t.dueDate < todayIso).sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
-    [tasks, todayIso]
-  );
-
-  const weeklyCompletion = useMemo(() => {
-    const weekAgoIso = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-    const dueThisWeek = tasks.filter((t) => t.dueDate >= weekAgoIso && t.dueDate <= todayIso);
-    if (dueThisWeek.length === 0) return null;
-    const done = dueThisWeek.filter((t) => t.completed).length;
-    return Math.round((done / dueThisWeek.length) * 100);
-  }, [tasks, todayIso]);
-
-  async function handleQuickComplete(task: Task) {
-    if (!requireAuth(user)) return;
-    await toggleTask(user.uid, task.id, true);
-    void awardXp(user.uid, 'completeTask');
-    toast.success(`"${task.title}" done — no more nagging about it!`);
-  }
+  const tasksToday = useMemo(() => tasks.filter((t) => t.dueDate === todayIso), [tasks, todayIso]);
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* ── Habits overview (shows when habits exist) ── */}
-      <HabitsOverviewPanel />
-
-      {/* ── Page title + action ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Life Planner</h1>
-          <p className="text-sm text-muted-foreground">Your AI-powered life operating system.</p>
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-violet-300">Life OS</p>
+          <h1 className="text-2xl font-black tracking-tight md:text-3xl">Planner</h1>
+          <p className="mt-1 text-sm text-muted-foreground">One system for deciding what matters, when it happens, and what comes next.</p>
         </div>
-        <div className="flex items-center gap-3">
-          {weeklyCompletion !== null && (
-            <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 sm:flex">
-              <span className={cn('text-sm font-bold', weeklyCompletion >= 80 ? 'text-emerald-400' : weeklyCompletion >= 50 ? 'text-amber-400' : 'text-red-400')}>
-                {weeklyCompletion}%
-              </span>
-              <span className="text-xs text-muted-foreground">completion this week</span>
-            </div>
-          )}
-          {tab === 'tasks' && (
-            <Button variant="gradient" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-              <Plus className="h-4 w-4" /> New task
-            </Button>
-          )}
-        </div>
-      </div>
+        <Button variant="gradient" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+          <Plus className="h-4 w-4" /> Plan task
+        </Button>
+      </header>
 
-      {/* ── STRICT: overdue tasks are impossible to miss, on every tab ── */}
-      {overdueTasks.length > 0 && (
-        <div className="rounded-2xl border border-red-500/30 bg-red-500/[0.07] p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-2 w-2 animate-pulse rounded-full bg-red-500" />
-            <h2 className="text-sm font-bold text-red-300">
-              {overdueTasks.length} overdue task{overdueTasks.length > 1 ? 's' : ''} — you committed to these
-            </h2>
-          </div>
-          <div className="space-y-1.5">
-            {overdueTasks.slice(0, 5).map((t) => {
-              const daysLate = Math.floor((new Date(todayIso).getTime() - new Date(t.dueDate).getTime()) / 86400000);
-              return (
-                <div key={t.id} className="flex items-center justify-between gap-3 rounded-xl bg-charcoal-900/60 px-3 py-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{t.title}</p>
-                    <p className="text-xs text-red-400">{daysLate} day{daysLate > 1 ? 's' : ''} late</p>
-                  </div>
-                  <button
-                    onClick={() => handleQuickComplete(t)}
-                    className="shrink-0 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25"
-                  >
-                    Mark done
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          {overdueTasks.length > 5 && (
-            <button onClick={() => setTab('tasks')} className="mt-2 text-xs text-red-300 hover:underline">
-              +{overdueTasks.length - 5} more overdue \u2192
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ── Tabs ── */}
-      <div className="overflow-x-auto pb-1 scrollbar-hide">
-        <div className="flex w-fit gap-1 rounded-xl bg-secondary p-1">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                'flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
-                tab === t.id ? 'bg-gradient-brand text-white shadow' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <span>{t.emoji}</span> {t.label}
+      <nav className="overflow-x-auto pb-1 scrollbar-hide" aria-label="Planner sections">
+        <div className="flex w-fit items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.035] p-1">
+          {TABS.map((item) => (
+            <button key={item.id} type="button" onClick={() => setTab(item.id)} className={cn('whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition-all', tab === item.id ? 'bg-white/[0.10] text-foreground shadow-sm ring-1 ring-white/10' : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground')}>
+              {item.label}
             </button>
           ))}
         </div>
-      </div>
+      </nav>
 
-      {/* ── OVERVIEW TAB ── */}
-      {tab === 'overview' && (
-        <div className="space-y-5">
-          <div className="grid gap-5 lg:grid-cols-2">
-            <DailyMissionCard insights={insights} onManageAll={() => setTab('tasks')} />
-            <StudyTimeline blocks={todayTimeline} />
-            <ExamCountdown goals={upcomingGoals} />
-            <RecentActivity tasks={tasks} sessions={sessions} goals={upcomingGoals} />
-          </div>
-
-          {/* ── Stats — moved below the actionable cards; not very useful up top when all zero for new users ── */}
-          <PlannerHero insights={insights} />
-        </div>
-      )}
-
-      {/* ── TASKS TAB ── */}
-      {tab === 'tasks' && (
-        <div className="space-y-5">
-          {/* Task daily/weekly/monthly sub-tabs */}
-          <TasksSection
-            tasks={tasks} loading={loading} grouped={grouped}
-            weeklySlots={weeklySlots}
-            tasksToday={insights.tasksToday}
-            todayGoalStats={todayGoalStats}
-            streakDays={insights.dashboardStats.streakDays}
-            missionPct={insights.missionPct}
-            studyTodaySeconds={insights.dashboardStats.dailySeconds}
-            totalXp={insights.gamification.profile.totalXp}
-            onToggle={handleToggle}
-            onEdit={(t) => { setEditing(t); setDialogOpen(true); }}
-            onDelete={handleDelete}
-          />
-        </div>
-      )}
-
-      {/* ── GOALS TAB ── */}
+      {tab === 'today' && <DayCommandCenter tasks={tasks} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onNewTask={() => { setEditing(null); setDialogOpen(true); }} />}
+      {tab === 'tasks' && <TasksWorkspace tasks={tasks} tasksToday={tasksToday} grouped={grouped} loading={loading} weeklySlots={weeklySlots} weeklyLoading={weeklyLoading} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onDelete={handleDelete} />}
       {tab === 'goals' && <GoalsTab />}
-
-      {/* ── HABITS TAB ── */}
       {tab === 'habits' && <HabitsTab />}
+      {tab === 'insights' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><FocusAnalytics data={focusAnalytics} /><StudyHeatmap days={heatmapDays} /></section><SubjectProgress subjects={subjectStats} /></div>}
+      {tab === 'coach' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><AiCoachPanel report={coachReport} /><div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.035] p-5"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-violet-300">Decision support</p><h2 className="mt-2 text-xl font-bold">Turn insight into a plan.</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Generate a focused weekly schedule from your current workload instead of manually filling every slot.</p></div></section><AiSmartPlanner weeklySlots={weeklySlots} /></div>}
 
-      {/* ── ANALYTICS TAB ── */}
-      {tab === 'analytics' && (
-        <div className="grid gap-5 lg:grid-cols-2">
-          <FocusAnalytics data={focusAnalytics} />
-          <StudyHeatmap days={heatmapDays} />
-          <div className="lg:col-span-2">
-            <SubjectProgress subjects={subjectStats} />
-          </div>
-        </div>
-      )}
-
-      {/* ── AI COACH TAB ── */}
-      {tab === 'coach' && (
-        <div className="grid gap-5 lg:grid-cols-2">
-          <AiCoachPanel report={coachReport} />
-          <AchievementsPanel gamification={insights.gamification} />
-          <div className="lg:col-span-2">
-            <AiSmartPlanner weeklySlots={weeklySlots} />
-          </div>
-        </div>
-      )}
-
-      <TaskDialog
-        open={dialogOpen}
-        initial={editing}
-        onClose={() => { setDialogOpen(false); setEditing(null); }}
-        onSubmit={handleSubmit}
-      />
+      <TaskDialog open={dialogOpen} initial={editing} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={handleSubmit} />
     </div>
   );
 }
 
-// ── Tasks section with internal sub-tabs ──────────────────────────────────────
-type SubTab = 'daily' | 'weekly' | 'monthly';
+function TasksWorkspace({ tasks, tasksToday, grouped, loading, weeklySlots, weeklyLoading, onToggle, onEdit, onDelete }: { tasks: Task[]; tasksToday: Task[]; grouped: { pending: Task[]; done: Task[] }; loading: boolean; weeklySlots: WeeklySlot[]; weeklyLoading: boolean; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; }) {
+  const [view, setView] = useState<'today' | 'all' | 'weekly' | 'monthly'>('today');
 
-function TasksSection({ tasks, loading, grouped, weeklySlots, tasksToday, todayGoalStats, streakDays, missionPct, studyTodaySeconds, totalXp, onToggle, onEdit, onDelete }: {
-  tasks: Task[];
-  loading: boolean;
-  grouped: { pending: Task[]; done: Task[] };
-  weeklySlots: WeeklySlot[];
-  tasksToday: Task[];
-  todayGoalStats: TodayGoalStats;
-  streakDays: number;
-  missionPct: number;
-  studyTodaySeconds: number;
-  totalXp: number;
-  onToggle: (t: Task) => void;
-  onEdit: (t: Task) => void;
-  onDelete: (t: Task) => void;
-}) {
-  const [sub, setSub] = useState<SubTab>('daily');
-  const weeklyLoading = usePlannerStore((s) => s.weeklyLoading);
+  return <section className="space-y-4">
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-bold">Task workspace</p><p className="text-xs text-muted-foreground">Keep execution simple. Use the timeline for time, tasks for everything else.</p></div><div className="flex rounded-xl border border-white/10 bg-white/[0.035] p-1">{(['today', 'all', 'weekly', 'monthly'] as const).map((item) => <button key={item} type="button" onClick={() => setView(item)} className={cn('rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-colors', view === item ? 'bg-white/[0.09] text-foreground' : 'text-muted-foreground hover:text-foreground')}>{item}</button>)}</div></div>
+    {view === 'today' && <div className="space-y-4">{loading ? <p className="text-sm text-muted-foreground">Loading your tasks…</p> : tasksToday.length > 0 ? <TodaySchedule tasksToday={tasksToday} onToggle={onToggle} /> : <GlassCard><p className="text-sm font-semibold">Nothing is due today.</p><p className="mt-1 text-xs text-muted-foreground">Use Plan task above to create a focused block.</p></GlassCard>}</div>}
+    {view === 'all' && <div className="space-y-5"><TaskGroup title="Active" tasks={grouped.pending} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} /><TaskGroup title="Completed" tasks={grouped.done} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} /></div>}
+    {view === 'weekly' && (weeklyLoading ? <p className="text-sm text-muted-foreground">Loading weekly plan…</p> : weeklySlots.length > 0 ? <WeeklyGrid slots={weeklySlots} /> : <GlassCard><p className="text-sm font-semibold">No weekly plan yet.</p><p className="mt-1 text-xs text-muted-foreground">Open AI Coach and generate a plan from your current workload.</p></GlassCard>)}
+    {view === 'monthly' && <MonthlyView />}
+  </section>;
+}
 
-  return (
-    <div className="space-y-4">
-      <div className="flex gap-1 rounded-xl bg-secondary/60 p-1 w-fit">
-        {(['daily', 'weekly', 'monthly'] as SubTab[]).map((s) => (
-          <button
-            key={s}
-            onClick={() => setSub(s)}
-            className={cn(
-              'rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition-colors',
-              sub === s ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-
-      {sub === 'daily' && (
-        <div className="space-y-4">
-          <DailyStatsRow
-            streakDays={streakDays}
-            planCompletionPct={missionPct}
-            studyTodaySeconds={studyTodaySeconds}
-            totalXp={totalXp}
-          />
-          <TodayGoalCard stats={todayGoalStats} />
-
-          {loading && <p className="text-sm text-muted-foreground">Loading tasks...</p>}
-          {!loading && tasks.length === 0 && (
-            <GlassCard><p className="text-sm text-muted-foreground">No tasks yet. Create your first one!</p></GlassCard>
-          )}
-          {!loading && tasksToday.length > 0 && (
-            <TodaySchedule tasksToday={tasksToday} onToggle={onToggle} />
-          )}
-
-          {/* Other days' pending tasks (not due today) still need to be visible/actionable. */}
-          {grouped.pending.filter((t) => !tasksToday.some((tt) => tt.id === t.id)).length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">Other Pending Tasks</p>
-              {grouped.pending
-                .filter((t) => !tasksToday.some((tt) => tt.id === t.id))
-                .map((t) => (
-                  <TaskItem key={t.id} task={t} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} />
-                ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {sub === 'weekly' && (
-        weeklyLoading ? (
-          <p className="text-sm text-muted-foreground">Loading weekly plan...</p>
-        ) : weeklySlots.length === 0 ? (
-          <GlassCard><p className="text-sm text-muted-foreground">No weekly plan yet. Generate one in the AI Coach tab.</p></GlassCard>
-        ) : (
-          <WeeklyGrid slots={weeklySlots} />
-        )
-      )}
-
-      {sub === 'monthly' && <MonthlyView />}
-    </div>
-  );
+function TaskGroup({ title, tasks, onToggle, onEdit, onDelete }: { title: string; tasks: Task[]; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; }) {
+  return <div className="space-y-2"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{title}</p><span className="text-xs text-muted-foreground">{tasks.length}</span></div>{tasks.length === 0 ? <GlassCard><p className="text-sm text-muted-foreground">Nothing here.</p></GlassCard> : tasks.map((task) => <TaskItem key={task.id} task={task} onToggle={() => onToggle(task)} onEdit={() => onEdit(task)} onDelete={() => onDelete(task)} />)}</div>;
 }
