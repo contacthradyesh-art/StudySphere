@@ -134,6 +134,7 @@ export default function DigitalLibraryPage() {
     let succeeded = 0;
     let failed = 0;
 
+    let firstErrorMsg: string | null = null;
     await Promise.all(
       toUpload.map(async (file, i) => {
         const { promise } = uploadLibraryFile(
@@ -145,8 +146,13 @@ export default function DigitalLibraryPage() {
         try {
           await promise;
           succeeded++;
-        } catch {
+        } catch (err) {
           failed++;
+          // Surface the real reason (e.g. Firebase's "permission-denied") so
+          // failures are diagnosable from the toast alone instead of a
+          // generic "failed to upload" that hides what actually went wrong.
+          if (!firstErrorMsg) firstErrorMsg = err instanceof Error ? err.message : String(err);
+          console.error('Library upload failed:', file.name, err);
         }
       })
     );
@@ -154,7 +160,7 @@ export default function DigitalLibraryPage() {
     setUploading(false);
     setUploadProgress([]);
     if (succeeded > 0) toast.success(`Uploaded ${succeeded} file${succeeded > 1 ? 's' : ''}`);
-    if (failed > 0) toast.error(`${failed} file${failed > 1 ? 's' : ''} failed to upload`);
+    if (failed > 0) toast.error(`${failed} file${failed > 1 ? 's' : ''} failed to upload${firstErrorMsg ? `: ${firstErrorMsg}` : ''}`);
   }
 
   async function handleFileChosen(e: React.ChangeEvent<HTMLInputElement>) {

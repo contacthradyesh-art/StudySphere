@@ -57,7 +57,12 @@ export function uploadLibraryFile(
 
   const docId = doc(filesCol(uid)).id;
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const storagePath = `library/${uid}/${docId}-${safeName}`;
+  // Must live under users/{uid}/... — storage.rules only grants read/write
+  // to that prefix. This used to be `library/${uid}/...`, which doesn't
+  // match the rule at all, so every upload was silently rejected by
+  // Firebase Storage with a permission-denied error before it ever reached
+  // the progress callback.
+  const storagePath = `users/${uid}/library/${docId}-${safeName}`;
   const storageRef = ref(storage, storagePath);
   const task = uploadBytesResumable(storageRef, file);
 
