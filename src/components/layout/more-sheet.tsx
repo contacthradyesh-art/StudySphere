@@ -5,24 +5,20 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
-  GraduationCap, Rocket, ShieldCheck, BookOpen, BookHeart,
-  Layers, Sparkles, LayoutDashboard, MoreHorizontal, X, Landmark, Languages, Brain
+  GraduationCap, ShieldCheck, BookOpen, BookHeart,
+  Layers, Sparkles, MoreHorizontal, X, Landmark, Languages
 } from 'lucide-react';
 
 const MORE_NAV = [
   { href: '/dashboard/mock-tests', label: 'Mock Tests', icon: GraduationCap },
   { href: '/dashboard/mission-ias', label: 'Mission IAS', icon: Landmark },
   { href: '/dashboard/english-lab', label: 'English Lab', icon: Languages },
-  { href: '/dashboard/psychology-lab', label: 'Psychology Lab', icon: Brain },
-  { href: '/dashboard/growth-os', label: 'Growth OS', icon: Rocket },
   { href: '/dashboard/focus', label: 'Focus Shield', icon: ShieldCheck },
   { href: '/dashboard/subjects', label: 'Subjects', icon: BookOpen },
   { href: '/dashboard/journal', label: 'Journal', icon: BookHeart },
   { href: '/dashboard/flashcards', label: 'Flashcards', icon: Layers },
   { href: '/dashboard/ai', label: 'AI Doubt Solver', icon: Sparkles },
-  { href: '/dashboard/analytics', label: 'Analytics', icon: LayoutDashboard },
   { href: '/dashboard/syllabus', label: 'Syllabus', icon: BookOpen },
-  { href: '/dashboard/wellbeing', label: 'Wellbeing', icon: BookHeart },
 ];
 
 export function MoreSheet() {
