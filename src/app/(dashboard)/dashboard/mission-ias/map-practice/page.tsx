@@ -29,8 +29,8 @@ const REGIONS: { id: Region; label: string; icon: typeof Landmark; dataUrl: stri
 // deterministically by feature index, so a given state/country always gets
 // the same color across sessions.
 const PALETTE = [
-  '#8b5cf6', '#ec4899', '#06b6d4', '#22c55e', '#f97316', '#eab308',
-  '#a855f7', '#14b8a6', '#f43f5e', '#3b82f6', '#84cc16', '#fb923c'
+  '#7c3aed', '#8b5cf6', '#a78bfa', '#9333ea', '#c084fc', '#a855f7',
+  '#d946ef', '#c026d3', '#e879f9', '#8b5cf6', '#a78bfa', '#9333ea'
 ];
 
 function colorForIndex(i: number): string {
@@ -398,27 +398,44 @@ export default function MapPracticePage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <GlassCard className="lg:col-span-2">
+        <GlassCard className="relative overflow-hidden lg:col-span-2">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-40"
+            style={{ background: 'radial-gradient(ellipse at center, hsl(var(--primary)/0.12) 0%, transparent 70%)' }}
+          />
           {loading ? (
             <p className="p-8 text-center text-sm text-muted-foreground">Loading map...</p>
           ) : pathGen ? (
-            <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="mx-auto w-full max-w-md">
+            <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="relative mx-auto w-full max-w-md drop-shadow-[0_8px_24px_rgba(139,92,246,0.15)]">
+              <defs>
+                <filter id="stateGlow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
               {features.map((f, i) => {
                 const name = getFeatureName(f.properties);
                 const isSelected = mode === 'explore' && selected === name;
                 const isWrong = (mode === 'identify' || mode === 'timed') && wrongState === name;
                 const isCorrectReveal = (mode === 'identify' || mode === 'timed') && feedback === 'correct' && target === name;
                 const baseColor = colorForIndex(i);
+                const isHighlighted = isSelected || isWrong || isCorrectReveal;
                 return (
                   <path
                     key={`${name}-${i}`}
                     d={pathGen(f) ?? ''}
                     onClick={() => handleFeatureClick(name)}
                     fill={isWrong ? '#ef4444' : isCorrectReveal ? '#22c55e' : baseColor}
-                    fillOpacity={isSelected ? 0.95 : isWrong || isCorrectReveal ? 0.9 : showPhysical ? 0.3 : 0.55}
+                    fillOpacity={isSelected ? 0.95 : isWrong || isCorrectReveal ? 0.92 : showPhysical ? 0.22 : 0.62}
+                    filter={isHighlighted ? 'url(#stateGlow)' : undefined}
+                    style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
                     className={cn(
-                      'cursor-pointer stroke-white/30 [stroke-width:0.5px] transition-all duration-200 hover:fill-opacity-90',
-                      isSelected && 'stroke-white [stroke-width:1.5px]'
+                      'cursor-pointer stroke-[hsl(var(--primary)/0.35)] [stroke-width:0.5px] transition-all duration-300 ease-out',
+                      'hover:fill-opacity-90 hover:brightness-125 hover:[stroke-width:1px] hover:stroke-white/60',
+                      isSelected && 'stroke-white [stroke-width:1.75px] brightness-110'
                     )}
                   >
                     <title>{name}</title>
@@ -436,6 +453,8 @@ export default function MapPracticePage() {
                       stroke="#38bdf8"
                       strokeWidth={selectedRiver?.id === info.id ? 2.5 : 1.5}
                       strokeOpacity={selectedRiver && selectedRiver.id !== info.id ? 0.4 : 0.9}
+                      filter={selectedRiver?.id === info.id ? 'url(#stateGlow)' : undefined}
+                      className="transition-all duration-300"
                     />
                   ))}
                   <title>{info.name}</title>
@@ -453,6 +472,8 @@ export default function MapPracticePage() {
                       fill="#f59e0b"
                       fillOpacity={selectedMountain && !isSel ? 0.4 : 1}
                       stroke="white" strokeWidth={isSel ? 1.5 : 1}
+                      filter={isSel ? 'url(#stateGlow)' : undefined}
+                      className="transition-all duration-300"
                     />
                     <title>{m.name}</title>
                   </g>
