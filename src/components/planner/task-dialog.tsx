@@ -5,6 +5,7 @@ import { Bell, BellRing } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/hooks/use-auth';
 import { SUBJECTS, type NewTask, type Priority, type Subject, type Task } from '@/lib/firestore/planner-schema';
 
 interface TaskDialogProps {
@@ -24,6 +25,7 @@ function reminderFor(date: string, time: string, minutesBefore: number) {
 }
 
 export function TaskDialog({ open, initial, onClose, onSubmit }: TaskDialogProps) {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState<Subject | ''>('');
   const [priority, setPriority] = useState<Priority>('medium');
@@ -33,7 +35,6 @@ export function TaskDialog({ open, initial, onClose, onSubmit }: TaskDialogProps
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderBefore, setReminderBefore] = useState('10');
 
-  // AI states
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiTasks, setAiTasks] = useState<NewTask[]>([]);
@@ -81,26 +82,32 @@ export function TaskDialog({ open, initial, onClose, onSubmit }: TaskDialogProps
   }
 
   async function handleAiGenerate() {
-    if (!aiInput.trim()) return;
+    if (!aiInput.trim() || !user) return;
     setAiLoading(true);
     setAiTasks([]);
     try {
+      const idToken = await user.getIdToken();
       const res = await fetch('/api/ai/planner', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: aiInput })
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ message: aiInput.trim() })
       });
       const data = await res.json();
-      if (data.tasks && Array.isArray(data.tasks)) {
+      if (!res.ok) throw new Error(data?.error || 'AI unavailable');
+      if (Array.isArray(data.tasks)) {
         const mapped: NewTask[] = data.tasks.map((t: any) => ({
-          title: t.title,
+          title: String(t.title || 'Study task'),
           subject: null,
-          priority: (t.priority?.toLowerCase() as Priority) ?? 'medium',
-          dueDate: t.dueDate ?? todayIso()
+          priority: ((t.priority || 'Medium').toLowerCase() as Priority),
+          dueDate: t.dueDate || todayIso()
         }));
         setAiTasks(mapped);
       }
-    } catch {
+    } catch (error) {
+      console.error('Planner AI request failed:', error);
       alert('AI se connect nahi ho pa raha, baad mein try karo');
     } finally {
       setAiLoading(false);
@@ -128,12 +135,7 @@ export function TaskDialog({ open, initial, onClose, onSubmit }: TaskDialogProps
             <p className="text-xs text-muted-foreground">Turn a task into a real time block.</p>
           </div>
           {!initial && (
-            <Button
-              type="button"
-              variant={showAiPanel ? 'gradient' : 'outline'}
-              size="sm"
-              onClick={() => setShowAiPanel(!showAiPanel)}
-            >
+            <Button type="button" variant={showAiPanel ? 'gradient' : 'outline'} size="sm" onClick={() => setShowAiPanel(!showAiPanel)}>
               ✨ AI se banao
             </Button>
           )}
@@ -143,13 +145,8 @@ export function TaskDialog({ open, initial, onClose, onSubmit }: TaskDialogProps
           <div className="space-y-3 rounded-xl border border-purple-500/30 bg-purple-500/10 p-4">
             <p className="text-sm text-muted-foreground">Batao kya padhna hai — AI tasks bana dega!</p>
             <div className="flex gap-2">
-              <Input
-                value={aiInput}
-                onChange={(e) => setAiInput(e.target.value)}
-                placeholder="Kal Physics aur Maths padhna hai..."
-                onKeyDown={(e) => e.key === 'Enter' && handleAiGenerate()}
-              />
-              <Button type="button" variant="gradient" size="sm" onClick={handleAiGenerate} disabled={aiLoading}>
+              <Input value={aiInput} onChange={(e) => setAiInput(e.target.value)} placeholder="Kal Physics aur Maths padhna hai..." onKeyDown={(e) => { if (e.key === 'Enter') void handleAiGenerate(); }} />
+              <Button type="button" variant="gradient" size="sm" onClick={() => void handleAiGenerate()} disabled={aiLoading || !user}>
                 {aiLoading ? '...' : 'Go'}
               </Button>
             </div>
@@ -175,85 +172,29 @@ export function TaskDialog({ open, initial, onClose, onSubmit }: TaskDialogProps
         )}
 
         <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Revise integration" autoFocus />
+          <div className="space-y-2"><Label htmlFor="title">Title</Label><Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Revise integration" autoFocus /></div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2"><Label htmlFor="subject">Subject</Label><select id="subject" value={subject} onChange={(e) => setSubject(e.target.value as Subject)} className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm"><option value="">None</option>{SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
+            <div className="space-y-2"><Label htmlFor="due">Due date</Label><Input id="due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="subject">Subject</Label>
-              <select id="subject" value={subject} onChange={(e) => setSubject(e.target.value as Subject)} className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm">
-                <option value="">None</option>
-                {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="due">Due date</Label>
-              <Input id="due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="startTime">Start time</Label>
-              <Input id="startTime" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endTime">End time</Label>
-              <Input id="endTime" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-            </div>
+            <div className="space-y-2"><Label htmlFor="startTime">Start time</Label><Input id="startTime" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="endTime">End time</Label><Input id="endTime" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></div>
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3.5">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-400/10 text-violet-300">
-                  {reminderEnabled ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-                </span>
-                <div>
-                  <p className="text-sm font-semibold">Smart reminder</p>
-                  <p className="text-[10px] text-muted-foreground">Notify before this time block.</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReminderEnabled((value) => !value)}
-                className={`relative h-6 w-11 rounded-full transition-colors ${reminderEnabled ? 'bg-violet-500' : 'bg-white/10'}`}
-                aria-label="Toggle reminder"
-              >
-                <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${reminderEnabled ? 'left-6' : 'left-1'}`} />
-              </button>
+              <div className="flex items-center gap-2"><span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-400/10 text-violet-300">{reminderEnabled ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}</span><div><p className="text-sm font-semibold">Smart reminder</p><p className="text-[10px] text-muted-foreground">Notify before this time block.</p></div></div>
+              <button type="button" onClick={() => setReminderEnabled((value) => !value)} className={`relative h-6 w-11 rounded-full transition-colors ${reminderEnabled ? 'bg-violet-500' : 'bg-white/10'}`} aria-label="Toggle reminder"><span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${reminderEnabled ? 'left-6' : 'left-1'}`} /></button>
             </div>
-            {reminderEnabled && (
-              <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-2">
-                <select value={reminderBefore} onChange={(e) => setReminderBefore(e.target.value)} className="h-10 rounded-md border border-input bg-background/60 px-3 text-sm">
-                  <option value="0">At start time</option>
-                  <option value="5">5 minutes before</option>
-                  <option value="10">10 minutes before</option>
-                  <option value="15">15 minutes before</option>
-                  <option value="30">30 minutes before</option>
-                </select>
-                <span className="text-[10px] text-muted-foreground">Browser alert</span>
-              </div>
-            )}
+            {reminderEnabled && <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-2"><select value={reminderBefore} onChange={(e) => setReminderBefore(e.target.value)} className="h-10 rounded-md border border-input bg-background/60 px-3 text-sm"><option value="0">At start time</option><option value="5">5 minutes before</option><option value="10">10 minutes before</option><option value="15">15 minutes before</option><option value="30">30 minutes before</option></select><span className="text-[10px] text-muted-foreground">Browser alert</span></div>}
           </div>
 
-          <div className="space-y-2">
-            <Label>Priority</Label>
-            <div className="flex gap-2">
-              {PRIORITIES.map((p) => (
-                <Button key={p} type="button" variant={priority === p ? 'gradient' : 'outline'} size="sm" className="flex-1 capitalize" onClick={() => setPriority(p)}>
-                  {priority === p && '✓ '}{p}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <div className="space-y-2"><Label>Priority</Label><div className="flex gap-2">{PRIORITIES.map((p) => <Button key={p} type="button" variant={priority === p ? 'gradient' : 'outline'} size="sm" className="flex-1 capitalize" onClick={() => setPriority(p)}>{priority === p && '✓ '}{p}</Button>)}</div></div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="submit" variant="gradient">{initial ? 'Save' : 'Create'}</Button>
-          </div>
+          <div className="flex justify-end gap-2 pt-2"><Button type="button" variant="ghost" onClick={onClose}>Cancel</Button><Button type="submit" variant="gradient">{initial ? 'Save' : 'Create'}</Button></div>
         </form>
       </div>
     </div>
