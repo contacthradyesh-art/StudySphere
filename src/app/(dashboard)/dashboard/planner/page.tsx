@@ -25,6 +25,7 @@ import { useHabitsSync } from '@/hooks/use-habits';
 import { useSessionsSync } from '@/hooks/use-sessions';
 import { usePlannerInsights } from '@/hooks/use-planner-insights';
 import { useHabitInsights } from '@/hooks/use-habit-insights';
+import { useAuth } from '@/hooks/use-auth';
 import { usePlannerStore } from '@/store/planner-store';
 import { usePomodoroStore } from '@/store/pomodoro-store';
 import { createTask, deleteTask, toggleTask, updateTask } from '@/lib/planner/task-service';
@@ -110,217 +111,51 @@ export default function PlannerPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Premium page header: deliberately quiet, no duplicate KPI cards. */}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-violet-300">Life OS</p>
           <h1 className="text-2xl font-black tracking-tight md:text-3xl">Planner</h1>
           <p className="mt-1 text-sm text-muted-foreground">One system for deciding what matters, when it happens, and what comes next.</p>
         </div>
-        <Button
-          variant="gradient"
-          onClick={() => { setEditing(null); setDialogOpen(true); }}
-        >
+        <Button variant="gradient" onClick={() => { setEditing(null); setDialogOpen(true); }}>
           <Plus className="h-4 w-4" /> Plan task
         </Button>
       </header>
 
-      {/* Clean primary navigation — no emoji, no decorative labels. */}
       <nav className="overflow-x-auto pb-1 scrollbar-hide" aria-label="Planner sections">
         <div className="flex w-fit items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.035] p-1">
           {TABS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setTab(item.id)}
-              className={cn(
-                'whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition-all',
-                tab === item.id
-                  ? 'bg-white/[0.10] text-foreground shadow-sm ring-1 ring-white/10'
-                  : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'
-              )}
-            >
+            <button key={item.id} type="button" onClick={() => setTab(item.id)} className={cn('whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition-all', tab === item.id ? 'bg-white/[0.10] text-foreground shadow-sm ring-1 ring-white/10' : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground')}>
               {item.label}
             </button>
           ))}
         </div>
       </nav>
 
-      {tab === 'today' && (
-        <DayCommandCenter
-          tasks={tasks}
-          onToggle={handleToggle}
-          onEdit={(task) => { setEditing(task); setDialogOpen(true); }}
-          onNewTask={() => { setEditing(null); setDialogOpen(true); }}
-        />
-      )}
-
-      {tab === 'tasks' && (
-        <TasksWorkspace
-          tasks={tasks}
-          tasksToday={tasksToday}
-          grouped={grouped}
-          loading={loading}
-          weeklySlots={weeklySlots}
-          weeklyLoading={weeklyLoading}
-          onToggle={handleToggle}
-          onEdit={(task) => { setEditing(task); setDialogOpen(true); }}
-          onDelete={handleDelete}
-        />
-      )}
-
+      {tab === 'today' && <DayCommandCenter tasks={tasks} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onNewTask={() => { setEditing(null); setDialogOpen(true); }} />}
+      {tab === 'tasks' && <TasksWorkspace tasks={tasks} tasksToday={tasksToday} grouped={grouped} loading={loading} weeklySlots={weeklySlots} weeklyLoading={weeklyLoading} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onDelete={handleDelete} />}
       {tab === 'goals' && <GoalsTab />}
       {tab === 'habits' && <HabitsTab />}
+      {tab === 'insights' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><FocusAnalytics data={focusAnalytics} /><StudyHeatmap days={heatmapDays} /></section><SubjectProgress subjects={subjectStats} /></div>}
+      {tab === 'coach' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><AiCoachPanel report={coachReport} /><div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.035] p-5"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-violet-300">Decision support</p><h2 className="mt-2 text-xl font-bold">Turn insight into a plan.</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Generate a focused weekly schedule from your current workload instead of manually filling every slot.</p></div></section><AiSmartPlanner weeklySlots={weeklySlots} /></div>}
 
-      {tab === 'insights' && (
-        <div className="space-y-5">
-          <section className="grid gap-5 lg:grid-cols-2">
-            <FocusAnalytics data={focusAnalytics} />
-            <StudyHeatmap days={heatmapDays} />
-          </section>
-          <SubjectProgress subjects={subjectStats} />
-        </div>
-      )}
-
-      {tab === 'coach' && (
-        <div className="space-y-5">
-          <section className="grid gap-5 lg:grid-cols-2">
-            <AiCoachPanel report={coachReport} />
-            <div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.035] p-5">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-violet-300">Decision support</p>
-              <h2 className="mt-2 text-xl font-bold">Turn insight into a plan.</h2>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Generate a focused weekly schedule from your current workload instead of manually filling every slot.
-              </p>
-            </div>
-          </section>
-          <AiSmartPlanner weeklySlots={weeklySlots} />
-        </div>
-      )}
-
-      <TaskDialog
-        open={dialogOpen}
-        initial={editing}
-        onClose={() => { setDialogOpen(false); setEditing(null); }}
-        onSubmit={handleSubmit}
-      />
+      <TaskDialog open={dialogOpen} initial={editing} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={handleSubmit} />
     </div>
   );
 }
 
-function TasksWorkspace({
-  tasks,
-  tasksToday,
-  grouped,
-  loading,
-  weeklySlots,
-  weeklyLoading,
-  onToggle,
-  onEdit,
-  onDelete,
-}: {
-  tasks: Task[];
-  tasksToday: Task[];
-  grouped: { pending: Task[]; done: Task[] };
-  loading: boolean;
-  weeklySlots: WeeklySlot[];
-  weeklyLoading: boolean;
-  onToggle: (task: Task) => void;
-  onEdit: (task: Task) => void;
-  onDelete: (task: Task) => void;
-}) {
+function TasksWorkspace({ tasks, tasksToday, grouped, loading, weeklySlots, weeklyLoading, onToggle, onEdit, onDelete }: { tasks: Task[]; tasksToday: Task[]; grouped: { pending: Task[]; done: Task[] }; loading: boolean; weeklySlots: WeeklySlot[]; weeklyLoading: boolean; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; }) {
   const [view, setView] = useState<'today' | 'all' | 'weekly' | 'monthly'>('today');
 
-  return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-bold">Task workspace</p>
-          <p className="text-xs text-muted-foreground">Keep execution simple. Use the timeline for time, tasks for everything else.</p>
-        </div>
-        <div className="flex rounded-xl border border-white/10 bg-white/[0.035] p-1">
-          {(['today', 'all', 'weekly', 'monthly'] as const).map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setView(item)}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-colors',
-                view === item ? 'bg-white/[0.09] text-foreground' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {view === 'today' && (
-        <div className="space-y-4">
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading your tasks…</p>
-          ) : tasksToday.length > 0 ? (
-            <TodaySchedule tasksToday={tasksToday} onToggle={onToggle} />
-          ) : (
-            <GlassCard>
-              <p className="text-sm font-semibold">Nothing is due today.</p>
-              <p className="mt-1 text-xs text-muted-foreground">Use Plan task above to create a focused block.</p>
-            </GlassCard>
-          )}
-        </div>
-      )}
-
-      {view === 'all' && (
-        <div className="space-y-5">
-          <TaskGroup title="Active" tasks={grouped.pending} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} />
-          <TaskGroup title="Completed" tasks={grouped.done} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} />
-        </div>
-      )}
-
-      {view === 'weekly' && (
-        weeklyLoading ? (
-          <p className="text-sm text-muted-foreground">Loading weekly plan…</p>
-        ) : weeklySlots.length > 0 ? (
-          <WeeklyGrid slots={weeklySlots} />
-        ) : (
-          <GlassCard>
-            <p className="text-sm font-semibold">No weekly plan yet.</p>
-            <p className="mt-1 text-xs text-muted-foreground">Open AI Coach and generate a plan from your current workload.</p>
-          </GlassCard>
-        )
-      )}
-
-      {view === 'monthly' && <MonthlyView />}
-    </section>
-  );
+  return <section className="space-y-4">
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-bold">Task workspace</p><p className="text-xs text-muted-foreground">Keep execution simple. Use the timeline for time, tasks for everything else.</p></div><div className="flex rounded-xl border border-white/10 bg-white/[0.035] p-1">{(['today', 'all', 'weekly', 'monthly'] as const).map((item) => <button key={item} type="button" onClick={() => setView(item)} className={cn('rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-colors', view === item ? 'bg-white/[0.09] text-foreground' : 'text-muted-foreground hover:text-foreground')}>{item}</button>)}</div></div>
+    {view === 'today' && <div className="space-y-4">{loading ? <p className="text-sm text-muted-foreground">Loading your tasks…</p> : tasksToday.length > 0 ? <TodaySchedule tasksToday={tasksToday} onToggle={onToggle} /> : <GlassCard><p className="text-sm font-semibold">Nothing is due today.</p><p className="mt-1 text-xs text-muted-foreground">Use Plan task above to create a focused block.</p></GlassCard>}</div>}
+    {view === 'all' && <div className="space-y-5"><TaskGroup title="Active" tasks={grouped.pending} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} /><TaskGroup title="Completed" tasks={grouped.done} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} /></div>}
+    {view === 'weekly' && (weeklyLoading ? <p className="text-sm text-muted-foreground">Loading weekly plan…</p> : weeklySlots.length > 0 ? <WeeklyGrid slots={weeklySlots} /> : <GlassCard><p className="text-sm font-semibold">No weekly plan yet.</p><p className="mt-1 text-xs text-muted-foreground">Open AI Coach and generate a plan from your current workload.</p></GlassCard>)}
+    {view === 'monthly' && <MonthlyView />}
+  </section>;
 }
 
-function TaskGroup({
-  title,
-  tasks,
-  onToggle,
-  onEdit,
-  onDelete,
-}: {
-  title: string;
-  tasks: Task[];
-  onToggle: (task: Task) => void;
-  onEdit: (task: Task) => void;
-  onDelete: (task: Task) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{title}</p>
-        <span className="text-xs text-muted-foreground">{tasks.length}</span>
-      </div>
-      {tasks.length === 0 ? (
-        <GlassCard><p className="text-sm text-muted-foreground">Nothing here.</p></GlassCard>
-      ) : (
-        tasks.map((task) => (
-          <TaskItem key={task.id} task={task} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} />
-        ))
-      )}
-    </div>
-  );
+function TaskGroup({ title, tasks, onToggle, onEdit, onDelete }: { title: string; tasks: Task[]; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; }) {
+  return <div className="space-y-2"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{title}</p><span className="text-xs text-muted-foreground">{tasks.length}</span></div>{tasks.length === 0 ? <GlassCard><p className="text-sm text-muted-foreground">Nothing here.</p></GlassCard> : tasks.map((task) => <TaskItem key={task.id} task={task} onToggle={() => onToggle(task)} onEdit={() => onEdit(task)} onDelete={() => onDelete(task)} />)}</div>;
 }
