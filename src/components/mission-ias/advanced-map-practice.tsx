@@ -47,7 +47,23 @@ type Difficulty = 'foundation' | 'upsc' | 'elite';
 
 const WIDTH = 520;
 const HEIGHT = 600;
-const PALETTE = ['#7c3aed', '#8b5cf6', '#a855f7', '#9333ea', '#c026d3', '#d946ef', '#6366f1', '#4f46e5'];
+const MAP_COLORS = {
+  new: '#30283f',
+  weak: '#8b5cf6',
+  learning: '#f59e0b',
+  mastered: '#22c55e',
+  selected: '#c4b5fd',
+  target: '#f5f3ff',
+  wrong: '#ef4444',
+};
+
+function mapFill(progress?: StateProgress): string {
+  if (!progress) return MAP_COLORS.new;
+  const value = accuracy(progress);
+  if (value >= 70 && progress.correctCount >= 3) return MAP_COLORS.mastered;
+  if (value >= 50) return MAP_COLORS.learning;
+  return MAP_COLORS.weak;
+}
 const DIFFICULTY: Record<Difficulty, { label: string; seconds: number; points: number }> = {
   foundation: { label: 'Foundation', seconds: 12, points: 5 },
   upsc: { label: 'UPSC', seconds: 8, points: 10 },
@@ -370,7 +386,16 @@ export function AdvancedMapPractice() {
             <button type="button" aria-label="Zoom out" onClick={() => setZoom((value) => Math.max(1, value - 0.5))} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10"><Minus className="h-4 w-4" /></button>
             <button type="button" aria-label="Reset zoom" onClick={() => setZoom(1)} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10"><Crosshair className="h-4 w-4" /></button>
           </div>
-          {loading ? <div className="flex h-[560px] items-center justify-center text-sm text-muted-foreground">Loading geography lab...</div> : pathGen ? <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="mx-auto h-auto max-h-[650px] w-full max-w-[560px]"><g transform={`translate(${WIDTH / 2} ${HEIGHT / 2}) scale(${zoom}) translate(${-WIDTH / 2} ${-HEIGHT / 2})`}><defs><filter id="mapGlow"><feGaussianBlur stdDeviation="2.5" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs>{features.map((feature, index) => { const name = featureName(feature); const item = progressByName.get(normalize(name)); const selectedHere = mode === 'explore' && selected === name; const targetHere = mode !== 'explore' && target === name; const wrongHere = wrongGuess === name; return <path key={`${name}-${index}`} d={pathGen(feature) ?? ''} onClick={() => choose(name)} fill={wrongHere ? '#ef4444' : feedback === 'correct' && targetHere ? '#22c55e' : PALETTE[index % PALETTE.length]} fillOpacity={selectedHere ? 0.95 : mode === 'explore' ? 0.68 : 0.6} stroke={selectedHere || targetHere ? 'white' : 'rgba(255,255,255,.22)'} strokeWidth={selectedHere || targetHere ? 1.8 : 0.55} filter={selectedHere || targetHere || wrongHere ? 'url(#mapGlow)' : undefined} className="cursor-pointer transition-all duration-200 hover:brightness-125" aria-label={name}><title>{name}{item ? ` • ${accuracy(item)}% accuracy` : ''}</title></path>; })}</g></svg> : null}
+          <div className="pointer-events-none absolute bottom-4 left-4 z-20 rounded-2xl border border-white/10 bg-charcoal-950/90 px-3 py-2.5 shadow-xl backdrop-blur-md">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Map mastery</p>
+            <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-[10px] font-medium">
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: MAP_COLORS.new }} /> New</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: MAP_COLORS.weak }} /> Weak</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: MAP_COLORS.learning }} /> Learning</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: MAP_COLORS.mastered }} /> Mastered</span>
+            </div>
+          </div>
+          {loading ? <div className="flex h-[560px] items-center justify-center text-sm text-muted-foreground">Loading geography lab...</div> : pathGen ? <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="mx-auto h-auto max-h-[650px] w-full max-w-[560px]"><g transform={`translate(${WIDTH / 2} ${HEIGHT / 2}) scale(${zoom}) translate(${-WIDTH / 2} ${-HEIGHT / 2})`}><defs><filter id="mapGlow"><feGaussianBlur stdDeviation="2.5" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs>{features.map((feature, index) => { const name = featureName(feature); const item = progressByName.get(normalize(name)); const selectedHere = mode === 'explore' && selected === name; const targetHere = mode !== 'explore' && target === name; const wrongHere = wrongGuess === name; return <path key={`${name}-${index}`} d={pathGen(feature) ?? ''} onClick={() => choose(name)} fill={wrongHere ? MAP_COLORS.wrong : feedback === 'correct' && targetHere ? MAP_COLORS.mastered : selectedHere ? MAP_COLORS.selected : targetHere ? MAP_COLORS.target : mapFill(item)} fillOpacity={selectedHere ? 0.95 : mode === 'explore' ? 0.68 : 0.6} stroke={selectedHere || targetHere ? 'white' : 'rgba(255,255,255,.10)'} strokeWidth={selectedHere || targetHere ? 2.2 : 0.35} filter={selectedHere || targetHere || wrongHere ? 'url(#mapGlow)' : undefined} className="cursor-pointer transition-all duration-200 hover:brightness-125" aria-label={name}><title>{name}{item ? ` • ${accuracy(item)}% accuracy` : ''}</title></path>; })}</g></svg> : null}
         </GlassCard>
 
         <div className="space-y-3">
