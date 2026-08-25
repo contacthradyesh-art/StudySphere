@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   Upload, FolderPlus, Search, Star, Trash2, ExternalLink, FileText,
-  Image as ImageIcon, Presentation, File as FileIcon, Library, X, LayoutGrid, List
+  Image as ImageIcon, Presentation, File as FileIcon, Library, X, LayoutGrid, List,
+  FolderOpen, HardDrive, Clock, Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { requireAuth } from '@/lib/require-auth';
@@ -21,6 +22,7 @@ import type { UpscCategory } from '@/lib/mission-ias/current-affairs-schema';
 import { AskAiButton } from '@/components/ai/ask-ai-button';
 import { createNote } from '@/lib/notes/notes-service';
 import { OFFICIAL_RESOURCES } from '@/lib/mission-ias/official-resources';
+import { getRelativeTime } from '@/utils/formatters';
 import dynamic from 'next/dynamic';
 
 // react-pdf (via pdfjs-dist) uses browser-only APIs like DOMMatrix that
@@ -104,6 +106,17 @@ export default function DigitalLibraryPage() {
 
   const totalSize = useMemo(() => files.reduce((sum, f) => sum + f.size, 0), [files]);
   const favoritesCount = useMemo(() => files.filter((f) => f.favorite).length, [files]);
+  // Real per-subject counts, used for the category chip row — no invented
+  // categories, just the same UpscCategory values already stored per file.
+  const categoryCounts = useMemo(() => {
+    const counts = {} as Record<UpscCategory, number>;
+    for (const f of files) if (f.subject) counts[f.subject] = (counts[f.subject] ?? 0) + 1;
+    return counts;
+  }, [files]);
+  const recentUploads = useMemo(
+    () => [...files].sort((a, b) => b.uploadedAt - a.uploadedAt).slice(0, 5),
+    [files]
+  );
 
   async function uploadFiles(fileList: FileList | File[]) {
     if (!requireAuth(user)) return;
@@ -317,20 +330,23 @@ export default function DigitalLibraryPage() {
           )}
         </div>
       ) : (
-        <>
+        <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
+        <div className="space-y-4">
           <div
             onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
             onDragLeave={() => setDragActive(false)}
             onDrop={handleDrop}
             className={cn(
-              'flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center transition-colors',
-              dragActive ? 'border-primary bg-primary/10' : 'border-white/10 text-muted-foreground'
+              'flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-8 text-center transition-colors',
+              dragActive ? 'border-primary bg-primary/10' : 'border-white/10'
             )}
           >
-            <Upload className="h-6 w-6" />
-            <p className="text-sm">Drag & drop files here, or</p>
-            <Button variant="outline" size="sm" onClick={() => { if (!requireAuth(user)) return; fileInputRef.current?.click(); }}>
-              Browse files
+            <div className="grid h-12 w-12 place-items-center rounded-full bg-gradient-brand text-white shadow-[0_8px_24px_-8px_hsl(var(--primary)/0.6)]">
+              <Upload className="h-5 w-5" />
+            </div>
+            <p className="text-sm text-muted-foreground">Drag & drop files here, or</p>
+            <Button variant="gradient" size="sm" onClick={() => { if (!requireAuth(user)) return; fileInputRef.current?.click(); }}>
+              Browse Files
             </Button>
             <p className="text-xs text-muted-foreground">PDF, Word, PowerPoint, images, or ZIP \u2014 up to {MAX_UPLOAD_SIZE_MB}MB each, multiple at once</p>
           </div>
@@ -367,10 +383,42 @@ export default function DigitalLibraryPage() {
           </GlassCard>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <GlassCard className="p-4"><p className="text-xs text-muted-foreground">Total Files</p><p className="text-xl font-bold">{files.length}</p></GlassCard>
-            <GlassCard className="p-4"><p className="text-xs text-muted-foreground">Total Size</p><p className="text-xl font-bold">{formatBytes(totalSize)}</p></GlassCard>
-            <GlassCard className="p-4"><p className="text-xs text-muted-foreground">Folders</p><p className="text-xl font-bold">{folders.length}</p></GlassCard>
-            <GlassCard className="p-4"><p className="text-xs text-muted-foreground">Favorites</p><p className="text-xl font-bold">{favoritesCount}</p></GlassCard>
+            <GlassCard className="flex items-center gap-3 p-4">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Total Files</p>
+                <p className="font-display text-xl font-bold">{files.length}</p>
+              </div>
+            </GlassCard>
+            <GlassCard className="flex items-center gap-3 p-4">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-sky-400/15 text-sky-400">
+                <FolderOpen className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Folders</p>
+                <p className="font-display text-xl font-bold">{folders.length}</p>
+              </div>
+            </GlassCard>
+            <GlassCard className="flex items-center gap-3 p-4">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-400/15 text-emerald-400">
+                <HardDrive className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Total Size</p>
+                <p className="font-display text-xl font-bold">{formatBytes(totalSize)}</p>
+              </div>
+            </GlassCard>
+            <GlassCard className="flex items-center gap-3 p-4">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-400/15 text-amber-400">
+                <Star className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Favorites</p>
+                <p className="font-display text-xl font-bold">{favoritesCount}</p>
+              </div>
+            </GlassCard>
           </div>
 
           <div className="overflow-x-auto pb-1 scrollbar-hide">
@@ -395,6 +443,39 @@ export default function DigitalLibraryPage() {
             </div>
           </div>
 
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-muted-foreground">Browse by Category</h2>
+            <div className="overflow-x-auto pb-1 scrollbar-hide">
+              <div className="flex w-fit gap-2">
+                <button
+                  onClick={() => setSubjectFilter('all')}
+                  className={cn(
+                    'flex min-w-[80px] flex-col items-center gap-0.5 whitespace-nowrap rounded-xl border px-4 py-2',
+                    subjectFilter === 'all' ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-muted-foreground hover:border-white/20'
+                  )}
+                >
+                  <span className="text-xs font-medium">All</span>
+                  <span className="font-display text-base font-bold">{files.length}</span>
+                </button>
+                {(Object.keys(SUBJECT_LABELS) as UpscCategory[])
+                  .filter((s) => categoryCounts[s])
+                  .map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSubjectFilter(s)}
+                      className={cn(
+                        'flex min-w-[80px] flex-col items-center gap-0.5 whitespace-nowrap rounded-xl border px-4 py-2',
+                        subjectFilter === s ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-muted-foreground hover:border-white/20'
+                      )}
+                    >
+                      <span className="text-xs font-medium">{SUBJECT_LABELS[s]}</span>
+                      <span className="font-display text-base font-bold">{categoryCounts[s]}</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5">
               <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -403,10 +484,6 @@ export default function DigitalLibraryPage() {
                 className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
             </div>
-            <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value as UpscCategory | 'all')} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs">
-              <option value="all">All Subjects</option>
-              {(Object.keys(SUBJECT_LABELS) as UpscCategory[]).map((s) => <option key={s} value={s}>{SUBJECT_LABELS[s]}</option>)}
-            </select>
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs">
               <option value="newest">Sort: Newest</option>
               <option value="name">Sort: Name</option>
@@ -492,7 +569,64 @@ export default function DigitalLibraryPage() {
             </select>
             <span>(applies to your next upload{activeFolder !== 'all' ? ', into the selected folder' : ''})</span>
           </div>
-        </>
+        </div>
+
+        <aside className="space-y-4">
+          <GlassCard className="space-y-1">
+            <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5" /> Quick Actions
+            </h2>
+            <button
+              onClick={() => setShowNewFolder(true)}
+              className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-white/5"
+            >
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-400/15 text-amber-400"><FolderPlus className="h-4 w-4" /></div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Create New Folder</p>
+                <p className="text-xs text-muted-foreground">Organize your files better</p>
+              </div>
+            </button>
+            <button
+              onClick={() => { if (!requireAuth(user)) return; fileInputRef.current?.click(); }}
+              className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-white/5"
+            >
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-400/15 text-emerald-400"><Upload className="h-4 w-4" /></div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Upload Files</p>
+                <p className="text-xs text-muted-foreground">Add study materials</p>
+              </div>
+            </button>
+          </GlassCard>
+
+          <GlassCard className="space-y-1">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+                <Clock className="h-3.5 w-3.5" /> Recent Uploads
+              </h2>
+            </div>
+            {recentUploads.length === 0 ? (
+              <p className="px-2 py-1 text-xs text-muted-foreground">Nothing uploaded yet.</p>
+            ) : (
+              recentUploads.map((file) => {
+                const Icon = fileIconFor(file.type);
+                return (
+                  <button
+                    key={file.id}
+                    onClick={() => (file.type.includes('pdf') || file.type.includes('image')) ? setReaderFile(file) : window.open(file.downloadUrl, '_blank')}
+                    className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-white/5"
+                  >
+                    <Icon className="h-6 w-6 shrink-0 text-primary" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">{formatBytes(file.size)} \u00b7 {getRelativeTime(new Date(file.uploadedAt))}</p>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </GlassCard>
+        </aside>
+        </div>
       )}
 
       {showNewFolder && (
