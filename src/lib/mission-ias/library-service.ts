@@ -1,8 +1,8 @@
 import {
-  addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, updateDoc, where
+  addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, updateDoc, where
 } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject, type UploadTaskSnapshot } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase/client';
+import { deleteObject, ref, type UploadTaskSnapshot } from 'firebase/storage';
+import { auth, db, storage } from '@/lib/firebase/client';
 import { COLLECTIONS } from '@/lib/firestore/schema';
 import {
   LIBRARY_FILES_COLLECTION, LIBRARY_FOLDERS_COLLECTION, LIBRARY_NOTES_SUBCOLLECTION,
@@ -23,11 +23,6 @@ function bookmarksCol(uid: string, fileId: string) {
   return collection(db, COLLECTIONS.users, uid, LIBRARY_FILES_COLLECTION, fileId, LIBRARY_BOOKMARKS_SUBCOLLECTION);
 }
 
-// ---------------------------------------------------------------------------
-// Files
-// ---------------------------------------------------------------------------
-
-/** Live-subscribe to a user's library files, newest first. */
 export function subscribeLibraryFiles(uid: string, cb: (files: LibraryFile[]) => void) {
   const q = query(filesCol(uid), orderBy('uploadedAt', 'desc'));
   return onSnapshot(q, (snap) => {
@@ -35,12 +30,46 @@ export function subscribeLibraryFiles(uid: string, cb: (files: LibraryFile[]) =>
   });
 }
 
+function getIdToken() {
+  return auth.currentUser?.getIdToken() ?? Promise.reject(new Error('Not signed in'));
+}
+
+function uploadToCloudinary(
+  file: File,
+  signed: { timestamp: number; folder: string; signature: string; apiKey: string; cloudName: string },
+  onProgress?: (percent: number) => void
+): Promise<{ secure_url: string; public_id: string; resource_type: string; bytes: number }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${signed.cloudName}/auto/upload`);
+    xhr.responseType = 'json';
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100));
+    };
+    xhr.onerror = () => reject(new Error('Network error while uploading file'));
+    xhr.onabort = () => reject(new Error('Upload cancelled'));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300 && xhr.response?.secure_url) {
+        resolve(xhr.response);
+      } else {
+        reject(new Error(xhr.response?.error?.message || `Cloudinary upload failed (${xhr.status})`));
+      }
+    };
+
+    const form = new FormData();
+    form.append('file', file);
+    form.append('api_key', signed.apiKey);
+    form.append('timestamp', String(signed.timestamp));
+    form.append('folder', signed.folder);
+    form.append('signature', signed.signature);
+    xhr.send(form);
+  });
+}
+
 /**
- * Uploads a file directly from the browser to Firebase Storage using a
- * resumable upload — the file is streamed straight to Storage, never
- * buffered through a server route, so there's no Vercel body-size limit
- * and no Cloudinary free-plan size cap. Progress is reported via onProgress
- * (0-100) so the UI can show a live progress bar.
+ * Uploads directly from the browser to Cloudinary using a short-lived server
+ * signature. This avoids Vercel request-body limits and keeps the API secret
+ * server-side. The Firestore record is written only after the upload succeeds.
  */
 export function uploadLibraryFile(
   uid: string,
@@ -55,49 +84,39 @@ export function uploadLibraryFile(
     };
   }
 
-  const docId = doc(filesCol(uid)).id;
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  // Must live under users/{uid}/... — storage.rules only grants read/write
-  // to that prefix. This used to be `library/${uid}/...`, which doesn't
-  // match the rule at all, so every upload was silently rejected by
-  // Firebase Storage with a permission-denied error before it ever reached
-  // the progress callback.
-  const storagePath = `users/${uid}/library/${docId}-${safeName}`;
-  const storageRef = ref(storage, storagePath);
-  const task = uploadBytesResumable(storageRef, file);
+  let cancelled = false;
+  const promise = (async () => {
+    const idToken = await getIdToken();
+    const signRes = await fetch('/api/library/sign-upload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${idToken}` },
+    });
+    const signed = await signRes.json();
+    if (!signRes.ok) throw new Error(signed?.error || 'Could not prepare upload');
+    if (cancelled) throw new Error('Upload cancelled');
 
-  const promise = new Promise<void>((resolve, reject) => {
-    task.on(
-      'state_changed',
-      (snap: UploadTaskSnapshot) => {
-        if (onProgress) onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
-      },
-      (err) => reject(err),
-      async () => {
-        try {
-          const downloadUrl = await getDownloadURL(storageRef);
-          const fileData: LibraryFile = {
-            id: docId,
-            name: file.name,
-            storagePath,
-            downloadUrl,
-            size: file.size,
-            type: file.type || 'application/octet-stream',
-            subject: opts.subject,
-            folderId: opts.folderId,
-            favorite: false,
-            uploadedAt: Date.now()
-          };
-          await addDoc(filesCol(uid), fileData);
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      }
-    );
-  });
+    const result = await uploadToCloudinary(file, signed, onProgress);
+    if (cancelled) throw new Error('Upload cancelled');
 
-  return { promise, cancel: () => task.cancel() };
+    const docRef = doc(filesCol(uid));
+    const fileData: LibraryFile = {
+      id: docRef.id,
+      name: file.name,
+      storagePath: result.public_id,
+      downloadUrl: result.secure_url,
+      resourceType: result.resource_type || 'raw',
+      size: Number(result.bytes || file.size),
+      type: file.type || 'application/octet-stream',
+      subject: opts.subject,
+      folderId: opts.folderId,
+      favorite: false,
+      uploadedAt: Date.now()
+    };
+    await setDoc(docRef, fileData);
+    onProgress?.(100);
+  })();
+
+  return { promise, cancel: () => { cancelled = true; } };
 }
 
 export async function toggleLibraryFavorite(uid: string, fileId: string, favorite: boolean) {
@@ -109,22 +128,26 @@ export async function moveLibraryFile(uid: string, fileId: string, folderId: str
 }
 
 export async function deleteLibraryFile(uid: string, file: LibraryFile) {
-  try {
-    await deleteObject(ref(storage, file.storagePath));
-  } catch {
-    // If the file is already gone from Storage, still clean up the Firestore record.
+  if (file.storagePath.startsWith(`users/${uid}/`)) {
+    try { await deleteObject(ref(storage, file.storagePath)); } catch { /* legacy file may already be gone */ }
+  } else {
+    try {
+      const idToken = await getIdToken();
+      await fetch('/api/library/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ publicId: file.storagePath, resourceType: file.resourceType || 'raw' }),
+      });
+    } catch (error) {
+      console.error('Cloudinary delete failed:', error);
+    }
   }
   await deleteDoc(doc(filesCol(uid), file.id));
 }
 
-/** Debounced by the caller (reader component) — not called on every page turn directly. */
 export async function updateReadingProgress(uid: string, fileId: string, lastPage: number, totalPages: number) {
   await updateDoc(doc(filesCol(uid), fileId), { lastPage, totalPages, lastOpenedAt: Date.now() });
 }
-
-// ---------------------------------------------------------------------------
-// Folders
-// ---------------------------------------------------------------------------
 
 export function subscribeLibraryFolders(uid: string, cb: (folders: LibraryFolder[]) => void) {
   const q = query(foldersCol(uid), orderBy('createdAt', 'asc'));
@@ -137,24 +160,18 @@ export async function createLibraryFolder(uid: string, name: string) {
   await addDoc(foldersCol(uid), { name, createdAt: Date.now() });
 }
 
-/** Deletes a folder. Files inside it are NOT deleted — they're moved back to "All Files" so nothing is lost. */
 export async function deleteLibraryFolder(uid: string, folderId: string) {
   const filesSnap = await getDocs(query(filesCol(uid), where('folderId', '==', folderId)));
   await Promise.all(filesSnap.docs.map((d) => updateDoc(d.ref, { folderId: null })));
   await deleteDoc(doc(foldersCol(uid), folderId));
 }
 
-// ---------------------------------------------------------------------------
-// Notes (per file, per page)
-// ---------------------------------------------------------------------------
-
 export function subscribeLibraryNotes(uid: string, fileId: string, cb: (notes: LibraryNote[]) => void) {
   const q = query(notesCol(uid, fileId), orderBy('createdAt', 'desc'));
-  return onSnapshot(
-    q,
-    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as LibraryNote)),
-    (error) => { console.error('subscribeLibraryNotes error:', error); cb([]); }
-  );
+  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as LibraryNote)), (error) => {
+    console.error('subscribeLibraryNotes error:', error);
+    cb([]);
+  });
 }
 
 export async function addLibraryNote(uid: string, fileId: string, page: number, text: string) {
@@ -165,17 +182,12 @@ export async function deleteLibraryNote(uid: string, fileId: string, noteId: str
   await deleteDoc(doc(notesCol(uid, fileId), noteId));
 }
 
-// ---------------------------------------------------------------------------
-// Bookmarks (per file, per page)
-// ---------------------------------------------------------------------------
-
 export function subscribeLibraryBookmarks(uid: string, fileId: string, cb: (bookmarks: LibraryBookmark[]) => void) {
   const q = query(bookmarksCol(uid, fileId), orderBy('page', 'asc'));
-  return onSnapshot(
-    q,
-    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as LibraryBookmark)),
-    (error) => { console.error('subscribeLibraryBookmarks error:', error); cb([]); }
-  );
+  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as LibraryBookmark)), (error) => {
+    console.error('subscribeLibraryBookmarks error:', error);
+    cb([]);
+  });
 }
 
 export async function addLibraryBookmark(uid: string, fileId: string, page: number, label: string) {
