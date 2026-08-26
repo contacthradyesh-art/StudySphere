@@ -5,8 +5,9 @@ const config: CapacitorConfig = {
   appName: 'StudySphere',
   webDir: 'out',
 
+  // Stable production origin for Play Store builds. Avoid temporary deployment URLs.
   server: {
-    url: 'https://study-sphere-flax.vercel.app',
+    url: 'https://study-sphere-contacthradyesh-arts-projects.vercel.app',
     androidScheme: 'https',
   },
 };
