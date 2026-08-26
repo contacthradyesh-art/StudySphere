@@ -5,12 +5,17 @@ import {
 import { db } from '@/lib/firebase/client';
 import { COLLECTIONS } from '@/lib/firestore/schema';
 import { CURRENT_AFFAIRS_COLLECTION, type CurrentAffairsItem } from '@/lib/mission-ias/current-affairs-schema';
+import { HINDI_CURRENT_AFFAIRS } from './hindi-current-affairs';
 
-/** Live-subscribes to the most recent current-affairs items (newest first). */
+/** Live-subscribes to current-affairs items. If Firestore is empty/unavailable, show the curated Hindi starter set. */
 export function subscribeCurrentAffairs(cb: (items: CurrentAffairsItem[]) => void, max = 100) {
   const q = query(collection(db, CURRENT_AFFAIRS_COLLECTION), orderBy('publishedAt', 'desc'), fbLimit(max));
   return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => d.data() as CurrentAffairsItem));
+    const live = snap.docs.map((d) => d.data() as CurrentAffairsItem);
+    cb(live.length ? live : HINDI_CURRENT_AFFAIRS);
+  }, (error) => {
+    console.error('Current Affairs Firestore subscription failed:', error);
+    cb(HINDI_CURRENT_AFFAIRS);
   });
 }
 
