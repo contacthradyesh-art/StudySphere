@@ -22,7 +22,7 @@ export interface SpeakingFeedback {
   transcript: string;
   fluencyNotes: string;
   grammarNotes: string;
-  vocabularyNotes: string;
+  vocabularyNotes: string[];
   suggestions: string[];
 }
 
@@ -46,7 +46,7 @@ export const WRITING_PROMPTS = [
 ];
 
 export const SPEAKING_PROMPTS = [
-  'Introduce yourself in under a minute \u2014 your background, interests, and goals.',
+  'Introduce yourself in under a minute — your background, interests, and goals.',
   'Describe your hometown to someone who has never been there.',
   'Talk about a skill you want to learn and why it matters to you.',
   'Explain a current event you find interesting, in your own words.',
