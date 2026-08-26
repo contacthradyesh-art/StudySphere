@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, Check, LogOut, Search, Settings, User as UserIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,32 @@ export function Topbar() {
   const router = useRouter();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+      if (!notificationRef.current?.contains(target)) setNotificationsOpen(false);
+      if (!profileRef.current?.contains(target)) setProfileOpen(false);
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setNotificationsOpen(false);
+        setProfileOpen(false);
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        router.push('/dashboard/planner');
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [router]);
 
   async function handleSignOut() {
     await signOut();
@@ -37,8 +63,8 @@ export function Topbar() {
       <button
         type="button"
         onClick={() => router.push('/dashboard/planner')}
-        className="hidden min-w-0 max-w-sm flex-1 items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-left md:flex"
-        aria-label="Open planner search"
+        className="hidden min-w-0 max-w-xl flex-1 items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-left md:flex"
+        aria-label="Search StudySphere"
       >
         <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="truncate text-sm text-muted-foreground">Search tasks, goals, subjects...</span>
@@ -46,17 +72,11 @@ export function Topbar() {
       </button>
 
       <div className="ml-auto flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 rounded-xl hover:bg-white/5 md:hidden"
-          aria-label="Search planner"
-          onClick={() => router.push('/dashboard/planner')}
-        >
+        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/5 md:hidden" aria-label="Search planner" onClick={() => router.push('/dashboard/planner')}>
           <Search className="h-5 w-5" />
         </Button>
 
-        <div className="relative">
+        <div className="relative" ref={notificationRef}>
           <Button
             variant="ghost"
             size="icon"
@@ -87,22 +107,18 @@ export function Topbar() {
           )}
         </div>
 
-        <div className="relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 rounded-xl hover:bg-white/5"
-            aria-label="Open profile"
-            aria-expanded={profileOpen}
-            onClick={() => { setProfileOpen((v) => !v); setNotificationsOpen(false); }}
-          >
+        <div className="relative" ref={profileRef}>
+          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/5" aria-label="Open profile" aria-expanded={profileOpen} onClick={() => { setProfileOpen((v) => !v); setNotificationsOpen(false); }}>
             <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-brand text-[11px] font-bold text-white">{initials}</span>
           </Button>
           {profileOpen && (
-            <div className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl border border-white/10 bg-background/95 p-2 shadow-2xl backdrop-blur-xl">
-              <div className="mb-1 rounded-xl bg-white/[0.03] px-3 py-2.5"><p className="truncate text-sm font-semibold">{user?.displayName || 'Student'}</p><p className="truncate text-[11px] text-muted-foreground">{user?.email || ''}</p></div>
-              <button type="button" onClick={() => { setProfileOpen(false); router.push('/dashboard/settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-white/5"><Settings className="h-4 w-4" /> Settings</button>
+            <div className="absolute right-0 top-12 w-60 overflow-hidden rounded-2xl border border-white/10 bg-background/95 p-2 shadow-2xl backdrop-blur-xl">
+              <div className="mb-1 flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-brand text-sm font-bold text-white">{initials}</span>
+                <div className="min-w-0"><p className="truncate text-sm font-semibold">{user?.displayName || 'Student'}</p><p className="truncate text-[11px] text-muted-foreground">{user?.email || ''}</p></div>
+              </div>
               <button type="button" onClick={() => { setProfileOpen(false); router.push('/dashboard/settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-white/5"><UserIcon className="h-4 w-4" /> Profile</button>
+              <button type="button" onClick={() => { setProfileOpen(false); router.push('/dashboard/settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-white/5"><Settings className="h-4 w-4" /> Settings</button>
               <button type="button" onClick={handleSignOut} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-300 hover:bg-red-500/10"><LogOut className="h-4 w-4" /> Sign out</button>
             </div>
           )}
