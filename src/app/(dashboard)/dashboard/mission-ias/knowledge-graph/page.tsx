@@ -1,0 +1,4 @@
+'use client';
+import { Network } from 'lucide-react';
+import { AdvancedModulePage } from '@/components/mission-ias/advanced-module-page';
+export default function KnowledgeGraph(){return <AdvancedModulePage config={{title:'Knowledge Graph',description:'Connect static syllabus concepts with current affairs, PYQs, notes and answer-writing themes instead of studying topics in isolation.',icon:Network,focus:['Connections','Syllabus','Value-add'],actions:['Build a link','Topic map','Revision graph'],prompts:['Connect one current-affairs issue to two static syllabus concepts and one PYQ.','Map a policy issue to Constitution, economy, society and governance dimensions.','Identify three examples or case studies that can enrich a GS answer.','Create a topic chain: concept → current issue → PYQ → revision note.']}}/>}
