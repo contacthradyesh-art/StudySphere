@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    path: '/dashboard/mission-ias',
+    path: '/',
     maxAge: MAX_AGE,
   });
 
@@ -68,6 +68,12 @@ export async function POST(request: Request) {
 
 export async function DELETE() {
   const store = await cookies();
-  store.delete(COOKIE);
+  store.set(COOKIE, '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  });
   return NextResponse.json({ ok: true });
 }
