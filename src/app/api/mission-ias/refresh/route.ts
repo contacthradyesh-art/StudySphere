@@ -11,16 +11,24 @@ async function getUidFromRequest(req: NextRequest): Promise<string | null> {
   const authHeader = req.headers.get('authorization') || '';
   const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   if (!idToken || !adminAuth) return null;
-  try { return (await adminAuth.verifyIdToken(idToken)).uid; } catch { return null; }
+  try {
+    return (await adminAuth.verifyIdToken(idToken)).uid;
+  } catch {
+    return null;
+  }
 }
 
 /** Manual refresh. Live RSS/AI data is preferred; the curated Hindi set is persisted if the live pipeline returns no new items. */
 export async function POST(req: NextRequest) {
-  if (!adminDb) return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
+  if (!adminDb) {
+    return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
+  }
+
+  const db = adminDb;
   const uid = await getUidFromRequest(req);
   if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const lockRef = adminDb.collection('appConfig').doc('currentAffairsRefresh');
+  const lockRef = db.collection('appConfig').doc('currentAffairsRefresh');
   const lockSnap = await lockRef.get();
   const lastRun = lockSnap.exists ? (lockSnap.data()?.lastRun as number | undefined) : undefined;
   if (lastRun && Date.now() - lastRun < COOLDOWN_MS) {
@@ -33,9 +41,9 @@ export async function POST(req: NextRequest) {
     try {
       const results = await runCurrentAffairsRefresh();
       if (results.added === 0) {
-        const batch = adminDb.batch();
+        const batch = db.batch();
         for (const item of HINDI_CURRENT_AFFAIRS) {
-          batch.set(adminDb.collection('currentAffairs').doc(item.id), item, { merge: true });
+          batch.set(db.collection('currentAffairs').doc(item.id), item, { merge: true });
         }
         await batch.commit();
       }
@@ -43,10 +51,14 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error('Current affairs refresh failed', err);
       try {
-        const batch = adminDb.batch();
-        for (const item of HINDI_CURRENT_AFFAIRS) batch.set(adminDb.collection('currentAffairs').doc(item.id), item, { merge: true });
+        const batch = db.batch();
+        for (const item of HINDI_CURRENT_AFFAIRS) {
+          batch.set(db.collection('currentAffairs').doc(item.id), item, { merge: true });
+        }
         await batch.commit();
-      } catch (seedErr) { console.error('Hindi current affairs seed failed', seedErr); }
+      } catch (seedErr) {
+        console.error('Hindi current affairs seed failed', seedErr);
+      }
     }
   });
 
