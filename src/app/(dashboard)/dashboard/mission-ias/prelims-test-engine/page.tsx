@@ -1,0 +1,4 @@
+'use client';
+import { ListChecks } from 'lucide-react';
+import { AdvancedModulePage } from '@/components/mission-ias/advanced-module-page';
+export default function PrelimsTestEngine(){return <AdvancedModulePage config={{title:'Prelims Test Engine',description:'Exam-style practice workspace with timed drills, accuracy tracking, negative-marking awareness and topic diagnostics.',icon:ListChecks,focus:['MCQ','Accuracy','Elimination'],actions:['Timed 10','Subject drill','Review mistakes'],prompts:['Which statement is correct? Practise elimination before checking the explanation.','Solve a two-statement question and record why each option is right or wrong.','Build an error log: concept gap, factual gap, misread or risky guess.','After a mock, identify the weakest topic and schedule a targeted revision block.']}}/>}
