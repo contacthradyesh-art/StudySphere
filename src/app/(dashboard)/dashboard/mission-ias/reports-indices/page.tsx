@@ -1,0 +1,4 @@
+'use client';
+import { BarChart3 } from 'lucide-react';
+import { AdvancedModulePage } from '@/components/mission-ias/advanced-module-page';
+export default function ReportsIndices(){return <AdvancedModulePage config={{title:'Reports & Indices',description:'Turn major national and international reports into usable UPSC facts, trends, rankings and analytical arguments.',icon:BarChart3,focus:['Data','GS-II','GS-III'],actions:['Report drill','Data recall','Mains value-add'],prompts:['Identify the publisher, indicator, methodology and India-related finding in a major report.','Turn one index into three Prelims facts and two Mains data points.','Which limitation should you mention before using an international ranking in an answer?','Build a comparison table from two years of a key indicator.']}}/>}
