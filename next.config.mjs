@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  
-
+  // Production builds must fail on TypeScript errors rather than shipping a
+  // broken release. Keep this strict for Play Store and web deployments.
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 
   images: {
