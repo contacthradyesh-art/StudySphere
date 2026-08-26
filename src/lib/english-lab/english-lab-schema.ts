@@ -41,7 +41,7 @@ export const WRITING_PROMPTS = [
   'What is one change you would make to improve your city? Explain why.',
   'Write about a book, movie, or event that influenced your thinking.',
   'Describe the qualities of a good leader, with an example.',
-  'Should exams be the only way to evaluate a student\u2019s ability?',
+  'Should exams be the only way to evaluate a student’s ability?',
   'Write about a goal you are currently working toward.'
 ];
 
