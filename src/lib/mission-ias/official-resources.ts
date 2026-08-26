@@ -15,7 +15,7 @@ export interface OfficialResource {
 export const OFFICIAL_RESOURCES: OfficialResource[] = [
   // Hindi-medium NCERT foundation
   { id: 'ncert-hindi-textbooks', title: 'NCERT पाठ्यपुस्तकें — हिंदी माध्यम', type: 'Textbooks', description: 'कक्षा 1–12 की आधिकारिक हिंदी पाठ्यपुस्तकें — इतिहास, भूगोल, विज्ञान, सामाजिक विज्ञान और अन्य विषय।', officialUrl: 'https://ncert.nic.in/textbook.php', subject: 'other', language: 'Hindi' },
-  { id: 'ncert-history-hindi', title: 'NCERT इतिहास — कक्षा VI–XII', type: 'Textbooks', description: 'प्राचीन, मध्यकालीन और आधुनिक भारत तथा विश्व इतिहास की आधारभूत सामग्री।', officialUrl: 'https://ncert.nic.in/textbook.php', subject: 'history', language: 'Hindi' },
+  { id: 'ncert-history-hindi', title: 'NCERT इतिहास — कक्षा VI–XII', type: 'Textbooks', description: 'प्राचीन, मध्यकालीन और आधुनिक भारत तथा विश्व इतिहास की आधारभूत सामग्री।', officialUrl: 'https://ncert.nic.in/textbook.php', subject: 'other', language: 'Hindi' },
   { id: 'ncert-geography-hindi', title: 'NCERT भूगोल — कक्षा VI–XII', type: 'Textbooks', description: 'भौतिक, मानव और भारतीय भूगोल — GS-I की मजबूत नींव।', officialUrl: 'https://ncert.nic.in/textbook.php', subject: 'environment', language: 'Hindi' },
   { id: 'ncert-polity-hindi', title: 'NCERT राजनीति विज्ञान — हिंदी', type: 'Textbooks', description: 'संविधान, लोकतंत्र, राजनीतिक संस्थाएँ और समकालीन राजनीति।', officialUrl: 'https://ncert.nic.in/textbook.php', subject: 'polity', language: 'Hindi' },
   { id: 'ncert-economy-hindi', title: 'NCERT अर्थशास्त्र — हिंदी', type: 'Textbooks', description: 'भारतीय अर्थव्यवस्था और आर्थिक अवधारणाओं की आधारभूत तैयारी।', officialUrl: 'https://ncert.nic.in/textbook.php', subject: 'economy', language: 'Hindi' },
