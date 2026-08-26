@@ -1,0 +1,4 @@
+'use client';
+import { PenTool } from 'lucide-react';
+import { AdvancedModulePage } from '@/components/mission-ias/advanced-module-page';
+export default function DailyAnswerWriting(){return <AdvancedModulePage config={{title:'Daily Answer Writing',description:'Daily GS-style answer practice focused on demand, structure, examples, data and time discipline.',icon:PenTool,focus:['GS-I','GS-II','GS-III','GS-IV'],actions:['Today’s 10-marker','15-marker','Self-evaluate'],prompts:['Explain the role of social capital in strengthening Indian democracy.','Discuss how cooperative federalism can improve delivery of welfare schemes.','Examine the opportunities and risks of artificial intelligence for India.','Ethical governance requires both institutional capacity and individual integrity. Discuss.']}}/>}
