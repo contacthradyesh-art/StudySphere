@@ -1,47 +1,13 @@
 import type { CurrentAffairsItem } from './current-affairs-schema';
 
-const now = Date.now();
-
-/** Curated Hindi starter set so the Hub is useful even before the RSS/AI pipeline runs. */
+/** Source-first Hindi fallback pack. Live Firestore items take precedence. */
 export const HINDI_CURRENT_AFFAIRS: CurrentAffairsItem[] = [
-  {
-    id: 'hindi-ai-rdi-2026-08', title: 'भारत में AI, क्वांटम और डीप-टेक अनुसंधान को बढ़ावा', source: 'PIB', link: 'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2298231&lang=1&reg=48', publishedAt: now - 14 * 86400000,
-    summary: 'सरकार ने AI, क्वांटम तकनीक, सेमीकंडक्टर और जैव-प्रौद्योगिकी जैसे क्षेत्रों में अनुसंधान एवं नवाचार को बढ़ाने के लिए मिशन-आधारित कार्यक्रमों पर जोर दिया है। RDI Fund और National Quantum Mission जैसे प्रयास भारत की तकनीकी आत्मनिर्भरता को मजबूत करने से जुड़े हैं।',
-    examRelevance: 'RDI Fund और National Quantum Mission को विज्ञान-तकनीक, नवाचार और आत्मनिर्भरता के GS-III संदर्भ से जोड़ें।', topic: 'AI एवं डीप-टेक नीति', category: 'science-tech', gsPaper: 'GS3', createdAt: now
-  },
-  {
-    id: 'hindi-gobardhan-2026-08', title: 'GOBARdhan: जैव-कचरे से स्वच्छ ऊर्जा और ग्रामीण आय', source: 'PIB', link: 'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2295480&lang=1&reg=3', publishedAt: now - 20 * 86400000,
-    summary: 'केंद्र ने GOBARdhan को राष्ट्रीय सर्कुलर बायोएनर्जी योजना के रूप में मंजूरी दी है। इसका लक्ष्य कृषि अवशेष, गोबर और जैविक कचरे से कम्प्रेस्ड बायोगैस, जैविक खाद और ग्रामीण आय के अवसर बढ़ाना है।',
-    examRelevance: 'CBG, सर्कुलर इकोनॉमी, कचरा-से-संसाधन और ऊर्जा सुरक्षा को GS-III में जोड़ें।', topic: 'सर्कुलर इकोनॉमी एवं बायोगैस', category: 'environment', gsPaper: 'GS3', createdAt: now
-  },
-  {
-    id: 'hindi-cbdc-dbt-2026-08', title: 'CBDC आधारित DBT: डिजिटल सार्वजनिक अवसंरचना का नया प्रयोग', source: 'PIB', link: 'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2298531&lang=1&reg=1', publishedAt: now - 14 * 86400000,
-    summary: 'सरकार ने कुछ केंद्रशासित प्रदेशों में PMGKAY के अंतर्गत CBDC आधारित प्रत्यक्ष लाभ अंतरण के प्रयोग की घोषणा की। इससे डिजिटल भुगतान, लक्षित कल्याण वितरण और पारदर्शिता के बीच संबंध समझा जा सकता है।',
-    examRelevance: 'CBDC, DBT और डिजिटल सार्वजनिक अवसंरचना को शासन तथा वित्तीय समावेशन से जोड़ें।', topic: 'CBDC एवं DBT', category: 'governance', gsPaper: 'GS2, GS3', createdAt: now
-  },
-  {
-    id: 'hindi-jjm-2026-08', title: 'जल जीवन मिशन 2.0 और ग्रामीण नल-जल कवरेज', source: 'PIB', link: 'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2298526&lang=2&reg=48', publishedAt: now - 14 * 86400000,
-    summary: 'जल जीवन मिशन के तहत ग्रामीण घरों में नल-जल पहुंच बढ़ी है और JJM 2.0 को विस्तारित अवधि तथा बड़े वित्तीय परिव्यय के साथ आगे बढ़ाया गया है। यह जल सुरक्षा और सेवा-प्रदाय की क्षमता से जुड़ा महत्वपूर्ण शासन मुद्दा है।',
-    examRelevance: 'JJM को जल सुरक्षा, सहकारी संघवाद, स्थानीय निकाय और SDG-6 के साथ जोड़कर पढ़ें।', topic: 'जल सुरक्षा एवं स्थानीय शासन', category: 'governance', gsPaper: 'GS2, GS3', createdAt: now
-  },
-  {
-    id: 'hindi-green-hydrogen-2026-08', title: 'राष्ट्रीय हरित हाइड्रोजन मिशन और ऊर्जा संक्रमण', source: 'PIB', link: 'https://www.pib.gov.in/newsite/pmreleases.aspx?lang=2&mincode=28&reg=3', publishedAt: now - 15 * 86400000,
-    summary: 'भारत हरित हाइड्रोजन के उत्पादन और उपयोग को बढ़ाने के लिए मिशन-आधारित कार्यक्रम चला रहा है। पेट्रोलियम और रिफाइनिंग जैसे क्षेत्रों में इसका विस्तार जीवाश्म ईंधन निर्भरता घटाने और ऊर्जा संक्रमण से जुड़ा है।',
-    examRelevance: 'हरित हाइड्रोजन को ऊर्जा सुरक्षा, डीकार्बोनाइजेशन और भारत के जलवायु लक्ष्यों से जोड़ें।', topic: 'हरित हाइड्रोजन', category: 'environment', gsPaper: 'GS3', createdAt: now
-  },
-  {
-    id: 'hindi-anrf-2026-08', title: 'ANRF और भारत का अनुसंधान-नवाचार पारिस्थितिकी तंत्र', source: 'PIB', link: 'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2298884&lang=1&reg=3', publishedAt: now - 13 * 86400000,
-    summary: 'Anusandhan National Research Foundation का उद्देश्य अनुसंधान, नवाचार और उद्यमिता को रणनीतिक दिशा देना है। इसमें प्राकृतिक विज्ञान, इंजीनियरिंग, कृषि और सामाजिक विज्ञान के अंतर्विषयक शोध को बढ़ावा देने पर जोर है।',
-    examRelevance: 'ANRF को R&D, innovation ecosystem, private-sector participation और मानव पूंजी के संदर्भ में पढ़ें।', topic: 'अनुसंधान एवं नवाचार नीति', category: 'science-tech', gsPaper: 'GS3', createdAt: now
-  },
-  {
-    id: 'hindi-rbi-price-risks-2026-08', title: 'RBI ने मुद्रास्फीति और विकास पर जोखिमों को रेखांकित किया', source: 'RBI/समाचार विश्लेषण', link: 'https://www.rbi.org.in/', publishedAt: now - 1 * 86400000,
-    summary: 'हाल के आर्थिक आकलनों में महंगाई और विकास पर बाहरी तथा घरेलू जोखिमों—जैसे कच्चे तेल की कीमत, मानसून और वैश्विक व्यापार अनिश्चितता—पर ध्यान दिया गया है। UPSC के लिए यह मौद्रिक नीति और मुद्रास्फीति के कारणों को जोड़ने का अवसर है।',
-    examRelevance: 'मुद्रास्फीति के supply-side shocks और RBI की मौद्रिक नीति प्रतिक्रिया को समझें।', topic: 'मुद्रास्फीति एवं मौद्रिक नीति', category: 'economy', gsPaper: 'GS3', createdAt: now
-  },
-  {
-    id: 'hindi-monsoon-2026-08', title: 'मानसून, अत्यधिक वर्षा और आपदा प्रबंधन', source: 'IMD आधारित विश्लेषण', link: 'https://mausam.imd.gov.in/', publishedAt: now - 1 * 86400000,
-    summary: 'अगस्त के अंत में देश के कई हिस्सों में व्यापक वर्षा और कुछ क्षेत्रों में भारी से बहुत भारी वर्षा की चेतावनी दी गई है। ऐसी घटनाएं शहरी बाढ़, कृषि, जल संसाधन और आपदा-तैयारी के लिए महत्वपूर्ण हैं।',
-    examRelevance: 'अत्यधिक वर्षा को आपदा प्रबंधन, शहरी बाढ़, जलवायु परिवर्तन और जल संसाधन से जोड़ें।', topic: 'मानसून एवं आपदा प्रबंधन', category: 'environment', gsPaper: 'GS1, GS3', createdAt: now
-  }
+  { id:'ca-2026-08-25-eshram', title:'ई-श्रम पोर्टल के 5 वर्ष: असंगठित श्रमिकों के लिए डिजिटल सामाजिक सुरक्षा', source:'PIB', link:'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2303053&lang=2&reg=48', publishedAt:Date.parse('2026-08-25T14:38:00+05:30'), summary:'ई-श्रम पोर्टल 26 अगस्त 2021 को शुरू हुआ था। 20 अगस्त 2026 तक 31.89 करोड़ पंजीकरण दर्ज किए गए। यह असंगठित श्रमिकों के लिए सामाजिक सुरक्षा, रोजगार, कौशल और पेंशन सेवाओं तक एकीकृत डिजिटल पहुँच देता है।', examRelevance:'GS-II: सामाजिक सुरक्षा, कल्याणकारी योजनाओं की डिलीवरी और डिजिटल शासन; GS-III: अनौपचारिक क्षेत्र और श्रम बाज़ार।', topic:'सामाजिक सुरक्षा एवं डिजिटल शासन', category:'social-issues', gsPaper:'GS2, GS3', createdAt:Date.parse('2026-08-25T14:38:00+05:30') },
+  { id:'ca-2026-08-24-upi', title:'UPI के 10 वर्ष: भारत की डिजिटल सार्वजनिक अवसंरचना का वैश्विक विस्तार', source:'PIB', link:'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2302657&lang=1&reg=48', publishedAt:Date.parse('2026-08-24T13:57:00+05:30'), summary:'UPI ने एक दशक पूरा किया। FY 2025-26 में 24,162 करोड़ से अधिक वार्षिक लेन-देन और लगभग ₹314 लाख करोड़ का मूल्य दर्ज हुआ। 2026 में 703 बैंक UPI से लाइव थे और यह 11 देशों में परिचालित था।', examRelevance:'DPI, वित्तीय समावेशन, फिनटेक, साइबर सुरक्षा और डिजिटल शासन के लिए Prelims तथा GS-III।', topic:'डिजिटल सार्वजनिक अवसंरचना एवं फिनटेक', category:'economy', gsPaper:'GS3', createdAt:Date.parse('2026-08-24T13:57:00+05:30') },
+  { id:'ca-2026-08-23-regenerative-agriculture', title:'पुनर्योजी कृषि: मिट्टी, जल और जलवायु-लचीलापन पर जोर', source:'PIB', link:'https://www.pib.gov.in/PressNoteDetails.aspx?ModuleId=3&NoteId=159690&id=159690&lang=2&reg=48', publishedAt:Date.parse('2026-08-23T10:28:00+05:30'), summary:'प्राकृतिक खेती, कृषि-वनीकरण, सूक्ष्म सिंचाई, एकीकृत कृषि प्रणालियाँ और वैज्ञानिक मृदा प्रबंधन को कृषि-लचीलापन के लिए बढ़ावा दिया जा रहा है। मार्च 2026 तक प्राकृतिक खेती क्लस्टर 8.80 लाख हेक्टेयर और 18.19 लाख किसानों तक पहुँचे थे।', examRelevance:'GS-III: जलवायु-स्मार्ट कृषि, मृदा स्वास्थ्य, जल दक्षता और टिकाऊ कृषि।', topic:'जलवायु-स्मार्ट एवं पुनर्योजी कृषि', category:'agriculture', gsPaper:'GS3', createdAt:Date.parse('2026-08-23T10:28:00+05:30') },
+  { id:'ca-2026-08-22-nadcp', title:'राष्ट्रीय पशु रोग नियंत्रण कार्यक्रम: पशुधन स्वास्थ्य और किसान आय', source:'PIB', link:'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2302242&lang=1&reg=48', publishedAt:Date.parse('2026-08-22T10:24:00+05:30'), summary:'2019 में शुरू NADCP का लक्ष्य FMD और Brucellosis को टीकाकरण तथा निगरानी से नियंत्रित करना है। PIB के अनुसार 147.16 करोड़ FMD वैक्सीन डोज दी गईं और 8.04 करोड़ किसान लाभान्वित हुए।', examRelevance:'GS-III: पशुधन अर्थव्यवस्था, One Health, टीकाकरण और पशु रोग निगरानी।', topic:'पशुधन स्वास्थ्य एवं One Health', category:'agriculture', gsPaper:'GS3', createdAt:Date.parse('2026-08-22T10:24:00+05:30') },
+  { id:'ca-2026-08-21-pm-aasha', title:'PM-AASHA: MSP आधारित मूल्य समर्थन को मजबूत करने पर जोर', source:'PIB', link:'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2301814&lang=1&reg=48', publishedAt:Date.parse('2026-08-21T10:43:00+05:30'), summary:'PM-AASHA किसानों को लाभकारी मूल्य दिलाने और distress sale घटाने का मूल्य-समर्थन ढाँचा है। 2026-27 के लिए ₹7,200 करोड़ का बजट आवंटन बताया गया है। PSS, PSF, PDPS और MIS इसके प्रमुख घटक हैं।', examRelevance:'GS-III: MSP, कृषि मूल्य नीति, खाद्य मुद्रास्फीति, बाजार सुधार और किसान आय।', topic:'MSP एवं कृषि मूल्य नीति', category:'agriculture', gsPaper:'GS3', createdAt:Date.parse('2026-08-21T10:43:00+05:30') },
+  { id:'ca-2026-08-20-pmjvm', title:'प्रधानमंत्री जनजातीय विकास मिशन: Minor Forest Produce से जनजातीय उद्यमिता', source:'PIB', link:'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2301419&lang=1&reg=3', publishedAt:Date.parse('2026-08-20T11:03:00+05:30'), summary:'PMJVM Minor Forest Produce पर निर्भर जनजातीय समुदायों को मूल्य-वर्धन, बाजार और उद्यमिता से जोड़ता है। PIB के अनुसार 4,172 Van Dhan Vikas Kendras स्वीकृत हैं और 12.48 लाख जनजातीय सदस्य जुड़े हैं।', examRelevance:'GS-II/III: आदिवासी विकास, MFP, आजीविका, मूल्य श्रृंखला और समावेशी विकास।', topic:'जनजातीय आजीविका एवं Minor Forest Produce', category:'social-issues', gsPaper:'GS2, GS3', createdAt:Date.parse('2026-08-20T11:03:00+05:30') },
+  { id:'ca-2026-08-19-makhana', title:'मखाना क्षेत्र: पारंपरिक फसल से वैश्विक agri-food value chain तक', source:'PIB', link:'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2301052&lang=2&reg=48', publishedAt:Date.parse('2026-08-19T10:24:00+05:30'), summary:'भारत विश्व का सबसे बड़ा मखाना उत्पादक है और बिहार देश के उत्पादन का लगभग तीन-चौथाई देता है। 2025-26 में 7,264.89 MT मखाना उत्पाद निर्यात हुए। मखाना विकास के लिए ₹476.03 करोड़ की Central Sector Scheme और National Makhana Board पर जोर है।', examRelevance:'GS-III: कृषि विविधीकरण, GI, FPO, value addition और कृषि निर्यात।', topic:'कृषि मूल्य श्रृंखला एवं GI', category:'agriculture', gsPaper:'GS3', createdAt:Date.parse('2026-08-19T10:24:00+05:30') },
+  { id:'ca-2026-08-18-mmrd', title:'MMDR Amendment Act 2026: खनिज शासन और रणनीतिक संसाधन', source:'PIB', link:'https://www.pib.gov.in/AllRelease.aspx?MenuId=23&PMO=1&lang=1&reg=1', publishedAt:Date.parse('2026-08-18T10:00:00+05:30'), summary:'PIB के अगस्त 2026 backgrounders में MMDR Amendment Act 2026 प्रमुख विषयों में है। इसे खनिज संसाधन शासन, critical minerals, संघ-राज्य संबंध और ऊर्जा संक्रमण के संदर्भ में पढ़ना उपयोगी है।', examRelevance:'GS-II: संघ-राज्य आयाम; GS-III: खनिज संसाधन, critical minerals और ऊर्जा संक्रमण।', topic:'खनिज शासन एवं Critical Minerals', category:'governance', gsPaper:'GS2, GS3', createdAt:Date.parse('2026-08-18T10:00:00+05:30') }
 ];
