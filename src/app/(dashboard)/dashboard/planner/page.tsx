@@ -10,7 +10,7 @@ import { TaskDialog } from '@/components/planner/task-dialog';
 import { WeeklyGrid } from '@/components/planner/weekly-grid';
 import { MonthlyView } from '@/components/planner/monthly-view';
 import { TodaySchedule } from '@/components/planner/premium/today-schedule';
-import { DayCommandCenter } from '@/components/planner/premium/day-command-center';
+import { LifePlannerHome } from '@/components/planner/premium/life-planner-home';
 import { FocusAnalytics } from '@/components/planner/premium/focus-analytics';
 import { StudyHeatmap } from '@/components/planner/premium/study-heatmap';
 import { SubjectProgress } from '@/components/planner/premium/subject-progress';
@@ -114,8 +114,8 @@ export default function PlannerPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-violet-300">Life OS</p>
-          <h1 className="text-2xl font-black tracking-tight md:text-3xl">Planner</h1>
-          <p className="mt-1 text-sm text-muted-foreground">One system for deciding what matters, when it happens, and what comes next.</p>
+          <h1 className="text-2xl font-black tracking-tight md:text-3xl">Life Planner</h1>
+          <p className="mt-1 text-sm text-muted-foreground">A single place to decide what matters, schedule it, focus, and learn from the week.</p>
         </div>
         <Button variant="gradient" onClick={() => { setEditing(null); setDialogOpen(true); }}>
           <Plus className="h-4 w-4" /> Plan task
@@ -132,12 +132,12 @@ export default function PlannerPage() {
         </div>
       </nav>
 
-      {tab === 'today' && <DayCommandCenter tasks={tasks} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onNewTask={() => { setEditing(null); setDialogOpen(true); }} />}
+      {tab === 'today' && <LifePlannerHome tasks={tasks} sessions={sessions} userName={user?.displayName} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onNewTask={() => { setEditing(null); setDialogOpen(true); }} />}
       {tab === 'tasks' && <TasksWorkspace tasks={tasks} tasksToday={tasksToday} grouped={grouped} loading={loading} weeklySlots={weeklySlots} weeklyLoading={weeklyLoading} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onDelete={handleDelete} />}
       {tab === 'goals' && <GoalsTab />}
       {tab === 'habits' && <HabitsTab />}
       {tab === 'insights' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><FocusAnalytics data={focusAnalytics} /><StudyHeatmap days={heatmapDays} /></section><SubjectProgress subjects={subjectStats} /></div>}
-      {tab === 'coach' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><AiCoachPanel report={coachReport} /><div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.035] p-5"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-violet-300">Decision support</p><h2 className="mt-2 text-xl font-bold">Turn insight into a plan.</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Generate a focused weekly schedule from your current workload instead of manually filling every slot.</p></div></section><AiSmartPlanner weeklySlots={weeklySlots} /></div>}
+      {tab === 'coach' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><AiCoachPanel report={coachReport} /><div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.035] p-5"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-violet-300">Planner Intelligence</p><h2 className="mt-2 text-xl font-bold">Turn real activity into a realistic plan.</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Suggestions use your current workload, focus history and habits instead of inventing progress.</p></div></section><AiSmartPlanner weeklySlots={weeklySlots} /></div>}
 
       <TaskDialog open={dialogOpen} initial={editing} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={handleSubmit} />
     </div>
