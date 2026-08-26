@@ -1,7 +1,9 @@
 'use client';
 
-import { BrainCircuit, Flame, Headphones, Mic2, Sparkles, Target, Trophy, Volume2 } from 'lucide-react';
+import Link from 'next/link';
+import { BrainCircuit, BookOpen, Flame, Headphones, Mic2, Sparkles, Target, Trophy, Volume2 } from 'lucide-react';
 import { GlassCard } from '@/components/shared/glass-card';
+import { Button } from '@/components/ui/button';
 
 const skills = [
   ['Vocabulary', 72, BrainCircuit],
@@ -25,6 +27,10 @@ export default function EnglishLabLayout({ children }: { children: React.ReactNo
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">Exam Mode</span>
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">AI Feedback</span>
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">Daily Practice</span>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/dashboard/english-lab/library"><Button size="sm" variant="gradient"><BookOpen className="h-4 w-4" /> Open Master Library</Button></Link>
+              <Link href="/dashboard/english-lab"><Button size="sm" variant="outline">Practice Lab</Button></Link>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
