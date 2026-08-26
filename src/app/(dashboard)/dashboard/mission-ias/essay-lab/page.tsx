@@ -1,0 +1,4 @@
+'use client';
+import { PenTool } from 'lucide-react';
+import { AdvancedModulePage } from '@/components/mission-ias/advanced-module-page';
+export default function EssayLab(){return <AdvancedModulePage config={{title:'Essay Lab',description:'Structured essay practice with themes, thesis building, dimensions, examples and timed writing.',icon:PenTool,focus:['Essay','Philosophy','Society'],actions:['Timed essay','Idea builder','Self-review'],prompts:['Technology is a useful servant but a dangerous master. Build a thesis and five dimensions.','Development without dignity is incomplete. Create an essay framework with counter-view.','What makes a strong introduction and conclusion for a philosophical essay?','Draft a 15-minute outline using examples, case studies and a balanced conclusion.']}}/>}
