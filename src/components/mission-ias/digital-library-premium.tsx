@@ -5,8 +5,8 @@ import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import {
   BookOpen, Bookmark, ChevronRight, Clock3, ExternalLink, FileText, Folder,
-  FolderPlus, Grid2X2, HardDrive, Image as ImageIcon, Library, List,
-  Play, Search, Sparkles, Star, Trash2, Upload, Zap
+  FolderPlus, Grid2X2, HardDrive, Image as ImageIcon, Library, List, MoreHorizontal,
+  Play, Search, Sparkles, Star, Trash2, Upload, X, Zap
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { requireAuth } from '@/lib/require-auth';
@@ -59,7 +59,7 @@ export function DigitalLibraryPremium() {
   const [uploading, setUploading] = useState<{ name: string; percent: number }[]>([]);
   const [showFolder, setShowFolder] = useState(false);
   const [folderName, setFolderName] = useState('');
-  const [uploadSubject] = useState<UpscCategory>('other');
+  const [uploadSubject, setUploadSubject] = useState<UpscCategory>('other');
   const [reader, setReader] = useState<LibraryFile | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -142,7 +142,7 @@ export function DigitalLibraryPremium() {
           </aside>
         </div>
       </> : <div className="min-w-0 space-y-4"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Search official resources..." className="bg-white/[0.03] pl-9" /></div><p className="text-xs leading-5 text-muted-foreground">Official resources stay linked to their original government or institutional source. StudySphere does not re-host copyrighted books.</p><div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{OFFICIAL_RESOURCES.map((item) => <GlassCard key={item.id} className="flex h-full min-w-0 flex-col"><div className="mb-3 flex items-center justify-between"><span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">{item.type}</span><ExternalLink className="h-4 w-4 text-muted-foreground" /></div><h3 className="text-base font-semibold">{item.title}</h3><p className="mt-1 flex-1 text-sm text-muted-foreground">{item.description}</p><a href={item.officialUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">Open source <ExternalLink className="h-3.5 w-3.5" /></a></GlassCard>)}</div></div>}
-      {reader ? <PdfReader file={reader} open={true} onClose={() => setReader(null)} /> : null}
+      {reader ? <PdfReader file={reader} onClose={() => setReader(null)} /> : null}
       {showFolder ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true"><div className="w-full max-w-md rounded-2xl border border-white/10 bg-background p-5 shadow-2xl"><div className="flex items-center justify-between"><h2 className="font-semibold">Create folder</h2><button type="button" className="text-muted-foreground" onClick={() => setShowFolder(false)} aria-label="Close">×</button></div><p className="mt-1 text-sm text-muted-foreground">Keep your study material organised by subject or exam.</p><Input autoFocus value={folderName} onChange={(e) => setFolderName(e.target.value)} placeholder="Folder name" className="mt-4" onKeyDown={(e) => { if (e.key === 'Enter') void createFolder(); }} /><div className="mt-4 flex justify-end gap-2"><Button variant="outline" onClick={() => setShowFolder(false)}>Cancel</Button><Button variant="gradient" onClick={() => void createFolder()}>Create folder</Button></div></div></div> : null}
     </div>
   );
