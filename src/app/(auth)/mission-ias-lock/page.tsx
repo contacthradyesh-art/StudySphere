@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,14 +9,15 @@ import { Label } from '@/components/ui/label';
 
 export default function MissionIasLockPage() {
   const router = useRouter();
-  const params = useSearchParams();
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const redirect = params.get('redirect')?.startsWith('/dashboard/mission-ias')
-    ? params.get('redirect')!
-    : '/dashboard/mission-ias';
+  function getRedirect() {
+    if (typeof window === 'undefined') return '/dashboard/mission-ias';
+    const value = new URLSearchParams(window.location.search).get('redirect');
+    return value?.startsWith('/dashboard/mission-ias') ? value : '/dashboard/mission-ias';
+  }
 
   async function unlock(e: React.FormEvent) {
     e.preventDefault();
@@ -30,7 +31,7 @@ export default function MissionIasLockPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not unlock Mission IAS');
-      router.replace(redirect);
+      router.replace(getRedirect());
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Incorrect password');
