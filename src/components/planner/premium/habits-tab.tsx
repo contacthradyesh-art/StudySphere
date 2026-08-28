@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Plus, Repeat } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared/glass-card';
 import { HabitCard } from '@/components/planner/premium/habit-card';
@@ -10,19 +11,43 @@ import { useAuth } from '@/hooks/use-auth';
 import { requireAuth } from '@/lib/require-auth';
 import { useHabitInsights } from '@/hooks/use-habit-insights';
 import { createHabit, deleteHabit, toggleHabitLog } from '@/lib/habits/habit-service';
+import type { NewHabit } from '@/lib/firestore/habit-schema';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
+
+function readableError(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error && 'code' in error) return String((error as { code?: unknown }).code);
+  return 'Could not save the habit. Please try again.';
+}
 
 export function HabitsTab() {
   const { user } = useAuth();
   const { loading, habitProgress } = useHabitInsights();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function handleCreateHabit(data: NewHabit) {
+    if (!requireAuth(user) || saving) return;
+
+    setSaving(true);
+    try {
+      await createHabit(user.uid, data, habitProgress.length);
+      toast.success('Habit created successfully');
+      setDialogOpen(false);
+    } catch (error) {
+      console.error('Habit creation failed:', error);
+      toast.error('Habit save failed', { description: readableError(error) });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Daily/weekly/monthly/custom habits — consistency banao, XP kamao.</p>
-        <Button variant="gradient" size="sm" onClick={() => setDialogOpen(true)}>
+        <Button variant="gradient" size="sm" onClick={() => setDialogOpen(true)} disabled={saving}>
           <Plus className="h-4 w-4" /> New habit
         </Button>
       </div>
@@ -52,12 +77,9 @@ export function HabitsTab() {
 
       <HabitDialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onSubmit={async (data) => {
-          if (!requireAuth(user)) return;
-          await createHabit(user.uid, data, habitProgress.length);
-          setDialogOpen(false);
-        }}
+        onClose={() => !saving && setDialogOpen(false)}
+        onSubmit={handleCreateHabit}
+        saving={saving}
       />
     </div>
   );
