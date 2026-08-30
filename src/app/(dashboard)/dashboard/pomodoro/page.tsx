@@ -9,6 +9,7 @@ import { TimerRing } from '@/components/pomodoro/timer-ring';
 import { TimerControls } from '@/components/pomodoro/timer-controls';
 import { SessionStats } from '@/components/pomodoro/session-stats';
 import { PomodoroHistoryChart } from '@/components/pomodoro/history-chart';
+import { FocusGarden } from '@/components/pomodoro/focus-garden';
 import { useAuth } from '@/hooks/use-auth';
 import { usePomodoro } from '@/hooks/use-pomodoro';
 import { usePomodoroStore } from '@/store/pomodoro-store';
@@ -18,7 +19,6 @@ import { awardXp } from '@/lib/gamification/xp-service';
 import { cn } from '@/lib/utils';
 import type { PomodoroPhase } from '@/lib/firestore/pomodoro-schema';
 
-// Audio files should be placed at these paths under /public.
 const TRACKS = [
   { id: 'none', label: 'Off', src: null as string | null },
   { id: 'lofi', label: 'Lo-fi', src: '/audio/lofi.mp3' },
@@ -36,33 +36,22 @@ export default function PomodoroPage() {
     const selected = TRACKS.find((t) => t.id === track);
     const audio = audioRef.current;
     if (!audio) return;
-
     if (!selected?.src) {
       audio.pause();
       audio.removeAttribute('src');
       return;
     }
-
     if (audio.src.endsWith(selected.src)) {
-      audio.play().catch(() => {
-        toast.error('Could not play audio. Check that the file exists in /public/audio.');
-      });
+      audio.play().catch(() => toast.error('Could not play audio. Check that the file exists in /public/audio.'));
       return;
     }
-
     audio.src = selected.src;
     audio.loop = true;
     audio.volume = 0.5;
-    audio.play().catch(() => {
-      toast.error('Could not play audio. Check that the file exists in /public/audio.');
-    });
+    audio.play().catch(() => toast.error('Could not play audio. Check that the file exists in /public/audio.'));
   }, [track]);
 
-  useEffect(() => {
-    return () => {
-      audioRef.current?.pause();
-    };
-  }, []);
+  useEffect(() => () => { audioRef.current?.pause(); }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -70,16 +59,13 @@ export default function PomodoroPage() {
     return () => unsub();
   }, [user, setSessions]);
 
-  const handleComplete = useCallback(
-    (phase: PomodoroPhase, durationSeconds: number) => {
-      if (user) {
-        recordSession(user.uid, { phase, durationSeconds, completedSeconds: durationSeconds, subject: null, completed: true });
-        if (phase === 'focus') void awardXp(user.uid, 'completePomodoro');
-      }
-      toast.success(phase === 'focus' ? 'Focus session complete! +15 XP' : 'Break over - back to it!');
-    },
-    [user]
-  );
+  const handleComplete = useCallback((phase: PomodoroPhase, durationSeconds: number) => {
+    if (user) {
+      recordSession(user.uid, { phase, durationSeconds, completedSeconds: durationSeconds, subject: null, completed: true });
+      if (phase === 'focus') void awardXp(user.uid, 'completePomodoro');
+    }
+    toast.success(phase === 'focus' ? 'Focus session complete! +15 XP' : 'Break over - back to it!');
+  }, [user]);
 
   const timer = usePomodoro({ settings, onComplete: handleComplete });
   const stats = summarizeSessions(sessions);
@@ -87,14 +73,7 @@ export default function PomodoroPage() {
   const ring = (
     <div className="flex flex-col items-center gap-8">
       <TimerRing remaining={timer.remaining} progress={timer.progress} phase={timer.phase} />
-      <TimerControls
-        running={timer.running}
-        phase={timer.phase}
-        onStart={timer.start}
-        onPause={timer.pause}
-        onReset={timer.reset}
-        onSwitch={timer.switchTo}
-      />
+      <TimerControls running={timer.running} phase={timer.phase} onStart={timer.start} onPause={timer.pause} onReset={timer.reset} onSwitch={timer.switchTo} />
     </div>
   );
 
@@ -118,10 +97,10 @@ export default function PomodoroPage() {
           <h1 className="text-2xl font-bold tracking-tight">Pomodoro</h1>
           <p className="text-sm text-muted-foreground">Focus in cycles. Sessions are tracked automatically.</p>
         </div>
-        <Button variant="outline" onClick={() => setFullScreen(true)}>
-          <Maximize2 className="h-4 w-4" /> Full screen
-        </Button>
+        <Button variant="outline" onClick={() => setFullScreen(true)}><Maximize2 className="h-4 w-4" /> Full screen</Button>
       </div>
+
+      <FocusGarden sessions={sessions} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <GlassCard className="grid place-items-center py-10 lg:col-span-2">{ring}</GlassCard>
@@ -130,14 +109,7 @@ export default function PomodoroPage() {
             <h2 className="mb-3 flex items-center gap-2 font-semibold"><Music className="h-4 w-4" /> Focus music</h2>
             <div className="flex flex-wrap gap-2">
               {TRACKS.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTrack(t.id)}
-                  className={cn(
-                    'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                    track === t.id ? 'border-primary bg-primary/15 text-primary' : 'border-input text-muted-foreground'
-                  )}
-                >
+                <button key={t.id} onClick={() => setTrack(t.id)} className={cn('rounded-full border px-3 py-1 text-xs font-medium transition-colors', track === t.id ? 'border-primary bg-primary/15 text-primary' : 'border-input text-muted-foreground')}>
                   {t.label}
                 </button>
               ))}
@@ -146,16 +118,13 @@ export default function PomodoroPage() {
           </GlassCard>
           <GlassCard>
             <h2 className="mb-1 font-semibold">Cycle</h2>
-            <p className="text-sm text-muted-foreground">
-              {settings.focusMinutes}m focus / {settings.shortBreakMinutes}m break, long break every {settings.cyclesBeforeLongBreak} cycles.
-            </p>
+            <p className="text-sm text-muted-foreground">{settings.focusMinutes}m focus / {settings.shortBreakMinutes}m break, long break every {settings.cyclesBeforeLongBreak} cycles.</p>
             <p className="mt-2 text-sm">Completed focus sessions: <span className="font-semibold">{timer.completedFocusCount}</span></p>
           </GlassCard>
         </div>
       </div>
 
       <SessionStats stats={stats} />
-
       <PomodoroHistoryChart sessions={sessions} />
 
       <GlassCard>
