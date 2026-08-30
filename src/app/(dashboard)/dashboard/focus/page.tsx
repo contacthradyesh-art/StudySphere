@@ -14,19 +14,17 @@ import { broadcastFocusStart, broadcastFocusStop, buildBlockList } from '@/lib/f
 import { DEFAULT_FOCUS_SETTINGS, type FocusSettings } from '@/lib/firestore/pomodoro-schema';
 import { cn } from '@/lib/utils';
 
-type NativeReminderBridge = {
-  isPermissionGranted: () => boolean;
-  openPermissionSettings: () => void;
-  setShieldActive: (active: boolean) => void;
+type Settings = Omit<FocusSettings, 'updatedAt'>;
+type FocusShieldBridge = {
+  isPermissionGranted?: () => boolean;
+  openPermissionSettings?: () => void;
+  setShieldActive?: (active: boolean) => void;
 };
 
-function getNativeBridge(): NativeReminderBridge | undefined {
+function getNativeBridge(): FocusShieldBridge | undefined {
   if (typeof window === 'undefined') return undefined;
-  const bridge = (window as Window & { StudySphereFocusShield?: NativeReminderBridge }).StudySphereFocusShield;
-  return bridge;
+  return (window as Window & { StudySphereFocusShield?: FocusShieldBridge }).StudySphereFocusShield;
 }
-
-type Settings = Omit<FocusSettings, 'updatedAt'>;
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -49,7 +47,11 @@ export default function FocusShieldPage() {
 
   const checkNativePermission = () => {
     const bridge = getNativeBridge();
-    setNativePermission(bridge ? Boolean(bridge.isPermissionGranted()) : null);
+    if (!bridge?.isPermissionGranted) {
+      setNativePermission(null);
+      return;
+    }
+    setNativePermission(Boolean(bridge.isPermissionGranted()));
   };
 
   useEffect(() => {
@@ -77,9 +79,9 @@ export default function FocusShieldPage() {
     const bridge = getNativeBridge();
     if (wasActive.current && !active) {
       broadcastFocusStop();
-      bridge?.setShieldActive(false);
+      bridge?.setShieldActive?.(false);
     }
-    if (active) bridge?.setShieldActive(true);
+    if (active) bridge?.setShieldActive?.(true);
     wasActive.current = active;
   }, [active]);
 
@@ -89,28 +91,32 @@ export default function FocusShieldPage() {
 
   async function persist() {
     if (!requireAuth(user)) return;
-    await saveFocusSettings(user.uid, settings);
-    toast.success('Focus settings saved');
+    try {
+      await saveFocusSettings(user.uid, settings);
+      toast.success('Focus settings saved');
+    } catch {
+      toast.error('Could not save Focus settings');
+    }
   }
 
   function activate() {
     const bridge = getNativeBridge();
-    if (bridge && !bridge.isPermissionGranted()) {
+    if (bridge?.isPermissionGranted && !bridge.isPermissionGranted()) {
       toast.error('Permission required', { description: 'Allow StudySphere in Accessibility settings, then return here.' });
-      bridge.openPermissionSettings();
+      bridge.openPermissionSettings?.();
       return;
     }
 
     const end = Date.now() + settings.focusDurationMinutes * 60 * 1000;
     startSession(settings.focusDurationMinutes, buildBlockList(settings).length);
-    bridge?.setShieldActive(true);
+    bridge?.setShieldActive?.(true);
     broadcastFocusStart(buildBlockList(settings), end, settings.disableNotifications);
     toast.success('Focus Shield activated');
   }
 
   function emergencyExit() {
     endSession();
-    getNativeBridge()?.setShieldActive(false);
+    getNativeBridge()?.setShieldActive?.(false);
     broadcastFocusStop();
     toast.message('Focus Shield deactivated');
   }
@@ -129,7 +135,7 @@ export default function FocusShieldPage() {
               <p className="font-semibold">Android protection permission required</p>
               <p className="text-sm text-muted-foreground">Allow StudySphere Accessibility access to block selected distraction apps during Focus Shield sessions.</p>
             </div>
-            <Button variant="gradient" onClick={() => getNativeBridge()?.openPermissionSettings()}>Grant permission</Button>
+            <Button variant="gradient" onClick={() => getNativeBridge()?.openPermissionSettings?.()}>Grant permission</Button>
           </div>
         </GlassCard>
       )}
@@ -178,7 +184,7 @@ export default function FocusShieldPage() {
             {extensionConnected ? '● Extension connected' : '○ Extension not detected'}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground">Website blocking is enforced by the companion extension. The Android app now also provides native Accessibility protection for selected distraction apps.</p>
+        <p className="text-sm text-muted-foreground">Website blocking is enforced by the companion extension. The Android app also provides native Accessibility protection for selected distraction apps.</p>
       </GlassCard>
     </div>
   );
