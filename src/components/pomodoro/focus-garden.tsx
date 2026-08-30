@@ -11,22 +11,29 @@ interface SessionLike {
 
 function toDate(value: SessionLike['createdAt']): Date | null {
   if (!value) return null;
-  if (typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') return value.toDate();
-  const date = value instanceof Date ? value : new Date(value);
+  if (typeof value === 'object') {
+    if (value instanceof Date) return Number.isFinite(value.getTime()) ? value : null;
+    if ('toDate' in value && typeof value.toDate === 'function') {
+      const date = value.toDate();
+      return Number.isFinite(date.getTime()) ? date : null;
+    }
+    return null;
+  }
+  const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function FocusGarden({ sessions }: { sessions: SessionLike[] }) {
   const focusSessions = sessions.filter((session) => session.phase === 'focus');
   const focusSeconds = focusSessions.reduce((sum, session) => sum + Math.max(0, session.completedSeconds || 0), 0);
   const focusMinutes = Math.floor(focusSeconds / 60);
-
-  const localDateKey = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
 
   const todayKey = localDateKey(new Date());
   const todaySeconds = focusSessions.reduce((sum, session) => {
@@ -35,8 +42,6 @@ export function FocusGarden({ sessions }: { sessions: SessionLike[] }) {
   }, 0);
   const todayMinutes = Math.floor(todaySeconds / 60);
 
-  // Growth is based on actual completed focus time, with 25-minute milestones.
-  // The progress bar shows progress toward the next stage rather than resetting at 150m.
   const stages = [
     { max: 25, label: 'Seed', message: 'Start focusing to plant your seed.' },
     { max: 50, label: 'Sprout', message: 'Your first focused block helped it sprout.' },
@@ -50,9 +55,7 @@ export function FocusGarden({ sessions }: { sessions: SessionLike[] }) {
   const previousThreshold = stageIndex === 0 ? 0 : stages[stageIndex - 1].max;
   const progress = currentStage.max === Infinity
     ? Math.min(100, 70 + Math.min(30, Math.floor((focusMinutes - 150) / 30) * 5))
-    : Math.min(100, Math.round(((focusMinutes - previousThreshold) / (currentStage.max - previousThreshold)) * 100));
-
-  // Health reflects today's actual focus, capped at a full productive day.
+    : Math.min(100, Math.max(0, Math.round(((focusMinutes - previousThreshold) / (currentStage.max - previousThreshold)) * 100)));
   const health = Math.min(100, Math.round((todayMinutes / 120) * 100));
 
   return (
