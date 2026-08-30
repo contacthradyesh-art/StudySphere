@@ -16,11 +16,13 @@ import { cn } from '@/lib/utils';
 
 declare global {
   interface Window {
-    StudySphereFocusShield?: {
-      isPermissionGranted: () => boolean;
-      openPermissionSettings: () => void;
-      setShieldActive: (active: boolean) => void;
-    };
+    StudySphereFocusShield?: Window['StudySphereFocusShield'] extends infer Existing
+      ? Existing
+      : {
+          isPermissionGranted: () => boolean;
+          openPermissionSettings: () => void;
+          setShieldActive: (active: boolean) => void;
+        };
   }
 }
 
