@@ -14,16 +14,16 @@ import { broadcastFocusStart, broadcastFocusStop, buildBlockList } from '@/lib/f
 import { DEFAULT_FOCUS_SETTINGS, type FocusSettings } from '@/lib/firestore/pomodoro-schema';
 import { cn } from '@/lib/utils';
 
-declare global {
-  interface Window {
-    StudySphereFocusShield?: Window['StudySphereFocusShield'] extends infer Existing
-      ? Existing
-      : {
-          isPermissionGranted: () => boolean;
-          openPermissionSettings: () => void;
-          setShieldActive: (active: boolean) => void;
-        };
-  }
+type NativeReminderBridge = {
+  isPermissionGranted: () => boolean;
+  openPermissionSettings: () => void;
+  setShieldActive: (active: boolean) => void;
+};
+
+function getNativeBridge(): NativeReminderBridge | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const bridge = (window as Window & { StudySphereFocusShield?: NativeReminderBridge }).StudySphereFocusShield;
+  return bridge;
 }
 
 type Settings = Omit<FocusSettings, 'updatedAt'>;
@@ -48,7 +48,7 @@ export default function FocusShieldPage() {
   const wasActive = useRef(active);
 
   const checkNativePermission = () => {
-    const bridge = window.StudySphereFocusShield;
+    const bridge = getNativeBridge();
     setNativePermission(bridge ? Boolean(bridge.isPermissionGranted()) : null);
   };
 
@@ -74,11 +74,12 @@ export default function FocusShieldPage() {
   }, []);
 
   useEffect(() => {
+    const bridge = getNativeBridge();
     if (wasActive.current && !active) {
       broadcastFocusStop();
-      window.StudySphereFocusShield?.setShieldActive(false);
+      bridge?.setShieldActive(false);
     }
-    if (active) window.StudySphereFocusShield?.setShieldActive(true);
+    if (active) bridge?.setShieldActive(true);
     wasActive.current = active;
   }, [active]);
 
@@ -93,7 +94,7 @@ export default function FocusShieldPage() {
   }
 
   function activate() {
-    const bridge = window.StudySphereFocusShield;
+    const bridge = getNativeBridge();
     if (bridge && !bridge.isPermissionGranted()) {
       toast.error('Permission required', { description: 'Allow StudySphere in Accessibility settings, then return here.' });
       bridge.openPermissionSettings();
@@ -109,7 +110,7 @@ export default function FocusShieldPage() {
 
   function emergencyExit() {
     endSession();
-    window.StudySphereFocusShield?.setShieldActive(false);
+    getNativeBridge()?.setShieldActive(false);
     broadcastFocusStop();
     toast.message('Focus Shield deactivated');
   }
@@ -128,7 +129,7 @@ export default function FocusShieldPage() {
               <p className="font-semibold">Android protection permission required</p>
               <p className="text-sm text-muted-foreground">Allow StudySphere Accessibility access to block selected distraction apps during Focus Shield sessions.</p>
             </div>
-            <Button variant="gradient" onClick={() => window.StudySphereFocusShield?.openPermissionSettings()}>Grant permission</Button>
+            <Button variant="gradient" onClick={() => getNativeBridge()?.openPermissionSettings()}>Grant permission</Button>
           </div>
         </GlassCard>
       )}
