@@ -50,10 +50,15 @@ export function DeadlineCommandCard() {
 
   async function saveGoal(data: NewLifeGoal) {
     if (!requireAuth(user)) return;
-    if (editing) {
-      await updateLifeGoal(user.uid, editing.id, data);
-    } else {
-      await createLifeGoal(user.uid, data, goalProgress.length);
+    try {
+      if (editing) {
+        await updateLifeGoal(user.uid, editing.id, data);
+      } else {
+        await createLifeGoal(user.uid, data, goalProgress.length);
+      }
+    } catch (error) {
+      console.error('Deadline goal save failed:', error);
+      return;
     }
     setDialogOpen(false);
     setEditing(null);
@@ -61,12 +66,12 @@ export function DeadlineCommandCard() {
 
   async function finishGoal(goalId: string) {
     if (!requireAuth(user)) return;
-    await completeLifeGoal(user.uid, goalId);
+    try { await completeLifeGoal(user.uid, goalId); } catch (error) { console.error('Goal completion failed:', error); }
   }
 
   async function removeGoal(goalId: string) {
     if (!requireAuth(user)) return;
-    await deleteLifeGoal(user.uid, goalId);
+    try { await deleteLifeGoal(user.uid, goalId); } catch (error) { console.error('Goal deletion failed:', error); }
   }
 
   const dLeft = next ? daysLeft(next.goal.deadline) : null;
