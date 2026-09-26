@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -114,7 +114,7 @@ export default function PlannerPage() {
   const todayIso = new Date().toISOString().slice(0, 10);
   const tasksToday = useMemo(() => tasks.filter((t) => t.dueDate === todayIso), [tasks, todayIso]);
 
-  useMemo(() => {
+  useEffect(() => {
     if (requestedTab && TABS.some((item) => item.id === requestedTab)) setTab(requestedTab);
   }, [requestedTab]);
 
