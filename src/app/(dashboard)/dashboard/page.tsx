@@ -18,6 +18,8 @@ import { awardXp } from '@/lib/gamification/xp-service';
 import { formatDuration } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/lib/firestore/planner-schema';
+import { DeadlineCommandCard } from '@/components/planner/premium/deadline-command-card';
+import { useLifeGoalsSync } from '@/hooks/use-lifegoals';
 
 type Tool = { icon: typeof CalendarDays; title: string; desc: string; link: string; color: string };
 const TOOLS: Tool[] = [
@@ -45,7 +47,8 @@ function Stat({ icon: Icon, label, value, hint }: { icon: typeof Clock3; label: 
 }
 
 export default function DashboardPage() {
-  useTasksSync(); const router = useRouter(); const { user } = useAuth(); const insights = usePlannerInsights(); const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
+  useTasksSync();
+  useLifeGoalsSync(); const router = useRouter(); const { user } = useAuth(); const insights = usePlannerInsights(); const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
   const hour = new Date().getHours(); const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'; const firstName = user?.displayName?.trim().split(/\s+/)[0] || 'there';
   const DAILY_GOAL_SECONDS = 4 * 60 * 60; const studySeconds = insights.dashboardStats.dailySeconds; const ringProgress = studySeconds / DAILY_GOAL_SECONDS; const streak = insights.dashboardStats.streakDays; const { level, badges } = insights.gamification;
   const pendingToday = useMemo(() => insights.tasksToday.filter((t) => !t.completed).slice(0, 5), [insights.tasksToday]); const completedToday = insights.tasksToday.filter((t) => t.completed).length;
