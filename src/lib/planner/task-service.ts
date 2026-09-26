@@ -5,6 +5,7 @@ import {
 import { db } from '@/lib/firebase/client';
 import { COLLECTIONS } from '@/lib/firestore/schema';
 import { PLANNER_COLLECTIONS, type NewTask, type Task } from '@/lib/firestore/planner-schema';
+import { ensureStudyNotifications, schedulePersistentReminder } from '@/lib/notifications/native-reminders';
 
 function tasksCol(uid: string) {
   return collection(db, COLLECTIONS.users, uid, PLANNER_COLLECTIONS.tasks);
@@ -18,17 +19,40 @@ export function subscribeTasks(uid: string, cb: (tasks: Task[]) => void) {
   });
 }
 
+function hashCode(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) hash = ((hash << 5) - hash) + value.charCodeAt(i);
+  return Math.abs(hash | 0);
+}
+
+function scheduleTaskReminder(taskId: string, data: Partial<Task>) {
+  if (!data.reminderAt || data.reminderAt <= Date.now()) return;
+  void ensureStudyNotifications().then((granted) => {
+    if (!granted) return;
+    schedulePersistentReminder(
+      data.reminderAt!,
+      `Task reminder: ${data.title ?? 'Planned task'}`,
+      data.subject ? `${data.subject} · Open StudySphere to continue.` : 'Your planned task is waiting. Open StudySphere to continue.',
+      hashCode(taskId)
+    );
+  });
+}
+
 export async function createTask(uid: string, data: NewTask) {
-  await addDoc(tasksCol(uid), {
+  const ref = await addDoc(tasksCol(uid), {
     ...data,
     completed: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   });
+  scheduleTaskReminder(ref.id, data);
 }
+
+
 
 export async function updateTask(uid: string, taskId: string, patch: Partial<Task>) {
   await updateDoc(doc(tasksCol(uid), taskId), { ...patch, updatedAt: serverTimestamp() });
+  if (patch.reminderAt && patch.reminderAt > Date.now()) scheduleTaskReminder(taskId, patch);
 }
 
 export async function toggleTask(uid: string, taskId: string, completed: boolean) {
