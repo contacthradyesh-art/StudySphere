@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { CalendarClock, CheckCircle2, Edit3, Flame, Plus, Target, Trash2 } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Edit3, Flame, Plus, Target, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { GlowCard, SectionHeading } from './glow-card';
 import { Button } from '@/components/ui/button';
 import { GoalDialog } from './goal-create-dialog';
@@ -33,6 +33,7 @@ export function DeadlineCommandCard() {
   const milestones = useLifeGoalStore((s) => s.lifeMilestones);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<LifeGoal | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const active = useMemo(
     () => goalProgress
@@ -141,7 +142,17 @@ export function DeadlineCommandCard() {
               <Mini label="Milestones" value={completedMilestones + '/' + milestoneCount} />
               <Mini label="State" value={urgent ? 'Final push' : 'On track'} icon={urgent ? <Flame className="h-3.5 w-3.5 text-rose-300" /> : <Target className="h-3.5 w-3.5 text-primary" />} />
             </div>
-          </div>
+
+
+            {active.length > 1 && (
+              <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
+                <button type="button" onClick={() => setShowAll((value) => !value)} className="flex w-full items-center justify-between text-left text-xs font-semibold">
+                  <span>All active deadlines ({active.length})</span>
+                  {showAll ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+                {showAll && <div className="mt-3 space-y-2">{active.slice(1).map((item) => <button type="button" key={item.goal.id} onClick={() => { setEditing(item.goal); setDialogOpen(true); }} className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-left hover:bg-white/[0.05]"><span className="min-w-0 truncate text-xs font-medium">{item.goal.title}</span><span className="ml-3 shrink-0 text-[10px] text-muted-foreground">{daysLeft(item.goal.deadline) ?? '—'}d</span></button>)}</div>}
+              </div>
+            )}          </div>
         )}
       </GlowCard>
 
