@@ -58,33 +58,8 @@ export default function DashboardPage() {
   const hasOverdueTask = insights.tasksToday.some((task) => { if (task.completed) return false; const due = new Date(`${task.dueDate}T23:59:59`); return Number.isFinite(due.getTime()) && due.getTime() < Date.now(); });
   async function handleToggleTask(task: Task) { if (!requireAuth(user)) return; setBusyTaskId(task.id); try { await toggleTask(user.uid, task.id, true); void awardXp(user.uid, 'completeTask'); toast.success('Task completed'); } catch { toast.error('Could not update task'); } finally { setBusyTaskId(null); } }
   return <div className="min-w-0 space-y-5 animate-fade-in pb-6">
+    <DeadlineCommandCard />
     <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_85%_10%,rgba(177,132,255,0.22),transparent_35%),linear-gradient(145deg,#171321,#0d0b12_70%)] p-5 shadow-2xl shadow-black/30 sm:p-7">
-      <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-fuchsia-500/10 blur-3xl" />
-      <div className="relative">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-200/80">StudySphere · Life OS</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">{greeting}, {firstName}.</h1>
-            <p className="mt-1 text-sm text-white/55">One clear plan. One focused day.</p>
-          </div>
-          <Link href="/dashboard/settings" className="grid h-10 w-10 place-items-center rounded-full border border-violet-300/25 bg-white/5 text-sm font-bold text-violet-100 shadow-[0_0_26px_rgba(167,139,250,0.25)]">
-            {(user?.displayName?.[0] || 'S').toUpperCase()}
-          </Link>
-        </div>
-        <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.055] p-4 backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-violet-200/70">30-Day Comeback</p>
-              <p className="mt-1 text-base font-bold text-white">Your deadline, under control</p>
-              <p className="mt-1 text-xs text-white/55">Build the streak one day at a time.</p>
-            </div>
-            <button onClick={() => router.push('/dashboard/planner?tab=goals')} className="rounded-xl border border-violet-300/20 bg-violet-400/10 px-3 py-2 text-xs font-semibold text-violet-100">Manage</button>
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-200" style={{ width: `${Math.max(12, Math.round((studySeconds / DAILY_GOAL_SECONDS) * 100))}%` }} /></div>
-          <div className="mt-2 flex items-center justify-between text-[11px] text-white/50"><span>Focus target · 4h/day</span><span>{formatDuration(studySeconds)} focused</span></div>
-        </div>
-      </div>
-    </section>
     <section className="grid grid-cols-2 gap-2 sm:grid-cols-5"><Stat icon={Timer} label="Focus time" value={formatDuration(studySeconds)} hint="Actual sessions today" /><Stat icon={CalendarDays} label="Tasks" value={`${completedToday}/${insights.tasksToday.length}`} hint="Completed today" /><Stat icon={Clock3} label="Remaining plan" value={`${pendingMinutes}m`} hint="Approx. scheduled time" /><Stat icon={Flame} label="Streak" value={`${streak}d`} hint="Current consistency" /></section>
     <DeadlineCommandCard />
     <section><div className="mb-3 flex items-center justify-between"><div><h2 className="text-base font-semibold">Today&apos;s mission</h2><p className="text-xs text-charcoal-500">Your most important next actions</p></div><Link href="/dashboard/planner" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">Open planner <ArrowRight className="h-3 w-3" /></Link></div>{pendingToday.length === 0 ? <div className="rounded-2xl border border-dashed border-black/[0.10] bg-black/[0.02] p-6 text-center dark:border-white/[0.10] dark:bg-white/[0.02]"><Check className="mx-auto h-7 w-7 text-emerald-400" /><p className="mt-2 font-medium">Your planned tasks are complete.</p><p className="mt-1 text-xs text-charcoal-500">Use the time to review, read or plan tomorrow.</p></div> : <div className="space-y-2">{pendingToday.map((t, index) => <button key={t.id} onClick={() => handleToggleTask(t)} disabled={busyTaskId === t.id} className="flex w-full min-w-0 items-center gap-3 rounded-2xl border border-black/[0.06] bg-black/[0.02] px-4 py-3.5 text-left transition-colors hover:bg-black/[0.04] dark:border-white/[0.06] dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-xs font-semibold text-primary">{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{t.title}</p><div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-charcoal-500">{t.subject && <span>{t.subject}</span>}{t.startTime && t.endTime ? <span>• {t.startTime}–{t.endTime}</span> : null}</div></div><span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/[0.08] dark:border-white/10">{busyTaskId === t.id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</span></button>)}</div>}</section>
