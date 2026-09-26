@@ -27,6 +27,9 @@
   }
 
   .dark {
+    /* Deeper, violet-tinted near-black instead of flat neutral gray — gives
+       the whole app a richer "premium dark app" base instead of a generic
+       dark-mode gray, while staying subtle enough not to fight content. */
     --background: 252 28% 6%;
     --foreground: 0 0% 98%;
     --card: 252 22% 10%;
@@ -52,6 +55,10 @@
 }
 
 @layer components {
+  /* Reusable glassmorphism surface — refined for more depth than a flat
+     tinted panel: a soft inner top highlight (like light catching an edge)
+     plus a two-layer shadow (tight + diffuse) reads as "physical" glass
+     rather than a translucent rectangle. */
   .glass {
     @apply relative border border-white/10 bg-white/60 shadow-lg shadow-black/5 backdrop-blur-xl transition-shadow duration-300;
   }
@@ -62,9 +69,74 @@
       0 1px 2px 0 rgb(0 0 0 / 0.4),
       0 12px 32px -12px rgb(88 28 235 / 0.25);
   }
-  .text-gradient { @apply bg-gradient-brand bg-clip-text text-transparent; }
-  .ambient-glow { @apply pointer-events-none fixed inset-0 -z-10 overflow-hidden; }
-  .ambient-glow::before, .ambient-glow::after { content: ""; position: absolute; border-radius: 9999px; filter: blur(80px); opacity: .16; }
-  .ambient-glow::before { width: 420px; height: 420px; left: -120px; top: 10%; background: #7c3aed; }
-  .ambient-glow::after { width: 360px; height: 360px; right: -100px; bottom: 5%; background: #db2777; }
+  .text-gradient {
+    @apply bg-gradient-brand bg-clip-text text-transparent;
+  }
+  /* Ambient background glow used behind the dashboard shell and marketing
+     page — two soft, blurred brand-colored blobs at low opacity, fixed so
+     they don't move on scroll. This is the one deliberately bold touch:
+     a persistent sense of depth instead of a flat single-color canvas. */
+  .ambient-glow {
+    @apply pointer-events-none fixed inset-0 -z-10 overflow-hidden;
+  }
+  .ambient-glow::before,
+  .ambient-glow::after {
+    content: '';
+    @apply absolute h-[36rem] w-[36rem] rounded-full opacity-[0.15] blur-[120px];
+  }
+  .ambient-glow::before {
+    @apply -left-40 -top-40 bg-primary;
+  }
+  .ambient-glow::after {
+    @apply -bottom-40 -right-40 bg-pink-500;
+  }
+  /* Rendered Markdown styling for notes preview/detail */
+  .prose-note { @apply text-sm leading-relaxed; }
+  .prose-note h1 { @apply mb-2 mt-4 text-2xl font-bold; }
+  .prose-note h2 { @apply mb-2 mt-4 text-xl font-bold; }
+  .prose-note h3 { @apply mb-1 mt-3 text-lg font-semibold; }
+  .prose-note p { @apply my-2; }
+  .prose-note ul { @apply my-2 list-disc pl-6; }
+  .prose-note ol { @apply my-2 list-decimal pl-6; }
+  .prose-note a { @apply text-primary underline; }
+  .prose-note code { @apply rounded bg-muted px-1 py-0.5 font-mono text-xs; }
+  .prose-note pre { @apply my-3 overflow-x-auto rounded-lg bg-muted p-3; }
+  .prose-note pre code { @apply bg-transparent p-0; }
+}
+/* ── Native app-shell feel ── */
+html {
+  overscroll-behavior-y: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Hide scrollbars on horizontal-scroll strips, keep them scrollable */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Safe-area helpers for notches / gesture bars */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
