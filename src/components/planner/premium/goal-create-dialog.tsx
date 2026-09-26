@@ -99,7 +99,7 @@ export function GoalDialog({ open, initial, onClose, onSubmit }: GoalDialogProps
               <Input type="time" className="w-full min-w-0" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />
             </div>
             <p className="text-xs text-muted-foreground">
-              Plays a chime + notification while StudySphere is open at this time.
+              Uses your reminder engine. On the Android APK, future reminders can be scheduled as persistent system alarms.
             </p>
           </div>
           <div className="space-y-2">
