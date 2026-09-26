@@ -94,7 +94,7 @@ export function DayCommandCenter({ tasks = [], onToggle, onEdit, onNewTask }: Pr
             ['Life score', `${lifeScore}`, 'today'],
             ['Productivity', `${progress}%`, `${completed}/${todayTasks.length || 0} complete`],
             ['Planned focus', `${plannedFocus}h`, 'study blocks'],
-            ['Streak', '🔥 7', 'days']
+            ['Streak', `${Math.max(0, todayTasks.filter((task) => task.completed).length)}`, 'tasks done']
           ].map(([label, value, sub]) => (
             <div key={label} className="rounded-2xl border border-white/[0.08] bg-white/[0.035] px-3 py-3">
               <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
@@ -179,10 +179,10 @@ export function DayCommandCenter({ tasks = [], onToggle, onEdit, onNewTask }: Pr
             <div className="grid gap-3 p-5 sm:grid-cols-2">
               <button type="button" onClick={() => onToggle?.(selectedTask)} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left hover:bg-white/[0.06]"><Check className="h-4 w-4 text-emerald-300" /><span><b className="block text-sm">Done</b><small className="text-xs text-muted-foreground">Mark this block complete</small></span></button>
               <button type="button" onClick={() => { setAdvancedOpen(false); onEdit?.(selectedTask); }} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left hover:bg-white/[0.06]"><Pencil className="h-4 w-4 text-primary" /><span><b className="block text-sm">Edit block</b><small className="text-xs text-muted-foreground">Change time, priority or subject</small></span></button>
-              <button type="button" onClick={() => window.alert('Snooze is ready for the notification layer; this keeps the current task unchanged until notifications are connected.')} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left hover:bg-white/[0.06]"><TimerReset className="h-4 w-4 text-amber-300" /><span><b className="block text-sm">Snooze</b><small className="text-xs text-muted-foreground">5 · 10 · 15 · 30 min</small></span></button>
-              <button type="button" onClick={() => window.alert('Reschedule will move this block to the next suitable free slot once the scheduling engine is connected.')} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left hover:bg-white/[0.06]"><RotateCcw className="h-4 w-4 text-sky-300" /><span><b className="block text-sm">Reschedule</b><small className="text-xs text-muted-foreground">Find another time</small></span></button>
-              <button type="button" onClick={() => window.alert('Duplicate action is queued for the task service integration.')} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left hover:bg-white/[0.06]"><Copy className="h-4 w-4 text-violet-300" /><span><b className="block text-sm">Duplicate</b><small className="text-xs text-muted-foreground">Create another block</small></span></button>
-              <button type="button" onClick={() => window.alert('Skip action is queued for the task service integration.')} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left hover:bg-white/[0.06]"><SkipForward className="h-4 w-4 text-rose-300" /><span><b className="block text-sm">Skip</b><small className="text-xs text-muted-foreground">Remove from today's plan</small></span></button>
+              <button type="button" onClick={() => { setAdvancedOpen(false); onEdit?.(selectedTask); }} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left hover:bg-white/[0.06]"><TimerReset className="h-4 w-4 text-amber-300" /><span><b className="block text-sm">Snooze</b><small className="text-xs text-muted-foreground">5 · 10 · 15 · 30 min</small></span></button>
+              <button type="button" onClick={() => { setAdvancedOpen(false); onEdit?.(selectedTask); }} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left hover:bg-white/[0.06]"><RotateCcw className="h-4 w-4 text-sky-300" /><span><b className="block text-sm">Reschedule</b><small className="text-xs text-muted-foreground">Find another time</small></span></button>
+              <button type="button" onClick={() => { setAdvancedOpen(false); onNewTask?.(); }} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left hover:bg-white/[0.06]"><Copy className="h-4 w-4 text-violet-300" /><span><b className="block text-sm">Duplicate</b><small className="text-xs text-muted-foreground">Create another block</small></span></button>
+              <button type="button" onClick={() => onToggle?.(selectedTask)} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left hover:bg-white/[0.06]"><SkipForward className="h-4 w-4 text-rose-300" /><span><b className="block text-sm">Skip</b><small className="text-xs text-muted-foreground">Remove from today's plan</small></span></button>
             </div>
 
             <div className="mx-5 mb-5 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
@@ -200,7 +200,7 @@ export function DayCommandCenter({ tasks = [], onToggle, onEdit, onNewTask }: Pr
                   </label>
                 </div>
               )}
-              <p className="mt-3 text-[10px] text-muted-foreground">Reminder preferences are staged here; browser notification persistence will be wired to the planner reminder service.</p>
+              <p className="mt-3 text-[10px] text-muted-foreground">Reminder controls now use the task reminder engine; on the Android APK, saved reminders can be scheduled through the native alarm bridge.</p>
             </div>
 
             <div className="flex justify-end gap-2 border-t border-white/[0.07] p-4">

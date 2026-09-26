@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared/glass-card';
 import { TaskItem } from '@/components/planner/task-item';
@@ -18,6 +19,7 @@ import { AiCoachPanel } from '@/components/planner/premium/ai-coach-panel';
 import { AiSmartPlanner } from '@/components/planner/premium/ai-smart-planner';
 import { GoalsTab } from '@/components/planner/premium/goals-tab';
 import { HabitsTab } from '@/components/planner/premium/habits-tab';
+import { DeadlineCommandCard } from '@/components/planner/premium/deadline-command-card';
 import { useTasksSync } from '@/hooks/use-tasks';
 import { usePlannerPlansSync } from '@/hooks/use-planner-plans';
 import { useLifeGoalsSync } from '@/hooks/use-lifegoals';
@@ -62,7 +64,10 @@ export default function PlannerPage() {
   const insights = usePlannerInsights();
   const habitInsights = useHabitInsights();
 
-  const [tab, setTab] = useState<Tab>('today');
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get('tab') as Tab | null;
+  const initialTab: Tab = requestedTab && TABS.some((item) => item.id === requestedTab) ? requestedTab : 'today';
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
 
@@ -109,6 +114,10 @@ export default function PlannerPage() {
   const todayIso = new Date().toISOString().slice(0, 10);
   const tasksToday = useMemo(() => tasks.filter((t) => t.dueDate === todayIso), [tasks, todayIso]);
 
+  useEffect(() => {
+    if (requestedTab && TABS.some((item) => item.id === requestedTab)) setTab(requestedTab);
+  }, [requestedTab]);
+
   return (
     <div className="space-y-5 animate-fade-in">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -132,7 +141,7 @@ export default function PlannerPage() {
         </div>
       </nav>
 
-      {tab === 'today' && <LifePlannerHome tasks={tasks} sessions={sessions} userName={user?.displayName} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onNewTask={() => { setEditing(null); setDialogOpen(true); }} />}
+      {tab === 'today' && <div className="space-y-5"><DeadlineCommandCard /><LifePlannerHome tasks={tasks} sessions={sessions} userName={user?.displayName} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onNewTask={() => { setEditing(null); setDialogOpen(true); }} /></div>}
       {tab === 'tasks' && <TasksWorkspace tasks={tasks} tasksToday={tasksToday} grouped={grouped} loading={loading} weeklySlots={weeklySlots} weeklyLoading={weeklyLoading} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onDelete={handleDelete} />}
       {tab === 'goals' && <GoalsTab />}
       {tab === 'habits' && <HabitsTab />}
