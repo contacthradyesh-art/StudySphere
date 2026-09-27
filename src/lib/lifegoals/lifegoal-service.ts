@@ -1,5 +1,5 @@
 import {
-  addDoc, collection, deleteDoc, doc, onSnapshot, orderBy,
+  addDoc, collection, deleteDoc, doc, onSnapshot,
   query, serverTimestamp, updateDoc, where
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
@@ -20,6 +20,10 @@ function lifeGoalsCol(uid: string) {
 
 function lifeMilestonesCol(uid: string) {
   return collection(db, COLLECTIONS.users, uid, LIFEGOAL_COLLECTIONS.lifeMilestones);
+}
+
+function sortByOrder<T extends { order?: number }>(items: T[]) {
+  return [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
 function scheduleGoalReminder(goalId: string, data: NewLifeGoal) {
@@ -45,11 +49,16 @@ function hashCode(value: string): number {
 // LifeGoal CRUD
 // ---------------------------------------------------------------------------
 
+/** Live goals. Sorting is client-side to avoid fragile Firestore order queries. */
 export function subscribeLifeGoals(uid: string, cb: (goals: LifeGoal[]) => void) {
-  const q = query(lifeGoalsCol(uid), orderBy('order', 'asc'));
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as LifeGoal));
-  });
+  return onSnapshot(
+    query(lifeGoalsCol(uid)),
+    (snap) => cb(sortByOrder(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as LifeGoal))),
+    (error) => {
+      console.error('Life goal subscription failed:', error);
+      cb([]);
+    }
+  );
 }
 
 export async function createLifeGoal(uid: string, data: NewLifeGoal, order = 0) {
@@ -62,6 +71,7 @@ export async function createLifeGoal(uid: string, data: NewLifeGoal, order = 0) 
     completedAt: null
   });
   scheduleGoalReminder(ref.id, data);
+  return ref.id;
 }
 
 export async function updateLifeGoal(uid: string, goalId: string, patch: Partial<LifeGoal>) {
@@ -88,21 +98,29 @@ export async function deleteLifeGoal(uid: string, goalId: string) {
 // ---------------------------------------------------------------------------
 
 export function subscribeLifeMilestones(uid: string, cb: (milestones: LifeMilestone[]) => void) {
-  const q = query(lifeMilestonesCol(uid), orderBy('order', 'asc'));
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as LifeMilestone));
-  });
+  return onSnapshot(
+    query(lifeMilestonesCol(uid)),
+    (snap) => cb(sortByOrder(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as LifeMilestone))),
+    (error) => {
+      console.error('Life milestone subscription failed:', error);
+      cb([]);
+    }
+  );
 }
 
 export function subscribeLifeMilestonesForGoal(uid: string, lifeGoalId: string, cb: (milestones: LifeMilestone[]) => void) {
-  const q = query(lifeMilestonesCol(uid), where('lifeGoalId', '==', lifeGoalId), orderBy('order', 'asc'));
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as LifeMilestone));
-  });
+  return onSnapshot(
+    query(lifeMilestonesCol(uid), where('lifeGoalId', '==', lifeGoalId)),
+    (snap) => cb(sortByOrder(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as LifeMilestone))),
+    (error) => {
+      console.error(`Life milestone subscription failed for ${lifeGoalId}:`, error);
+      cb([]);
+    }
+  );
 }
 
 export async function createLifeMilestone(uid: string, data: NewLifeMilestone, order = 0) {
-  await addDoc(lifeMilestonesCol(uid), {
+  const ref = await addDoc(lifeMilestonesCol(uid), {
     ...data,
     status: 'pending',
     order,
@@ -110,6 +128,7 @@ export async function createLifeMilestone(uid: string, data: NewLifeMilestone, o
     updatedAt: serverTimestamp(),
     completedAt: null
   });
+  return ref.id;
 }
 
 export async function updateLifeMilestone(uid: string, milestoneId: string, patch: Partial<LifeMilestone>) {
