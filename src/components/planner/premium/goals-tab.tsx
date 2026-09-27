@@ -11,39 +11,64 @@ import { useAuth } from '@/hooks/use-auth';
 import { requireAuth } from '@/lib/require-auth';
 import { useLifeGoalInsights } from '@/hooks/use-lifegoal-insights';
 import { useLifeGoalStore } from '@/store/lifegoal-store';
-import { createLifeGoal, deleteLifeGoal } from '@/lib/lifegoals/lifegoal-service';
+import { createLifeGoal, deleteLifeGoal, newLifeGoalId } from '@/lib/lifegoals/lifegoal-service';
+import type { LifeGoal, NewLifeGoal } from '@/lib/firestore/lifegoal-schema';
+
+type PendingGoal = LifeGoal & { createdAt: null; updatedAt: null; completedAt: null };
 
 export function GoalsTab() {
   const { user } = useAuth();
   const { loading, goalProgress } = useLifeGoalInsights();
   const allMilestones = useLifeGoalStore((s) => s.lifeMilestones);
-
+  const addLifeGoal = useLifeGoalStore((s) => s.addLifeGoal);
+  const removeLifeGoal = useLifeGoalStore((s) => s.removeLifeGoal);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openGoalId, setOpenGoalId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const activeGoals = goalProgress.filter((g) => g.goal.status !== 'archived');
   const opened = activeGoals.find((g) => g.goal.id === openGoalId);
 
   if (opened) {
-    return (
-      <GoalDetailView
-        data={opened}
-        allMilestones={allMilestones}
-        onBack={() => setOpenGoalId(null)}
-      />
-    );
+    return <GoalDetailView data={opened} allMilestones={allMilestones} onBack={() => setOpenGoalId(null)} />;
+  }
+
+  async function handleCreateGoal(data: NewLifeGoal) {
+    if (!requireAuth(user) || saving) return;
+    const id = newLifeGoalId();
+    const order = activeGoals.length;
+    const optimistic: PendingGoal = {
+      id,
+      ...data,
+      status: 'active',
+      order,
+      createdAt: null,
+      updatedAt: null,
+      completedAt: null
+    };
+    addLifeGoal(optimistic);
+    setSaving(true);
+    setDialogOpen(false);
+    try {
+      await createLifeGoal(user.uid, data, order, id);
+    } catch (error) {
+      removeLifeGoal(id);
+      console.error('Goal creation failed:', error);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Dream → Goal → Milestone → Task. Apne badein goals yahan track karo.</p>
-        <Button variant="gradient" size="sm" onClick={() => setDialogOpen(true)}>
+        <p className="text-sm text-muted-foreground">Dream → Goal → Milestone → Task. Apne bade goals yahan track karo.</p>
+        <Button variant="gradient" size="sm" onClick={() => setDialogOpen(true)} disabled={saving}>
           <Plus className="h-4 w-4" /> New goal
         </Button>
       </div>
 
-      {loading && <p className="text-sm text-muted-foreground">Loading goals...</p>}
+      {loading && activeGoals.length === 0 && <p className="text-sm text-muted-foreground">Loading goals…</p>}
 
       {!loading && activeGoals.length === 0 && (
         <GlassCard className="flex flex-col items-center gap-2 py-10 text-center">
@@ -60,7 +85,7 @@ export function GoalsTab() {
               key={g.goal.id}
               data={g}
               onOpen={() => setOpenGoalId(g.goal.id)}
-              onDelete={() => user && deleteLifeGoal(user.uid, g.goal.id)}
+              onDelete={() => { if (user) { removeLifeGoal(g.goal.id); void deleteLifeGoal(user.uid, g.goal.id); } }}
             />
           ))}
         </div>
@@ -68,12 +93,8 @@ export function GoalsTab() {
 
       <GoalDialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onSubmit={async (data) => {
-          if (!requireAuth(user)) return;
-          await createLifeGoal(user.uid, data, activeGoals.length);
-          setDialogOpen(false);
-        }}
+        onClose={() => !saving && setDialogOpen(false)}
+        onSubmit={handleCreateGoal}
       />
     </div>
   );
