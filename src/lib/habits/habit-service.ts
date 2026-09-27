@@ -15,7 +15,7 @@ function habitLogsCol(uid: string, habitId: string) {
   return collection(db, COLLECTIONS.users, uid, HABIT_COLLECTIONS.habits, habitId, HABIT_COLLECTIONS.logs);
 }
 
-function newHabitId() {
+export function newHabitId() {
   return `habit_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 }
 
@@ -23,12 +23,6 @@ function sortByOrder<T extends { order?: number }>(items: T[]) {
   return [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
-// ---------------------------------------------------------------------------
-// Habit CRUD
-// ---------------------------------------------------------------------------
-
-/** Live-subscribe to a user's habits. Sorting is client-side so old habits
- * without an order field cannot leave the UI stuck in a loading state. */
 export function subscribeHabits(uid: string, cb: (habits: Habit[]) => void) {
   return onSnapshot(
     query(habitsCol(uid)),
@@ -40,16 +34,15 @@ export function subscribeHabits(uid: string, cb: (habits: Habit[]) => void) {
   );
 }
 
-export async function createHabit(uid: string, data: NewHabit, order = 0) {
-  const id = newHabitId();
-  await setDoc(doc(habitsCol(uid), id), {
+export async function createHabit(uid: string, data: NewHabit, order = 0, habitId = newHabitId()) {
+  await setDoc(doc(habitsCol(uid), habitId), {
     ...data,
     status: 'active',
     order,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   });
-  return id;
+  return habitId;
 }
 
 export async function updateHabit(uid: string, habitId: string, patch: Partial<Habit>) {
@@ -64,11 +57,6 @@ export async function deleteHabit(uid: string, habitId: string) {
   await deleteDoc(doc(habitsCol(uid), habitId));
 }
 
-// ---------------------------------------------------------------------------
-// Habit logs (per-day completion)
-// ---------------------------------------------------------------------------
-
-/** Live-subscribe to a single habit's completion logs. */
 export function subscribeHabitLogs(uid: string, habitId: string, cb: (logs: HabitLog[]) => void) {
   return onSnapshot(
     habitLogsCol(uid, habitId),
@@ -80,7 +68,6 @@ export function subscribeHabitLogs(uid: string, habitId: string, cb: (logs: Habi
   );
 }
 
-/** Toggle a habit's completion for a given ISO date. */
 export async function toggleHabitLog(uid: string, habitId: string, date: string, completed: boolean) {
   await setDoc(
     doc(habitLogsCol(uid, habitId), date),
