@@ -1,6 +1,6 @@
 import {
-  addDoc, collection, deleteDoc, doc, onSnapshot,
-  query, serverTimestamp, updateDoc, where
+  collection, deleteDoc, doc, onSnapshot,
+  query, serverTimestamp, setDoc, updateDoc, where
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { COLLECTIONS } from '@/lib/firestore/schema';
@@ -26,6 +26,10 @@ function sortByOrder<T extends { order?: number }>(items: T[]) {
   return [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
+export function newLifeGoalId() {
+  return `goal_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+}
+
 function scheduleGoalReminder(goalId: string, data: NewLifeGoal) {
   if (!data.reminderAt || data.reminderAt <= Date.now()) return;
   void ensureStudyNotifications().then((granted) => {
@@ -45,11 +49,6 @@ function hashCode(value: string): number {
   return hash | 0;
 }
 
-// ---------------------------------------------------------------------------
-// LifeGoal CRUD
-// ---------------------------------------------------------------------------
-
-/** Live goals. Sorting is client-side to avoid fragile Firestore order queries. */
 export function subscribeLifeGoals(uid: string, cb: (goals: LifeGoal[]) => void) {
   return onSnapshot(
     query(lifeGoalsCol(uid)),
@@ -61,8 +60,8 @@ export function subscribeLifeGoals(uid: string, cb: (goals: LifeGoal[]) => void)
   );
 }
 
-export async function createLifeGoal(uid: string, data: NewLifeGoal, order = 0) {
-  const ref = await addDoc(lifeGoalsCol(uid), {
+export async function createLifeGoal(uid: string, data: NewLifeGoal, order = 0, goalId = newLifeGoalId()) {
+  await setDoc(doc(lifeGoalsCol(uid), goalId), {
     ...data,
     status: 'active',
     order,
@@ -70,8 +69,8 @@ export async function createLifeGoal(uid: string, data: NewLifeGoal, order = 0) 
     updatedAt: serverTimestamp(),
     completedAt: null
   });
-  scheduleGoalReminder(ref.id, data);
-  return ref.id;
+  scheduleGoalReminder(goalId, data);
+  return goalId;
 }
 
 export async function updateLifeGoal(uid: string, goalId: string, patch: Partial<LifeGoal>) {
@@ -92,10 +91,6 @@ export async function completeLifeGoal(uid: string, goalId: string) {
 export async function deleteLifeGoal(uid: string, goalId: string) {
   await deleteDoc(doc(lifeGoalsCol(uid), goalId));
 }
-
-// ---------------------------------------------------------------------------
-// LifeMilestone CRUD
-// ---------------------------------------------------------------------------
 
 export function subscribeLifeMilestones(uid: string, cb: (milestones: LifeMilestone[]) => void) {
   return onSnapshot(
@@ -120,7 +115,8 @@ export function subscribeLifeMilestonesForGoal(uid: string, lifeGoalId: string, 
 }
 
 export async function createLifeMilestone(uid: string, data: NewLifeMilestone, order = 0) {
-  const ref = await addDoc(lifeMilestonesCol(uid), {
+  const ref = doc(lifeMilestonesCol(uid));
+  await setDoc(ref, {
     ...data,
     status: 'pending',
     order,
