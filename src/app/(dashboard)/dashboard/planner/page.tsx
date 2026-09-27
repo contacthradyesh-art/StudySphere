@@ -167,14 +167,14 @@ function TasksWorkspace({ tasks, tasksToday, grouped, loading, weeklySlots, week
 
   return <section className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-bold">Task workspace</p><p className="text-xs text-muted-foreground">Keep execution simple. Use the timeline for time, tasks for everything else.</p></div><div className="flex rounded-xl border border-white/10 bg-white/[0.035] p-1">{(['today', 'all', 'weekly', 'monthly'] as const).map((item) => <button key={item} type="button" onClick={() => setView(item)} className={cn('rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-colors', view === item ? 'bg-white/[0.09] text-foreground' : 'text-muted-foreground hover:text-foreground')}>{item}</button>)}</div></div>
-    {view === 'today' && <div className="space-y-4">{loading ? <p className="text-sm text-muted-foreground">Loading your tasks…</p> : tasksToday.length > 0 ? <TodaySchedule tasksToday={tasksToday} onToggle={onToggle} /> : <GlassCard><p className="text-sm font-semibold">Nothing is due today.</p><p className="mt-1 text-xs text-muted-foreground">Use Plan task above to create a focused block.</p></GlassCard>}</div>}
+    {view === 'today' && <div className="space-y-4">{loading ? <p className="text-sm text-muted-foreground">Loading your tasks…</p> : tasksToday.length > 0 ? <TodaySchedule tasksToday={tasksToday} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} /> : <GlassCard><p className="text-sm font-semibold">Nothing is due today.</p><p className="mt-1 text-xs text-muted-foreground">Use Plan task above to create a focused block.</p></GlassCard>}</div>}
     {view === 'all' && <div className="space-y-5"><TaskGroup title="Active" tasks={grouped.pending} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} /><TaskGroup title="Completed" tasks={grouped.done} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} /></div>}
     {view === 'weekly' && (weeklyLoading ? <p className="text-sm text-muted-foreground">Loading weekly plan…</p> : weeklySlots.length > 0 ? <WeeklyGrid slots={weeklySlots} /> : <GlassCard><p className="text-sm font-semibold">No weekly plan yet.</p><p className="mt-1 text-xs text-muted-foreground">Open AI Coach and generate a plan from your current workload.</p></GlassCard>)}
     {view === 'monthly' && <MonthlyView />}
   </section>;
 }
 
-function TodaySchedule({ tasksToday, onToggle }: { tasksToday: Task[]; onToggle: (task: Task) => void }) {
+function TodaySchedule({ tasksToday, onToggle, onEdit, onDelete }: { tasksToday: Task[]; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void }) {
   const scheduled = [...tasksToday].sort((a, b) => (a.startTime ?? '99:99').localeCompare(b.startTime ?? '99:99'));
   const timed = scheduled.filter((task) => task.startTime);
   const unscheduled = scheduled.filter((task) => !task.startTime);
@@ -187,7 +187,7 @@ function TodaySchedule({ tasksToday, onToggle }: { tasksToday: Task[]; onToggle:
             {task.startTime}
           </div>
           <div className="relative rounded-2xl border border-violet-400/15 bg-violet-400/[0.035] p-1">
-            <TaskItem task={task} onToggle={() => onToggle(task)} />
+            <TaskItem task={task} onToggle={() => onToggle(task)} onEdit={() => onEdit(task)} onDelete={() => onDelete(task)} />
             {task.endTime && <p className="px-3 pb-2 text-[11px] text-muted-foreground">Until {task.endTime}</p>}
           </div>
         </div>
@@ -195,7 +195,7 @@ function TodaySchedule({ tasksToday, onToggle }: { tasksToday: Task[]; onToggle:
       {unscheduled.length > 0 && (
         <div className="space-y-2 pt-2">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Unscheduled</p>
-          {unscheduled.map((task) => <TaskItem key={task.id} task={task} onToggle={() => onToggle(task)} />)}
+          {unscheduled.map((task) => <TaskItem key={task.id} task={task} onToggle={() => onToggle(task)} onEdit={() => onEdit(task)} onDelete={() => onDelete(task)} />)}
         </div>
       )}
     </div>
