@@ -1,5 +1,5 @@
 import {
-  collection, deleteDoc, doc, onSnapshot, orderBy,
+  collection, deleteDoc, doc, onSnapshot,
   query, serverTimestamp, setDoc, updateDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
@@ -19,16 +19,25 @@ function newHabitId() {
   return `habit_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function sortByOrder<T extends { order?: number }>(items: T[]) {
+  return [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
 // ---------------------------------------------------------------------------
 // Habit CRUD
 // ---------------------------------------------------------------------------
 
-/** Live-subscribe to a user's habits, ordered by manual sort order. */
+/** Live-subscribe to a user's habits. Sorting is client-side so old habits
+ * without an order field cannot leave the UI stuck in a loading state. */
 export function subscribeHabits(uid: string, cb: (habits: Habit[]) => void) {
-  const q = query(habitsCol(uid), orderBy('order', 'asc'));
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Habit));
-  });
+  return onSnapshot(
+    query(habitsCol(uid)),
+    (snap) => cb(sortByOrder(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Habit))),
+    (error) => {
+      console.error('Habit subscription failed:', error);
+      cb([]);
+    }
+  );
 }
 
 export async function createHabit(uid: string, data: NewHabit, order = 0) {
@@ -40,6 +49,7 @@ export async function createHabit(uid: string, data: NewHabit, order = 0) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   });
+  return id;
 }
 
 export async function updateHabit(uid: string, habitId: string, patch: Partial<Habit>) {
@@ -60,16 +70,17 @@ export async function deleteHabit(uid: string, habitId: string) {
 
 /** Live-subscribe to a single habit's completion logs. */
 export function subscribeHabitLogs(uid: string, habitId: string, cb: (logs: HabitLog[]) => void) {
-  return onSnapshot(habitLogsCol(uid, habitId), (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HabitLog));
-  });
+  return onSnapshot(
+    habitLogsCol(uid, habitId),
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HabitLog)),
+    (error) => {
+      console.error(`Habit log subscription failed for ${habitId}:`, error);
+      cb([]);
+    }
+  );
 }
 
-/**
- * Toggle a habit's completion for a given ISO date (doc id = date, so this is
- * idempotent — no duplicate logs possible for the same day). Awards XP only
- * when transitioning into completed=true, never on un-checking.
- */
+/** Toggle a habit's completion for a given ISO date. */
 export async function toggleHabitLog(uid: string, habitId: string, date: string, completed: boolean) {
   await setDoc(
     doc(habitLogsCol(uid, habitId), date),
