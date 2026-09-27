@@ -10,8 +10,7 @@ import { TaskItem } from '@/components/planner/task-item';
 import { TaskDialog } from '@/components/planner/task-dialog';
 import { WeeklyGrid } from '@/components/planner/weekly-grid';
 import { MonthlyView } from '@/components/planner/monthly-view';
-import { TodaySchedule } from '@/components/planner/premium/today-schedule';
-import { LifePlannerHome } from '@/components/planner/premium/life-planner-home';
+import { DayCommandCenter } from '@/components/planner/premium/day-command-center';
 import { FocusAnalytics } from '@/components/planner/premium/focus-analytics';
 import { StudyHeatmap } from '@/components/planner/premium/study-heatmap';
 import { SubjectProgress } from '@/components/planner/premium/subject-progress';
@@ -124,7 +123,7 @@ export default function PlannerPage() {
         <div>
           <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-violet-300">Life OS</p>
           <h1 className="text-2xl font-black tracking-tight md:text-3xl">Life Planner</h1>
-          <p className="mt-1 text-sm text-muted-foreground">A single place to decide what matters, schedule it, focus, and learn from the week.</p>
+          <p className="mt-1 text-sm text-muted-foreground">One command center for your day, tasks, goals, habits and progress.</p>
         </div>
         <Button variant="gradient" onClick={() => { setEditing(null); setDialogOpen(true); }}>
           <Plus className="h-4 w-4" /> Plan task
@@ -141,7 +140,17 @@ export default function PlannerPage() {
         </div>
       </nav>
 
-      {tab === 'today' && <div className="space-y-5"><DeadlineCommandCard /><LifePlannerHome tasks={tasks} sessions={sessions} userName={user?.displayName} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onNewTask={() => { setEditing(null); setDialogOpen(true); }} /></div>}
+      {tab === 'today' && (
+        <div className="space-y-5">
+          <DeadlineCommandCard />
+          <DayCommandCenter
+            tasks={tasks}
+            onToggle={handleToggle}
+            onEdit={(task) => { setEditing(task); setDialogOpen(true); }}
+            onNewTask={() => { setEditing(null); setDialogOpen(true); }}
+          />
+        </div>
+      )}
       {tab === 'tasks' && <TasksWorkspace tasks={tasks} tasksToday={tasksToday} grouped={grouped} loading={loading} weeklySlots={weeklySlots} weeklyLoading={weeklyLoading} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onDelete={handleDelete} />}
       {tab === 'goals' && <GoalsTab />}
       {tab === 'habits' && <HabitsTab />}
