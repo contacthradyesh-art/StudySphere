@@ -174,6 +174,34 @@ function TasksWorkspace({ tasks, tasksToday, grouped, loading, weeklySlots, week
   </section>;
 }
 
+function TodaySchedule({ tasksToday, onToggle }: { tasksToday: Task[]; onToggle: (task: Task) => void }) {
+  const scheduled = [...tasksToday].sort((a, b) => (a.startTime ?? '99:99').localeCompare(b.startTime ?? '99:99'));
+  const timed = scheduled.filter((task) => task.startTime);
+  const unscheduled = scheduled.filter((task) => !task.startTime);
+
+  return (
+    <div className="space-y-3">
+      {timed.map((task) => (
+        <div key={task.id} className="grid grid-cols-[72px_1fr] gap-3 items-start">
+          <div className="pt-3 text-right text-xs font-semibold text-violet-300">
+            {task.startTime}
+          </div>
+          <div className="relative rounded-2xl border border-violet-400/15 bg-violet-400/[0.035] p-1">
+            <TaskItem task={task} onToggle={() => onToggle(task)} />
+            {task.endTime && <p className="px-3 pb-2 text-[11px] text-muted-foreground">Until {task.endTime}</p>}
+          </div>
+        </div>
+      ))}
+      {unscheduled.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Unscheduled</p>
+          {unscheduled.map((task) => <TaskItem key={task.id} task={task} onToggle={() => onToggle(task)} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TaskGroup({ title, tasks, onToggle, onEdit, onDelete }: { title: string; tasks: Task[]; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; }) {
   return <div className="space-y-2"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{title}</p><span className="text-xs text-muted-foreground">{tasks.length}</span></div>{tasks.length === 0 ? <GlassCard><p className="text-sm text-muted-foreground">Nothing here.</p></GlassCard> : tasks.map((task) => <TaskItem key={task.id} task={task} onToggle={() => onToggle(task)} onEdit={() => onEdit(task)} onDelete={() => onDelete(task)} />)}</div>;
 }
