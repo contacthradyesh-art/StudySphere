@@ -8,11 +8,12 @@ interface LifeGoalState {
   lifeMilestonesLoading: boolean;
   setLifeGoals: (goals: LifeGoal[]) => void;
   setLifeGoalsLoading: (loading: boolean) => void;
+  addLifeGoal: (goal: LifeGoal) => void;
+  removeLifeGoal: (goalId: string) => void;
   setLifeMilestones: (milestones: LifeMilestone[]) => void;
   setLifeMilestonesLoading: (loading: boolean) => void;
 }
 
-/** Client cache of the live LifeGoal/LifeMilestone data (hydrated from Firestore subscriptions). */
 export const useLifeGoalStore = create<LifeGoalState>((set) => ({
   lifeGoals: [],
   lifeGoalsLoading: true,
@@ -20,11 +21,12 @@ export const useLifeGoalStore = create<LifeGoalState>((set) => ({
   lifeMilestonesLoading: true,
   setLifeGoals: (lifeGoals) => set({ lifeGoals, lifeGoalsLoading: false }),
   setLifeGoalsLoading: (lifeGoalsLoading) => set({ lifeGoalsLoading }),
+  addLifeGoal: (goal) => set((s) => ({ lifeGoals: [...s.lifeGoals.filter((g) => g.id !== goal.id), goal] })),
+  removeLifeGoal: (goalId) => set((s) => ({ lifeGoals: s.lifeGoals.filter((g) => g.id !== goalId) })),
   setLifeMilestones: (lifeMilestones) => set({ lifeMilestones, lifeMilestonesLoading: false }),
   setLifeMilestonesLoading: (lifeMilestonesLoading) => set({ lifeMilestonesLoading })
 }));
 
-/** Selector: milestones belonging to a given goal, in manual sort order. */
 export function selectMilestonesForGoal(milestones: LifeMilestone[], lifeGoalId: string) {
   return milestones.filter((m) => m.lifeGoalId === lifeGoalId);
 }
