@@ -10,9 +10,11 @@ import { HabitDialog } from '@/components/planner/premium/habit-create-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { requireAuth } from '@/lib/require-auth';
 import { useHabitInsights } from '@/hooks/use-habit-insights';
-import { createHabit, deleteHabit, toggleHabitLog } from '@/lib/habits/habit-service';
-import type { NewHabit } from '@/lib/firestore/habit-schema';
+import { useHabitStore } from '@/store/habit-store';
+import { createHabit, deleteHabit, newHabitId, toggleHabitLog } from '@/lib/habits/habit-service';
+import type { Habit, NewHabit } from '@/lib/firestore/habit-schema';
 
+type PendingHabit = Habit & { createdAt: null; updatedAt: null };
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 function readableError(error: unknown) {
@@ -24,18 +26,33 @@ function readableError(error: unknown) {
 export function HabitsTab() {
   const { user } = useAuth();
   const { loading, habitProgress } = useHabitInsights();
+  const addHabit = useHabitStore((s) => s.addHabit);
+  const removeHabit = useHabitStore((s) => s.removeHabit);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function handleCreateHabit(data: NewHabit) {
     if (!requireAuth(user) || saving) return;
 
+    const id = newHabitId();
+    const order = habitProgress.length;
+    const optimistic: PendingHabit = {
+      id,
+      ...data,
+      status: 'active',
+      order,
+      createdAt: null,
+      updatedAt: null
+    };
+
+    addHabit(optimistic);
     setSaving(true);
+    setDialogOpen(false);
     try {
-      await createHabit(user.uid, data, habitProgress.length);
+      await createHabit(user.uid, data, order, id);
       toast.success('Habit created successfully');
-      setDialogOpen(false);
     } catch (error) {
+      removeHabit(id);
       console.error('Habit creation failed:', error);
       toast.error('Habit save failed', { description: readableError(error) });
     } finally {
@@ -52,7 +69,7 @@ export function HabitsTab() {
         </Button>
       </div>
 
-      {loading && <p className="text-sm text-muted-foreground">Loading habits...</p>}
+      {loading && habitProgress.length === 0 && <p className="text-sm text-muted-foreground">Loading habits…</p>}
 
       {!loading && habitProgress.length === 0 && (
         <GlassCard className="flex flex-col items-center gap-2 py-10 text-center">
