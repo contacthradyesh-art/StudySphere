@@ -14,7 +14,10 @@ import { useHabitStore } from '@/store/habit-store';
 import { createHabit, deleteHabit, newHabitId, toggleHabitLog } from '@/lib/habits/habit-service';
 import type { Habit, NewHabit } from '@/lib/firestore/habit-schema';
 
-type PendingHabit = Habit & { createdAt: null; updatedAt: null };
+type PendingHabit = Omit<Habit, 'createdAt' | 'updatedAt'> & {
+  createdAt: null;
+  updatedAt: null;
+};
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 function readableError(error: unknown) {
@@ -86,7 +89,12 @@ export function HabitsTab() {
               key={h.habit.id}
               data={h}
               onToggleToday={() => user && toggleHabitLog(user.uid, h.habit.id, todayIso(), !h.completedToday)}
-              onDelete={() => user && deleteHabit(user.uid, h.habit.id)}
+              onDelete={() => {
+                if (user) {
+                  removeHabit(h.habit.id);
+                  void deleteHabit(user.uid, h.habit.id);
+                }
+              }}
             />
           ))}
         </div>
