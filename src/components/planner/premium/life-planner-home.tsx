@@ -128,7 +128,6 @@ export function LifePlannerHome({ tasks, sessions, userName, onToggle, onEdit, o
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <DeadlineCommandCard />
       <section className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-gradient-to-br from-white/[0.065] via-white/[0.025] to-primary/[0.09] p-5 sm:p-7">
         <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative flex flex-col gap-5">
