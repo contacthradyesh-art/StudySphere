@@ -4,22 +4,23 @@ import type { Habit, HabitLog } from '@/lib/firestore/habit-schema';
 interface HabitState {
   habits: Habit[];
   habitsLoading: boolean;
-  /** Logs grouped by habitId. A habit with no entry yet means its logs haven't loaded. */
   habitLogs: Record<string, HabitLog[]>;
   setHabits: (habits: Habit[]) => void;
   setHabitsLoading: (loading: boolean) => void;
+  addHabit: (habit: Habit) => void;
+  removeHabit: (habitId: string) => void;
   setHabitLogs: (habitId: string, logs: HabitLog[]) => void;
-  /** Drop logs for habits that are no longer subscribed (e.g. habit deleted/archived out of view). */
   clearHabitLogs: (habitId: string) => void;
 }
 
-/** Client cache of the live Habit + HabitLog data (hydrated from Firestore subscriptions). */
 export const useHabitStore = create<HabitState>((set) => ({
   habits: [],
   habitsLoading: true,
   habitLogs: {},
   setHabits: (habits) => set({ habits, habitsLoading: false }),
   setHabitsLoading: (habitsLoading) => set({ habitsLoading }),
+  addHabit: (habit) => set((s) => ({ habits: [...s.habits.filter((h) => h.id !== habit.id), habit] })),
+  removeHabit: (habitId) => set((s) => ({ habits: s.habits.filter((h) => h.id !== habitId) })),
   setHabitLogs: (habitId, logs) =>
     set((s) => ({ habitLogs: { ...s.habitLogs, [habitId]: logs } })),
   clearHabitLogs: (habitId) =>
@@ -30,7 +31,6 @@ export const useHabitStore = create<HabitState>((set) => ({
     })
 }));
 
-/** Selector: a Set of start-of-day ms timestamps where the habit was completed (for streak/heatmap use). */
 export function selectCompletedDayMsSet(logs: HabitLog[]): Set<number> {
   const set = new Set<number>();
   for (const log of logs) {
