@@ -14,7 +14,11 @@ import { useLifeGoalStore } from '@/store/lifegoal-store';
 import { createLifeGoal, deleteLifeGoal, newLifeGoalId } from '@/lib/lifegoals/lifegoal-service';
 import type { LifeGoal, NewLifeGoal } from '@/lib/firestore/lifegoal-schema';
 
-type PendingGoal = LifeGoal & { createdAt: null; updatedAt: null; completedAt: null };
+type PendingGoal = Omit<LifeGoal, 'createdAt' | 'updatedAt' | 'completedAt'> & {
+  createdAt: null;
+  updatedAt: null;
+  completedAt: null;
+};
 
 export function GoalsTab() {
   const { user } = useAuth();
@@ -85,7 +89,12 @@ export function GoalsTab() {
               key={g.goal.id}
               data={g}
               onOpen={() => setOpenGoalId(g.goal.id)}
-              onDelete={() => { if (user) { removeLifeGoal(g.goal.id); void deleteLifeGoal(user.uid, g.goal.id); } }}
+              onDelete={() => {
+                if (user) {
+                  removeLifeGoal(g.goal.id);
+                  void deleteLifeGoal(user.uid, g.goal.id);
+                }
+              }}
             />
           ))}
         </div>
