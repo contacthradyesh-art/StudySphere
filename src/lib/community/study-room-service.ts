@@ -303,9 +303,10 @@ export async function sendRoomInvite(from: CommunityProfile, targetUid: string, 
 }
 
 export async function searchCommunityStudents(filters: { exam?: string; state?: string; subject?: string; text?: string }) {
-  const constraints = [limit(100)];
-  if (filters.exam) constraints.unshift(where('exam', '==', filters.exam));
-  if (filters.state) constraints.unshift(where('state', '==', filters.state));
+  const constraints: import('firebase/firestore').QueryConstraint[] = [];
+  if (filters.exam) constraints.push(where('exam', '==', filters.exam));
+  if (filters.state) constraints.push(where('state', '==', filters.state));
+  constraints.push(limit(100));
   const snap = await getDocs(query(collection(db, PROFILE_ROOT), ...constraints));
   const term = (filters.text || '').trim().toLowerCase();
   return snap.docs
