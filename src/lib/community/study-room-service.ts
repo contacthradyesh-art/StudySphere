@@ -210,7 +210,7 @@ export async function upsertCommunityProfile(profile: CommunityProfile) {
   }, { merge: true });
 }
 
-export async function subscribeCommunityLeaderboard(cb: (profiles: CommunityProfile[]) => void) {
+export function subscribeCommunityLeaderboard(cb: (profiles: CommunityProfile[]) => void) {
   const q = query(collection(db, PROFILE_ROOT), orderBy('streak', 'desc'), limit(50));
   return onSnapshot(q, (snap) => {
     const rows = snap.docs.map((d) => ({ uid: d.id, ...d.data() }) as CommunityProfile);
