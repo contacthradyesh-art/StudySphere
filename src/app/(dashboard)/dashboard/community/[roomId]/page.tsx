@@ -43,11 +43,18 @@ export default function StudyRoomPage() {
 
   useEffect(() => {
     if (!user || !roomId) return;
-    const profile = { uid: user.uid, displayName: user.displayName || 'Student', photoURL: user.photoURL, state: null, exam: null, subjects: [], isOnline: true, lastSeenAt: null };
+    const profile = profileFor(user);
     joinStudyRoom(roomId, profile).then(() => setJoined(true)).catch(() => toast.error('Could not join room'));
+    return () => { void leaveStudyRoom(roomId, user.uid); };
+  }, [user, roomId]);
+
+  useEffect(() => {
+    if (!user || !roomId || !joined) return;
+    const profile = profileFor(user);
+    void updateRoomPresence(roomId, profile, active ? 'studying' : 'online');
     const heartbeat = window.setInterval(() => void updateRoomPresence(roomId, profile, active ? 'studying' : 'online'), 30000);
-    return () => { window.clearInterval(heartbeat); void leaveStudyRoom(roomId, user.uid); };
-  }, [user, roomId, active]);
+    return () => window.clearInterval(heartbeat);
+  }, [user, roomId, joined, active]);
 
   async function beginFocus() {
     if (!user || !roomId) return;
