@@ -38,6 +38,7 @@ export interface SharedFocusSession {
   endsAt: Timestamp;
   startedBy: string;
   subject: string | null;
+  durationMinutes?: number;
   createdAt: Timestamp;
 }
 
