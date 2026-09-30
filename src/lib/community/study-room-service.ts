@@ -40,48 +40,27 @@ function followingCol(uid: string) { return collection(db, 'users', uid, 'follow
 function notificationsCol(uid: string) { return collection(db, 'users', uid, 'notifications'); }
 
 export async function createStudyRoom(input: { name: string; subject?: string | null; exam?: string | null; state?: string | null; host: CommunityProfile }): Promise<string> {
-  // Always use Firebase Auth's UID for security-rule checks. A stale profile UID
-  // must never cause a legitimate signed-in user to receive permission-denied.
-  const authUid = auth.currentUser?.uid;
-  if (!authUid) throw new Error('You must be signed in to create a study room.');
-
-  const ref = doc(roomsCol());
-  const batch = writeBatch(db);
-
-  batch.set(ref, {
-    name: input.name.trim() || 'Study Room',
-    subject: input.subject ?? null,
-    exam: input.exam ?? null,
-    state: input.state ?? null,
-    hostUid: authUid,
-    public: true,
-    active: true,
-    participantCount: 1,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+  const response = await fetch('/api/community/create-room', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      name: input.name,
+      subject: input.subject ?? null,
+      exam: input.exam ?? null,
+      state: input.state ?? null,
+      displayName: input.host.displayName || 'Student',
+      photoURL: input.host.photoURL ?? null,
+    }),
   });
 
-  batch.set(memberDoc(ref.id, authUid), {
-    uid: authUid,
-    displayName: input.host.displayName || 'Student',
-    photoURL: input.host.photoURL ?? null,
-    status: 'online',
-    focusStartedAt: null,
-    lastSeenAt: serverTimestamp(),
-  });
-
-  await batch.commit();
-
-  // Profile metadata is useful but must not prevent a room from being created.
-  try {
-    await upsertCommunityProfile({ ...input.host, uid: authUid });
-  } catch {
-    // The room and membership are already created successfully.
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || 'Could not create study room.');
   }
 
-  return ref.id;
+  return String(payload.roomId);
 }
-
 export function subscribePublicRooms(cb: (rooms: StudyRoom[]) => void) {
   const q = query(roomsCol(), where('public', '==', true), where('active', '==', true), orderBy('updatedAt', 'desc'), limit(50));
   return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as StudyRoom)));
