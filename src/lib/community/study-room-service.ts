@@ -94,7 +94,12 @@ export async function joinStudyRoom(roomId: string, profile: CommunityProfile) {
       lastSeenAt: serverTimestamp(),
     }, { merge: true });
   });
-  await upsertCommunityProfile({ ...profile, isOnline: true });
+  const existingProfile = await getCommunityProfile(profile.uid);
+  if (existingProfile) {
+    await setDoc(profileDoc(profile.uid), { isOnline: true, lastSeenAt: serverTimestamp() }, { merge: true });
+  } else {
+    await upsertCommunityProfile({ ...profile, isOnline: true });
+  }
 }
 
 export async function leaveStudyRoom(roomId: string, uid: string) {
@@ -120,7 +125,7 @@ export async function updateRoomPresence(roomId: string, profile: CommunityProfi
     focusStartedAt: status === 'studying' ? serverTimestamp() : null,
     lastSeenAt: serverTimestamp(),
   }, { merge: true });
-  await upsertCommunityProfile({ ...profile, isOnline: status !== 'away' });
+  await setDoc(profileDoc(profile.uid), { isOnline: status !== 'away', lastSeenAt: serverTimestamp() }, { merge: true });
 }
 
 export function subscribeSharedFocus(roomId: string, cb: (sessions: SharedFocusSession[]) => void) {
