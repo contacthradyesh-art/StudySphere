@@ -2,8 +2,6 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   signInWithPhoneNumber,
   RecaptchaVerifier,
   type ConfirmationResult,
@@ -63,6 +61,17 @@ function mapAuthError(err: unknown): AuthError {
       return new AuthError(code, 'This app domain is not authorized for Google sign-in. Add the current StudySphere domain in Firebase Authentication settings.');
     case 'auth/operation-not-allowed':
       return new AuthError(code, 'This sign-in method is disabled in Firebase Authentication settings.');
+    case 'auth/invalid-app-credential':
+    case 'auth/app-not-authorized':
+      return new AuthError(code, 'Phone verification could not verify this app. Check the Firebase Authorized domains and try again.');
+    case 'auth/captcha-check-failed':
+      return new AuthError(code, 'reCAPTCHA verification failed. Complete the reCAPTCHA and try again.');
+    case 'auth/missing-app-credential':
+      return new AuthError(code, 'Phone verification setup is incomplete. Please refresh the page and try again.');
+    case 'auth/billing-not-enabled':
+      return new AuthError(code, 'Firebase SMS verification needs billing enabled for this project. Use a Firebase test phone number while developing, or enable billing for real SMS.');
+    case 'auth/invalid-api-key':
+      return new AuthError(code, 'Firebase configuration is invalid. Check the production Firebase web app settings.');
     case 'auth/account-exists-with-different-credential':
       return new AuthError(code, 'An account already exists with this email using another sign-in method. Sign in with that method first.');
     case 'auth/invalid-phone-number':
@@ -170,22 +179,8 @@ export async function loginWithGoogle() {
     const code = typeof err === 'object' && err !== null && 'code' in err
       ? String((err as { code: unknown }).code) : '';
     if (code === 'auth/popup-blocked') {
-      await signInWithRedirect(auth, googleProvider);
-      return null;
+      throw new AuthError(code, 'Google sign-in popup was blocked by the browser. Allow pop-ups for StudySphere and try again.');
     }
-    if (err instanceof AuthError) throw err;
-    throw mapAuthError(err);
-  }
-}
-
-export async function completeGoogleRedirect() {
-  try {
-    const result = await getRedirectResult(auth);
-    if (!result?.user) return null;
-    await ensureUserProfile(result.user, 'google');
-    await establishSession(result.user);
-    return result.user;
-  } catch (err) {
     if (err instanceof AuthError) throw err;
     throw mapAuthError(err);
   }
@@ -193,11 +188,11 @@ export async function completeGoogleRedirect() {
 
 let phoneRecaptcha: RecaptchaVerifier | null = null;
 
-function getPhoneRecaptcha(buttonId: string) {
+function getPhoneRecaptcha(containerId: string) {
   if (typeof window === 'undefined') throw new Error('Phone sign-in is only available in a browser.');
   phoneRecaptcha?.clear();
-  phoneRecaptcha = new RecaptchaVerifier(auth, buttonId, {
-    size: 'invisible',
+  phoneRecaptcha = new RecaptchaVerifier(auth, containerId, {
+    size: 'normal',
     'expired-callback': () => {
       phoneRecaptcha?.clear();
       phoneRecaptcha = null;
