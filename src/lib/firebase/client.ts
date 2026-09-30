@@ -5,12 +5,11 @@ import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'demo-api-key',
-  // Keep Firebase Auth same-origin on Vercel/mobile browsers.
-  // Next.js transparently proxies /__/auth/* to the project's firebaseapp.com helper.
-  authDomain:
-    typeof window !== 'undefined'
-      ? window.location.hostname
-      : (process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'demo-app.firebaseapp.com'),
+  // Google/Firebase popup sign-in must use the Firebase OAuth redirect domain
+  // configured for this project (normally <project-id>.firebaseapp.com).
+  // Do not replace it with the Vercel hostname unless that hostname has also
+  // been registered as an authorized OAuth redirect URI in Google Cloud.
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'demo-app.firebaseapp.com',
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'demo-app',
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'demo-app.appspot.com',
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '123456789',
