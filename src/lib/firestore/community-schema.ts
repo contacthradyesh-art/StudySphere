@@ -1,12 +1,13 @@
 import type { Timestamp } from 'firebase/firestore';
 
-export type StudyRoomMode = 'solo' | 'room';
 export type RoomPresenceStatus = 'online' | 'studying' | 'away';
 
 export interface StudyRoom {
   id: string;
   name: string;
   subject: string | null;
+  exam: string | null;
+  state: string | null;
   hostUid: string;
   public: boolean;
   active: boolean;
@@ -32,6 +33,14 @@ export interface SharedFocusSession {
   startedBy: string;
   subject: string | null;
   createdAt: Timestamp;
+}
+
+export interface RoomMessage {
+  id: string;
+  uid: string;
+  displayName: string;
+  text: string;
+  createdAt: Timestamp | null;
 }
 
 export interface CommunityProfile {
