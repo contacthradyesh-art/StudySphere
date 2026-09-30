@@ -48,8 +48,14 @@ export default function CommunityPage() {
       });
       toast.success('Study room created');
       window.location.href = `/dashboard/community/${id}`;
-    } catch {
-      toast.error('Could not create study room');
+    } catch (error) {
+      const code = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Study room creation failed:', error);
+      toast.error('Could not create study room', {
+        description: code.includes('permission-denied')
+          ? 'Firebase permission denied. Please sign in again and retry.'
+          : code.slice(0, 140),
+      });
     } finally {
       setCreating(false);
     }
