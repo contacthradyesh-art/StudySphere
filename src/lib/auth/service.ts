@@ -193,14 +193,16 @@ export async function completeGoogleRedirect() {
 
 let phoneRecaptcha: RecaptchaVerifier | null = null;
 
-function getPhoneRecaptcha(containerId: string) {
+function getPhoneRecaptcha(buttonId: string) {
   if (typeof window === 'undefined') throw new Error('Phone sign-in is only available in a browser.');
-  if (!phoneRecaptcha) {
-    phoneRecaptcha = new RecaptchaVerifier(auth, containerId, {
-      size: 'invisible',
-      'expired-callback': () => { phoneRecaptcha = null; }
-    });
-  }
+  phoneRecaptcha?.clear();
+  phoneRecaptcha = new RecaptchaVerifier(auth, buttonId, {
+    size: 'invisible',
+    'expired-callback': () => {
+      phoneRecaptcha?.clear();
+      phoneRecaptcha = null;
+    }
+  });
   return phoneRecaptcha;
 }
 
