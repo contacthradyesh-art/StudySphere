@@ -31,6 +31,7 @@ export default function CommunityProfilePage() {
   const toggleSubject = (subject: string) => setProfile((p) => p ? ({ ...p, subjects: p.subjects.includes(subject) ? p.subjects.filter((x) => x !== subject) : [...p.subjects, subject] }) : p);
 
   async function save() {
+    if (!profile) return;
     setSaving(true);
     try { await upsertCommunityProfile(profile); toast.success('Community profile saved'); }
     catch { toast.error('Could not save profile'); }
