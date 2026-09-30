@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  writeBatch,
   doc,
   getDoc,
   getDocs,
@@ -39,7 +40,10 @@ function followingCol(uid: string) { return collection(db, 'users', uid, 'follow
 function notificationsCol(uid: string) { return collection(db, 'users', uid, 'notifications'); }
 
 export async function createStudyRoom(input: { name: string; subject?: string | null; exam?: string | null; state?: string | null; host: CommunityProfile }): Promise<string> {
-  const ref = await addDoc(roomsCol(), {
+  const ref = doc(roomsCol());
+  const batch = writeBatch(db);
+
+  batch.set(ref, {
     name: input.name.trim() || 'Study Room',
     subject: input.subject ?? null,
     exam: input.exam ?? null,
@@ -51,7 +55,8 @@ export async function createStudyRoom(input: { name: string; subject?: string | 
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
-  await setDoc(memberDoc(ref.id, input.host.uid), {
+
+  batch.set(memberDoc(ref.id, input.host.uid), {
     uid: input.host.uid,
     displayName: input.host.displayName || 'Student',
     photoURL: input.host.photoURL ?? null,
@@ -59,7 +64,16 @@ export async function createStudyRoom(input: { name: string; subject?: string | 
     focusStartedAt: null,
     lastSeenAt: serverTimestamp(),
   });
-  await upsertCommunityProfile(input.host);
+
+  await batch.commit();
+
+  // Profile metadata is useful but must not prevent a room from being created.
+  try {
+    await upsertCommunityProfile(input.host);
+  } catch {
+    // The room and membership are already created successfully.
+  }
+
   return ref.id;
 }
 
