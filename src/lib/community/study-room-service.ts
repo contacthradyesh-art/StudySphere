@@ -81,6 +81,7 @@ export async function joinStudyRoom(roomId: string, profile: CommunityProfile) {
       lastSeenAt: serverTimestamp()
     }, { merge: true });
   });
+  await upsertCommunityProfile({ ...profile, isOnline: true });
 }
 
 export async function leaveStudyRoom(roomId: string, uid: string) {
