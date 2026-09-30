@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  ArrowRight, BookOpen, CalendarDays, Check, Flame, GraduationCap,
-  Library, NotebookPen, Sparkles, Target, Timer, Brain,
-  RefreshCw, ChevronRight, Clock3, AlertCircle, Search
+  ArrowRight, CalendarDays, Check, Flame, GraduationCap,
+  NotebookPen, Sparkles, Target, Timer, Brain, RefreshCw,
+  ChevronRight, Clock3, AlertCircle, Search, Users
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { requireAuth } from '@/lib/require-auth';
@@ -16,81 +16,87 @@ import { usePlannerInsights } from '@/hooks/use-planner-insights';
 import { toggleTask } from '@/lib/planner/task-service';
 import { awardXp } from '@/lib/gamification/xp-service';
 import { formatDuration } from '@/utils/formatters';
-import { cn } from '@/lib/utils';
 import type { Task } from '@/lib/firestore/planner-schema';
 import { DeadlineCommandCard } from '@/components/planner/premium/deadline-command-card';
 import { useLifeGoalsSync } from '@/hooks/use-lifegoals';
 
-type Tool = { icon: typeof CalendarDays; title: string; desc: string; link: string; color: string };
-const TOOLS: Tool[] = [
-  { icon: CalendarDays, title: 'Life Planner', desc: 'Plan tasks, goals and your day.', link: '/dashboard/planner', color: '#8b5cf6' },
-  { icon: Target, title: 'Focus', desc: 'Start a deep-work session.', link: '/dashboard/focus', color: '#ec4899' },
-  { icon: GraduationCap, title: 'Mock Tests', desc: 'Practice with timed analysis.', link: '/dashboard/mock-tests', color: '#22c55e' },
-  { icon: Brain, title: 'Flashcards', desc: 'Review with spaced repetition.', link: '/dashboard/flashcards', color: '#06b6d4' },
-  { icon: Sparkles, title: 'AI Doubt Solver', desc: 'Ask, understand and practice.', link: '/dashboard/ai', color: '#a855f7' },
-  { icon: BookOpen, title: 'Mission IAS', desc: 'UPSC learning and practice OS.', link: '/dashboard/mission-ias', color: '#f97316' },
-  { icon: Library, title: 'Digital Library', desc: 'Books, PDFs and saved resources.', link: '/dashboard/mission-ias/digital-library', color: '#14b8a6' },
-  { icon: NotebookPen, title: 'Notes', desc: 'Your saved learning knowledge.', link: '/dashboard/notes', color: '#eab308' },
-];
-
-function ProgressRing({ progress, size = 118 }: { progress: number; size?: number }) {
-  const stroke = 10; const r = (size - stroke) / 2; const circumference = 2 * Math.PI * r; const clamped = Math.max(0, Math.min(1, progress));
-  return <svg width={size} height={size} className="-rotate-90" aria-label={`Study progress ${Math.round(clamped * 100)} percent`}>
-    <defs><linearGradient id="dashboard-ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#8b5cf6" /><stop offset="100%" stopColor="#ec4899" /></linearGradient></defs>
-    <circle cx={size / 2} cy={size / 2} r={r} stroke="currentColor" className="text-black/10 dark:text-white/10" strokeWidth={stroke} fill="none" />
-    <circle cx={size / 2} cy={size / 2} r={r} stroke="url(#dashboard-ring)" strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - clamped)} style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
-  </svg>;
-}
-
-function Stat({ icon: Icon, label, value, hint }: { icon: typeof Clock3; label: string; value: string; hint: string }) {
-  return <div className="rounded-2xl border border-black/[0.06] bg-black/[0.02] p-4 dark:border-white/[0.06] dark:bg-white/[0.03]"><div className="flex items-center gap-2 text-xs text-charcoal-500 dark:text-charcoal-400"><Icon className="h-4 w-4 text-primary" />{label}</div><div className="mt-2 text-xl font-semibold tracking-tight">{value}</div><div className="mt-1 text-[11px] text-charcoal-500">{hint}</div></div>;
-}
-
 export default function DashboardPage() {
   useTasksSync();
-  useLifeGoalsSync(); const router = useRouter(); const { user } = useAuth(); const insights = usePlannerInsights(); const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
-  const hour = new Date().getHours(); const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'; const firstName = user?.displayName?.trim().split(/\s+/)[0] || 'there';
-  const DAILY_GOAL_SECONDS = 4 * 60 * 60; const studySeconds = insights.dashboardStats.dailySeconds; const ringProgress = studySeconds / DAILY_GOAL_SECONDS; const streak = insights.dashboardStats.streakDays; const { level, badges } = insights.gamification;
-  const pendingToday = useMemo(() => insights.tasksToday.filter((t) => !t.completed).slice(0, 5), [insights.tasksToday]); const completedToday = insights.tasksToday.filter((t) => t.completed).length;
-  const plannedSeconds = useMemo(() => insights.tasksToday.reduce((sum, task) => { if (!task.startTime || !task.endTime) return sum; const [sh, sm] = task.startTime.split(':').map(Number); const [eh, em] = task.endTime.split(':').map(Number); if (![sh, sm, eh, em].every(Number.isFinite)) return sum; const start = sh * 60 + sm; const end = eh * 60 + em; return sum + (end >= start ? end - start : 0) * 60; }, 0), [insights.tasksToday]);
-  const pendingMinutes = Math.max(0, Math.round((plannedSeconds - studySeconds) / 60));
-  const primaryAction = useMemo(() => { if (pendingToday.length > 0) return { label: 'Continue today', sub: `${pendingToday.length} priority task${pendingToday.length > 1 ? 's' : ''} waiting`, href: '/dashboard/planner' }; if (studySeconds === 0) return { label: 'Start your first focus', sub: 'Build today\'s momentum', href: '/dashboard/focus' }; return { label: 'Review and improve', sub: 'Check your planner insights', href: '/dashboard/planner?tab=insights' }; }, [pendingToday.length, studySeconds]);
-  const hasOverdueTask = insights.tasksToday.some((task) => { if (task.completed) return false; const due = new Date(`${task.dueDate}T23:59:59`); return Number.isFinite(due.getTime()) && due.getTime() < Date.now(); });
-  async function handleToggleTask(task: Task) { if (!requireAuth(user)) return; setBusyTaskId(task.id); try { await toggleTask(user.uid, task.id, true); void awardXp(user.uid, 'completeTask'); toast.success('Task completed'); } catch { toast.error('Could not update task'); } finally { setBusyTaskId(null); } }
+  useLifeGoalsSync();
+  const router = useRouter();
+  const { user } = useAuth();
+  const insights = usePlannerInsights();
+  const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const firstName = user?.displayName?.trim().split(/\s+/)[0] || 'Student';
+  const studySeconds = insights.dashboardStats.dailySeconds;
+  const streak = insights.dashboardStats.streakDays;
+  const { level } = insights.gamification;
+  const pendingToday = useMemo(() => insights.tasksToday.filter((t) => !t.completed).slice(0, 5), [insights.tasksToday]);
+  const completedToday = insights.tasksToday.filter((t) => t.completed).length;
+
+  async function handleToggleTask(task: Task) {
+    if (!requireAuth(user)) return;
+    setBusyTaskId(task.id);
+    try {
+      await toggleTask(user.uid, task.id, true);
+      void awardXp(user.uid, 'completeTask');
+      toast.success('Task completed');
+    } catch {
+      toast.error('Could not update task');
+    } finally { setBusyTaskId(null); }
+  }
+
   return <div className="min-w-0 space-y-5 animate-fade-in pb-6">
-    <DeadlineCommandCard />
-    <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_85%_10%,rgba(177,132,255,0.22),transparent_35%),linear-gradient(145deg,#171321,#0d0b12_70%)] p-5 shadow-2xl shadow-black/30 sm:p-7">
+    <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_85%_8%,rgba(177,132,255,0.22),transparent_35%),linear-gradient(145deg,#171321,#0d0b12_70%)] p-5 shadow-2xl shadow-black/30 sm:p-7">
       <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-fuchsia-500/10 blur-3xl" />
       <div className="relative">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-200/80">StudySphere · Life OS</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">{greeting}, {firstName}.</h1>
-            <p className="mt-1 text-sm text-white/55">One clear plan. One focused day.</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-200/80">StudySphere · Student OS</p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-white">{greeting}, {firstName}.</h1>
+            <p className="mt-1 text-sm text-white/55">Plan less. Focus more. Study with people across India.</p>
           </div>
-          <Link href="/dashboard/settings" className="grid h-10 w-10 place-items-center rounded-full border border-violet-300/25 bg-white/5 text-sm font-bold text-violet-100 shadow-[0_0_26px_rgba(167,139,250,0.25)]">
+          <Link href="/dashboard/settings" className="grid h-10 w-10 place-items-center rounded-full border border-violet-300/25 bg-white/5 text-sm font-bold text-violet-100">
             {(user?.displayName?.[0] || 'S').toUpperCase()}
           </Link>
         </div>
-        <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.055] p-4 backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-violet-200/70">30-Day Comeback</p>
-              <p className="mt-1 text-base font-bold text-white">Your deadline, under control</p>
-              <p className="mt-1 text-xs text-white/55">Build the streak one day at a time.</p>
-            </div>
-            <button onClick={() => router.push('/dashboard/planner?tab=goals')} className="rounded-xl border border-violet-300/20 bg-violet-400/10 px-3 py-2 text-xs font-semibold text-violet-100">Manage</button>
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-200" style={{ width: `${Math.max(12, Math.round(ringProgress * 100))}%` }} /></div>
-          <div className="mt-2 flex items-center justify-between text-[11px] text-white/50"><span>Focus target · 4h/day</span><span>{formatDuration(studySeconds)} focused</span></div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <Stat icon={Timer} label="Focus today" value={formatDuration(studySeconds)} hint="Actual sessions" />
+          <Stat icon={CalendarDays} label="Tasks" value={`${completedToday}/${insights.tasksToday.length}`} hint="Completed today" />
+          <Stat icon={Flame} label="Streak" value={`${streak}d`} hint="Current consistency" />
         </div>
       </div>
     </section>
-    <section className="grid grid-cols-2 gap-2 sm:grid-cols-5"><Stat icon={Timer} label="Focus time" value={formatDuration(studySeconds)} hint="Actual sessions today" /><Stat icon={CalendarDays} label="Tasks" value={`${completedToday}/${insights.tasksToday.length}`} hint="Completed today" /><Stat icon={Clock3} label="Remaining plan" value={`${pendingMinutes}m`} hint="Approx. scheduled time" /><Stat icon={Flame} label="Streak" value={`${streak}d`} hint="Current consistency" /></section>
-    <DeadlineCommandCard />
-    <section><div className="mb-3 flex items-center justify-between"><div><h2 className="text-base font-semibold">Today&apos;s mission</h2><p className="text-xs text-charcoal-500">Your most important next actions</p></div><Link href="/dashboard/planner" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">Open planner <ArrowRight className="h-3 w-3" /></Link></div>{pendingToday.length === 0 ? <div className="rounded-2xl border border-dashed border-black/[0.10] bg-black/[0.02] p-6 text-center dark:border-white/[0.10] dark:bg-white/[0.02]"><Check className="mx-auto h-7 w-7 text-emerald-400" /><p className="mt-2 font-medium">Your planned tasks are complete.</p><p className="mt-1 text-xs text-charcoal-500">Use the time to review, read or plan tomorrow.</p></div> : <div className="space-y-2">{pendingToday.map((t, index) => <button key={t.id} onClick={() => handleToggleTask(t)} disabled={busyTaskId === t.id} className="flex w-full min-w-0 items-center gap-3 rounded-2xl border border-black/[0.06] bg-black/[0.02] px-4 py-3.5 text-left transition-colors hover:bg-black/[0.04] dark:border-white/[0.06] dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-xs font-semibold text-primary">{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{t.title}</p><div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-charcoal-500">{t.subject && <span>{t.subject}</span>}{t.startTime && t.endTime ? <span>• {t.startTime}–{t.endTime}</span> : null}</div></div><span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/[0.08] dark:border-white/10">{busyTaskId === t.id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</span></button>)}</div>}</section>
-    <section className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]"><div className="rounded-2xl border border-black/[0.06] bg-black/[0.02] p-5 dark:border-white/[0.06] dark:bg-white/[0.03]"><div className="flex items-start justify-between gap-4"><div><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /><h2 className="text-sm font-semibold">Next best action</h2></div><p className="mt-1 text-xs text-charcoal-500">One clear step is better than a crowded dashboard.</p></div><ChevronRight className="h-5 w-5 text-charcoal-400" /></div><Link href={primaryAction.href} className="mt-4 block rounded-xl border border-primary/20 bg-primary/5 p-4 transition hover:bg-primary/10"><p className="text-sm font-semibold">{primaryAction.label}</p><p className="mt-1 text-xs text-charcoal-500 dark:text-charcoal-400">{primaryAction.sub}</p></Link></div><div className="rounded-2xl border border-black/[0.06] bg-black/[0.02] p-5 dark:border-white/[0.06] dark:bg-white/[0.03]"><div className="flex items-center gap-2"><AlertCircle className="h-4 w-4 text-amber-400" /><h2 className="text-sm font-semibold">Attention</h2></div><p className="mt-3 text-sm font-medium">{hasOverdueTask ? 'You have overdue planner work.' : pendingToday.length ? 'Stay with your top task before adding more.' : 'No urgent tasks right now.'}</p><Link href="/dashboard/planner" className="mt-3 inline-flex items-center gap-1 text-xs text-primary">Review <ArrowRight className="h-3 w-3" /></Link></div></section>
-    <section><div className="mb-3 flex items-center justify-between"><div><h2 className="text-base font-semibold">Jump back in</h2><p className="text-xs text-charcoal-500">Your core StudySphere tools</p></div><Link href="/dashboard" className="inline-flex items-center gap-1 text-xs text-charcoal-500"><Search className="h-3 w-3" /> Home</Link></div><div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide sm:mx-0 sm:px-0">{TOOLS.map(({ icon: Icon, title, desc, link, color }) => <Link key={title} href={link} className="group block w-40 shrink-0 snap-start rounded-2xl border border-black/[0.06] bg-black/[0.02] p-4 transition-colors hover:border-primary/30 hover:bg-black/[0.04] dark:border-white/[0.06] dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"><div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: `${color}22`, color }}><Icon className="h-5 w-5" /></div><p className="text-sm font-semibold">{title}</p><p className="mt-0.5 text-xs leading-snug text-charcoal-500">{desc}</p></Link>)}</div></section>
-    <section className="rounded-2xl border border-black/[0.06] bg-black/[0.02] p-5 dark:border-white/[0.06] dark:bg-white/[0.03]"><div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /><h2 className="text-sm font-semibold">Your learning momentum</h2></div><Link href="/dashboard/achievements" className="inline-flex items-center gap-1 text-xs text-primary">Achievements <ArrowRight className="h-3 w-3" /></Link></div><div className="h-1.5 overflow-hidden rounded-full bg-black/10 dark:bg-white/10"><div className="h-full rounded-full bg-gradient-brand transition-all duration-500" style={{ width: `${Math.round(level.progress * 100)}%` }} /></div><p className="mt-1.5 text-xs text-charcoal-500">{level.xpIntoLevel} / {level.xpIntoLevel + level.xpForNext} XP to Level {level.level + 1}</p>{badges.length > 0 ? <div className="mt-4 flex flex-wrap gap-2">{badges.slice(0, 6).map((b) => <div key={b.id} title={b.description} className="rounded-full border border-black/10 bg-black/5 px-2.5 py-1 text-[11px] text-charcoal-600 dark:border-white/10 dark:bg-white/5 dark:text-charcoal-300">{b.id}</div>)}</div> : null}</section>
+
+    <section className="grid gap-3 sm:grid-cols-2">
+      <Link href="/dashboard/community" className="group rounded-2xl border border-violet-400/20 bg-violet-400/[0.045] p-5 transition hover:bg-violet-400/[0.08]">
+        <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-400/15"><Users className="h-5 w-5 text-violet-300" /></span><div><p className="font-semibold">Study Together</p><p className="text-xs text-muted-foreground">Join live rooms and focus with other students.</p></div><ArrowRight className="ml-auto h-4 w-4 text-violet-300 transition group-hover:translate-x-1" /></div>
+      </Link>
+      <Link href="/dashboard/pomodoro" className="group rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/[0.045] p-5 transition hover:bg-fuchsia-400/[0.08]">
+        <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-fuchsia-400/15"><Timer className="h-5 w-5 text-fuchsia-300" /></span><div><p className="font-semibold">Start Focus</p><p className="text-xs text-muted-foreground">25-minute Pomodoro with automatic session tracking.</p></div><ArrowRight className="ml-auto h-4 w-4 text-fuchsia-300 transition group-hover:translate-x-1" /></div>
+      </Link>
+    </section>
+
+    <section>
+      <div className="mb-3 flex items-center justify-between"><div><h2 className="text-base font-semibold">Today's mission</h2><p className="text-xs text-muted-foreground">Only the core work stays here.</p></div><Link href="/dashboard/planner" className="inline-flex items-center gap-1 text-xs text-primary">Open planner <ArrowRight className="h-3 w-3" /></Link></div>
+      {pendingToday.length === 0 ? <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center"><Check className="mx-auto h-7 w-7 text-emerald-400" /><p className="mt-2 font-medium">Your planned tasks are complete.</p></div> : <div className="space-y-2">{pendingToday.map((t, index) => <button key={t.id} onClick={() => handleToggleTask(t)} disabled={busyTaskId === t.id} className="flex w-full items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3.5 text-left hover:bg-white/[0.06]"><span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-xs font-semibold text-primary">{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{t.title}</p><div className="mt-1 text-[11px] text-muted-foreground">{t.subject || 'General study'}{t.startTime && t.endTime ? ` · ${t.startTime}–${t.endTime}` : ''}</div></div>{busyTaskId === t.id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</button>)}</div>}
+    </section>
+
+    <section className="grid gap-4 lg:grid-cols-2">
+      <Link href="/dashboard/mock-tests" className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 transition hover:bg-white/[0.05]"><div className="flex items-center gap-3"><GraduationCap className="h-5 w-5 text-primary" /><div><p className="font-semibold">Practice</p><p className="text-xs text-muted-foreground">Mock tests and exam preparation.</p></div></div></Link>
+      <Link href="/dashboard/notes" className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 transition hover:bg-white/[0.05]"><div className="flex items-center gap-3"><NotebookPen className="h-5 w-5 text-primary" /><div><p className="font-semibold">Notes</p><p className="text-xs text-muted-foreground">Keep your learning knowledge in one place.</p></div></div></Link>
+    </section>
+
+    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
+      <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /><h2 className="text-sm font-semibold">Learning momentum</h2></div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-brand" style={{ width: `${Math.round(level.progress * 100)}%` }} /></div>
+      <p className="mt-1.5 text-xs text-muted-foreground">Level {level.level} · {level.xpIntoLevel} XP into this level</p>
+    </section>
   </div>;
+}
+
+function Stat({ icon: Icon, label, value, hint }: { icon: typeof Timer; label: string; value: string; hint: string }) {
+  return <div className="rounded-2xl border border-white/[0.06] bg-white/[0.035] p-4"><div className="flex items-center gap-2 text-xs text-muted-foreground"><Icon className="h-4 w-4 text-primary" />{label}</div><div className="mt-2 text-xl font-semibold">{value}</div><div className="mt-1 text-[11px] text-muted-foreground">{hint}</div></div>;
 }
