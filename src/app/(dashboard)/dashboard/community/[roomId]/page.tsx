@@ -358,7 +358,8 @@ function timestampMs(value: unknown) {
     const candidate = value as { toMillis?: unknown };
     if (typeof candidate.toMillis === 'function') return candidate.toMillis();
   }
-  const date = new Date(value as string | number | Date);
+  if (value instanceof Date) return value.getTime();
+  const date = new Date(value as string | number);
   return Number.isFinite(date.getTime()) ? date.getTime() : 0;
 }
 
