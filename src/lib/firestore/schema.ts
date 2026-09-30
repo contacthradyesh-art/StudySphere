@@ -16,12 +16,12 @@ export const COLLECTIONS = {
 
 export interface UserProfile {
   uid: string;
-  email: string;
+  email: string | null;
   displayName: string;
   photoURL: string | null;
   emailVerified: boolean;
   twoFactorEnabled: boolean;
-  provider: 'password' | 'google';
+  provider: 'password' | 'google' | 'phone';
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
