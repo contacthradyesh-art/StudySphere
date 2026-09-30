@@ -6,7 +6,7 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
 
-  images: {
+  async rewrites() {\n    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;\n    return projectId\n      ? [\n          {\n            source: '/__/auth/:path*',\n            destination: `https://${projectId}.firebaseapp.com/__/auth/:path*`,\n          },\n        ]\n      : [];\n  },\n\n  images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com' }
