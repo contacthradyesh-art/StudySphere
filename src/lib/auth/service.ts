@@ -296,6 +296,10 @@ export function isGoogleAccount(): boolean {
   return auth.currentUser?.providerData.some((p) => p.providerId === 'google.com') ?? false;
 }
 
+export function hasPasswordProvider(): boolean {
+  return auth.currentUser?.providerData.some((p) => p.providerId === 'password') ?? false;
+}
+
 /**
  * Permanently delete the signed-in user's account: re-authenticates (via
  * password for email accounts, or a fresh Google popup for Google accounts),
