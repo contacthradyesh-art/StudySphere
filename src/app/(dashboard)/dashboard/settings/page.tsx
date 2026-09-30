@@ -222,7 +222,7 @@ export default function SettingsPage() {
             </Button>
           </CardContent>
         </Card>
-      )
+      );
 
       {/* Notifications */}
       <Card>
