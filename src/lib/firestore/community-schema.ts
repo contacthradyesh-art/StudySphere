@@ -32,6 +32,7 @@ export interface SharedFocusSession {
   endsAt: Timestamp;
   startedBy: string;
   subject: string | null;
+  durationMinutes?: number;
   createdAt: Timestamp;
 }
 
@@ -40,6 +41,17 @@ export interface RoomMessage {
   uid: string;
   displayName: string;
   text: string;
+  createdAt: Timestamp | null;
+}
+
+export interface CommunityNotification {
+  id: string;
+  type: 'follow' | 'roomInvite' | 'system';
+  title: string;
+  body: string;
+  fromUid: string | null;
+  roomId: string | null;
+  read: boolean;
   createdAt: Timestamp | null;
 }
 
@@ -52,4 +64,10 @@ export interface CommunityProfile {
   subjects: string[];
   isOnline: boolean;
   lastSeenAt: Timestamp | null;
+  bio?: string;
+  studyMinutes?: number;
+  streak?: number;
+  followersCount?: number;
+  followingCount?: number;
+  lastStudyDate?: string | null;
 }
