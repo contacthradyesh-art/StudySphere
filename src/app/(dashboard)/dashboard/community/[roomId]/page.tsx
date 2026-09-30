@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Clock3, Play, Users, Radio, Square, LogOut, Send, Flag, UserPlus, UserMinus } from 'lucide-react';
+import { Play, Users, Radio, Square, LogOut, Send, Flag, UserPlus, UserMinus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared/glass-card';
 import { useAuth } from '@/hooks/use-auth';
-import { joinStudyRoom, leaveStudyRoom, subscribeRoomMembers, subscribeSharedFocus, updateRoomPresence, startSharedFocus, stopSharedFocus, subscribeRoomMessages, sendRoomMessage, reportRoomUser, followStudent, unfollowStudent, isFollowingStudent } from '@/lib/community/study-room-service';
+import { joinStudyRoom, leaveStudyRoom, subscribeRoomMembers, subscribeSharedFocus, updateRoomPresence, startSharedFocus, stopSharedFocus, subscribeRoomMessages, sendRoomMessage, reportRoomUser, followStudent, unfollowStudent, isFollowingStudent, recordCommunityStudy } from '@/lib/community/study-room-service';
 import type { RoomMember, SharedFocusSession, RoomMessage } from '@/lib/firestore/community-schema';
 
 export default function StudyRoomPage() {
@@ -20,6 +20,7 @@ export default function StudyRoomPage() {
   const [joined, setJoined] = useState(false);
   const [remaining, setRemaining] = useState(0);
   const [following, setFollowing] = useState<Record<string, boolean>>({});
+  const [myFocusSessionId, setMyFocusSessionId] = useState<string | null>(null);
 
   const activeSession = focus[0];
   const activeEnds = activeSession ? timestampMs(activeSession.endsAt) : 0;
@@ -56,10 +57,20 @@ export default function StudyRoomPage() {
     return () => window.clearInterval(heartbeat);
   }, [user, roomId, joined, active]);
 
+  useEffect(() => {
+    if (!user || !joined || !activeSession || !activeEnds || activeEnds > Date.now()) return;
+    if (myFocusSessionId !== activeSession.id) return;
+    const key = `studysphere:community-focus:${user.uid}:${activeSession.id}`;
+    if (window.localStorage.getItem(key)) return;
+    window.localStorage.setItem(key, '1');
+    void recordCommunityStudy(user.uid, activeSession.durationMinutes || 25);
+  }, [user, joined, activeSession, activeEnds, myFocusSessionId]);
+
   async function beginFocus() {
     if (!user || !roomId) return;
     try {
-      await startSharedFocus(roomId, user.uid, 25, null);
+      const sessionId = await startSharedFocus(roomId, user.uid, 25, null);
+      setMyFocusSessionId(sessionId);
       await updateRoomPresence(roomId, profileFor(user), 'studying');
       toast.success('Shared Pomodoro started');
     } catch { toast.error('Could not start shared focus'); }
@@ -78,6 +89,15 @@ export default function StudyRoomPage() {
     try { await sendRoomMessage(roomId, profileFor(user), message); setMessage(''); }
     catch { toast.error('Message could not be sent'); }
   }
+
+  useEffect(() => {
+    if (!user || members.length === 0) return;
+    let cancelled = false;
+    void Promise.all(members.filter((m) => m.uid !== user.uid).map(async (m) => [m.uid, await isFollowingStudent(user.uid, m.uid)] as const)).then((items) => {
+      if (!cancelled) setFollowing(Object.fromEntries(items));
+    });
+    return () => { cancelled = true; };
+  }, [user, members]);
 
   async function toggleFollow(targetUid: string) {
     if (!user || targetUid === user.uid) return;
@@ -118,5 +138,10 @@ export default function StudyRoomPage() {
 function profileFor(user: { uid: string; displayName?: string | null; photoURL?: string | null }) {
   return { uid: user.uid, displayName: user.displayName || 'Student', photoURL: user.photoURL || null, state: null, exam: null, subjects: [], isOnline: true, lastSeenAt: null };
 }
-function timestampMs(value: any) { return typeof value?.toMillis === 'function' ? value.toMillis() : new Date(value).getTime(); }
+function timestampMs(value: unknown) {
+  if (typeof value === 'object' && value !== null && 'toMillis' in value && typeof (value as { toMillis?: unknown }).toMillis === 'function') return (value as { toMillis: () => number }).toMillis();
+  if (value instanceof Date) return value.getTime();
+  const time = new Date(String(value)).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
 function formatMs(ms: number) { const total = Math.floor(Math.max(0, ms) / 1000); return `${String(Math.floor(total / 60)).padStart(2,'0')}:${String(total % 60).padStart(2,'0')}`; }
