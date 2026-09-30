@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared/glass-card';
 import { useAuth } from '@/hooks/use-auth';
-import { joinStudyRoom, leaveStudyRoom, subscribeRoomMembers, subscribeSharedFocus, updateRoomPresence, startSharedFocus, stopSharedFocus, subscribeRoomMessages, sendRoomMessage, reportRoomUser, followStudent, unfollowStudent, isFollowingStudent } from '@/lib/community/study-room-service';
+import { joinStudyRoom, leaveStudyRoom, subscribeRoomMembers, subscribeSharedFocus, updateRoomPresence, startSharedFocus, stopSharedFocus, subscribeRoomMessages, sendRoomMessage, reportRoomUser, followStudent, unfollowStudent, isFollowingStudent, recordCommunityStudy } from '@/lib/community/study-room-service';
 import type { RoomMember, SharedFocusSession, RoomMessage } from '@/lib/firestore/community-schema';
 
 export default function StudyRoomPage() {
@@ -20,6 +20,7 @@ export default function StudyRoomPage() {
   const [joined, setJoined] = useState(false);
   const [remaining, setRemaining] = useState(0);
   const [following, setFollowing] = useState<Record<string, boolean>>({});
+  const [recordedSessionId, setRecordedSessionId] = useState<string | null>(null);
 
   const activeSession = focus[0];
   const activeEnds = activeSession ? timestampMs(activeSession.endsAt) : 0;
@@ -83,7 +84,7 @@ export default function StudyRoomPage() {
     if (!user || targetUid === user.uid) return;
     const next = !following[targetUid];
     setFollowing((s) => ({ ...s, [targetUid]: next }));
-    try { if (next) await followStudent(user.uid, targetUid); else await unfollowStudent(user.uid, targetUid); }
+    try { if (next) await followStudent(user.uid, targetUid, user.displayName || 'A student'); else await unfollowStudent(user.uid, targetUid); }
     catch { setFollowing((s) => ({ ...s, [targetUid]: !next })); toast.error('Could not update connection'); }
   }
 
@@ -94,6 +95,18 @@ export default function StudyRoomPage() {
     try { await reportRoomUser(roomId, user.uid, targetUid, reason); toast.success('Report submitted'); }
     catch { toast.error('Could not submit report'); }
   }
+
+  useEffect(() => {
+    if (!user || !activeSession || activeSession.phase !== 'focus' || remaining > 0 || recordedSessionId === activeSession.id) return;
+    setRecordedSessionId(activeSession.id);
+    void recordCommunityStudy(user.uid, activeSession.durationMinutes || 25);
+  }, [user, activeSession, remaining, recordedSessionId]);
+
+  useEffect(() => {
+    if (!user) return;
+    Promise.all(members.filter(m => m.uid !== user.uid).map(m => isFollowingStudent(user.uid, m.uid).then(v => [m.uid, v] as const)))
+      .then(items => setFollowing(Object.fromEntries(items)));
+  }, [user, members.map(m => m.uid).join(',')]);
 
   const studying = members.filter((m) => m.status === 'studying');
 
