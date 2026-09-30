@@ -2,17 +2,20 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
+  Timestamp,
   where
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import type { StudyRoom, RoomMember, SharedFocusSession, CommunityProfile } from '@/lib/firestore/community-schema';
+import type { StudyRoom, RoomMember, SharedFocusSession, CommunityProfile, RoomMessage } from '@/lib/firestore/community-schema';
 
 const ROOT = 'studyRooms';
 
@@ -21,11 +24,14 @@ function roomDoc(roomId: string) { return doc(db, ROOT, roomId); }
 function membersCol(roomId: string) { return collection(db, ROOT, roomId, 'members'); }
 function memberDoc(roomId: string, uid: string) { return doc(db, ROOT, roomId, 'members', uid); }
 function focusCol(roomId: string) { return collection(db, ROOT, roomId, 'focusSessions'); }
+function messagesCol(roomId: string) { return collection(db, ROOT, roomId, 'messages'); }
 
-export async function createStudyRoom(input: { name: string; subject?: string | null; host: CommunityProfile }): Promise<string> {
+export async function createStudyRoom(input: { name: string; subject?: string | null; exam?: string | null; state?: string | null; host: CommunityProfile }): Promise<string> {
   const ref = await addDoc(roomsCol(), {
     name: input.name.trim() || 'Study Room',
     subject: input.subject ?? null,
+    exam: input.exam ?? null,
+    state: input.state ?? null,
     hostUid: input.host.uid,
     public: true,
     active: true,
@@ -45,7 +51,7 @@ export async function createStudyRoom(input: { name: string; subject?: string | 
 }
 
 export function subscribePublicRooms(cb: (rooms: StudyRoom[]) => void) {
-  const q = query(roomsCol(), where('public', '==', true), where('active', '==', true), orderBy('updatedAt', 'desc'), limit(30));
+  const q = query(roomsCol(), where('public', '==', true), where('active', '==', true), orderBy('updatedAt', 'desc'), limit(50));
   return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as StudyRoom)));
 }
 
@@ -55,19 +61,40 @@ export function subscribeRoomMembers(roomId: string, cb: (members: RoomMember[])
 }
 
 export async function joinStudyRoom(roomId: string, profile: CommunityProfile) {
-  await setDoc(memberDoc(roomId, profile.uid), {
-    uid: profile.uid,
-    displayName: profile.displayName || 'Student',
-    photoURL: profile.photoURL ?? null,
-    status: 'online',
-    focusStartedAt: null,
-    lastSeenAt: serverTimestamp()
-  }, { merge: true });
-  await setDoc(roomDoc(roomId), { updatedAt: serverTimestamp() }, { merge: true });
+  await runTransaction(db, async (tx) => {
+    const roomRef = roomDoc(roomId);
+    const memberRef = memberDoc(roomId, profile.uid);
+    const [roomSnap, memberSnap] = await Promise.all([tx.get(roomRef), tx.get(memberRef)]);
+    if (!roomSnap.exists()) throw new Error('Study room not found');
+    if (!memberSnap.exists() || memberSnap.data().status === 'away') {
+      const current = Number(roomSnap.data().participantCount || 0);
+      tx.update(roomRef, { participantCount: current + 1, updatedAt: serverTimestamp() });
+    } else {
+      tx.update(roomRef, { updatedAt: serverTimestamp() });
+    }
+    tx.set(memberRef, {
+      uid: profile.uid,
+      displayName: profile.displayName || 'Student',
+      photoURL: profile.photoURL ?? null,
+      status: 'online',
+      focusStartedAt: null,
+      lastSeenAt: serverTimestamp()
+    }, { merge: true });
+  });
 }
 
 export async function leaveStudyRoom(roomId: string, uid: string) {
-  await setDoc(memberDoc(roomId, uid), { status: 'away', lastSeenAt: serverTimestamp() }, { merge: true });
+  await runTransaction(db, async (tx) => {
+    const roomRef = roomDoc(roomId);
+    const memberRef = memberDoc(roomId, uid);
+    const [roomSnap, memberSnap] = await Promise.all([tx.get(roomRef), tx.get(memberRef)]);
+    if (!roomSnap.exists() || !memberSnap.exists()) return;
+    if (memberSnap.data().status !== 'away') {
+      const current = Number(roomSnap.data().participantCount || 0);
+      tx.update(roomRef, { participantCount: Math.max(0, current - 1), updatedAt: serverTimestamp() });
+    }
+    tx.set(memberRef, { status: 'away', focusStartedAt: null, lastSeenAt: serverTimestamp() }, { merge: true });
+  });
 }
 
 export async function updateRoomPresence(roomId: string, profile: CommunityProfile, status: RoomMember['status']) {
@@ -87,11 +114,11 @@ export function subscribeSharedFocus(roomId: string, cb: (sessions: SharedFocusS
 }
 
 export async function startSharedFocus(roomId: string, uid: string, minutes: number, subject: string | null = null) {
-  const endsAt = new Date(Date.now() + minutes * 60 * 1000);
+  const safeMinutes = Math.max(5, Math.min(120, Math.round(minutes)));
   await addDoc(focusCol(roomId), {
     roomId,
     phase: 'focus',
-    endsAt,
+    endsAt: Timestamp.fromDate(new Date(Date.now() + safeMinutes * 60 * 1000)),
     startedBy: uid,
     subject,
     createdAt: serverTimestamp()
@@ -102,11 +129,51 @@ export async function stopSharedFocus(roomId: string, uid: string) {
   await addDoc(focusCol(roomId), {
     roomId,
     phase: 'shortBreak',
-    endsAt: new Date(Date.now() + 5 * 60 * 1000),
+    endsAt: Timestamp.fromDate(new Date(Date.now() + 5 * 60 * 1000)),
     startedBy: uid,
     subject: null,
     createdAt: serverTimestamp()
   });
+}
+
+export function subscribeRoomMessages(roomId: string, cb: (messages: RoomMessage[]) => void) {
+  const q = query(messagesCol(roomId), orderBy('createdAt', 'asc'), limit(100));
+  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RoomMessage)));
+}
+
+export async function sendRoomMessage(roomId: string, profile: CommunityProfile, text: string) {
+  const clean = text.trim().slice(0, 500);
+  if (!clean) return;
+  await addDoc(messagesCol(roomId), {
+    uid: profile.uid,
+    displayName: profile.displayName || 'Student',
+    text: clean,
+    createdAt: serverTimestamp()
+  });
+  await setDoc(roomDoc(roomId), { updatedAt: serverTimestamp() }, { merge: true });
+}
+
+export async function reportRoomUser(roomId: string, reporterUid: string, reportedUid: string, reason: string) {
+  await addDoc(collection(db, ROOT, roomId, 'reports'), {
+    reporterUid,
+    reportedUid,
+    reason: reason.trim().slice(0, 300) || 'Other',
+    createdAt: serverTimestamp()
+  });
+}
+
+export async function followStudent(uid: string, targetUid: string) {
+  if (uid === targetUid) return;
+  await setDoc(doc(db, 'users', uid, 'following', targetUid), { targetUid, createdAt: serverTimestamp() });
+}
+
+export async function unfollowStudent(uid: string, targetUid: string) {
+  await setDoc(doc(db, 'users', uid, 'following', targetUid), { targetUid, removedAt: serverTimestamp(), following: false }, { merge: true });
+}
+
+export async function isFollowingStudent(uid: string, targetUid: string) {
+  const snap = await getDoc(doc(db, 'users', uid, 'following', targetUid));
+  return snap.exists() && snap.data().following !== false;
 }
 
 export async function findMyRooms(uid: string) {
