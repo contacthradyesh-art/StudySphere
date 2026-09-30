@@ -2,12 +2,18 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signInWithPhoneNumber,
+  RecaptchaVerifier,
+  type ConfirmationResult,
   sendEmailVerification,
   sendPasswordResetEmail,
   updateProfile,
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
+  linkWithCredential,
   signOut as fbSignOut,
   type User
 } from 'firebase/auth';
@@ -52,7 +58,23 @@ function mapAuthError(err: unknown): AuthError {
     case 'auth/cancelled-popup-request':
       return new AuthError(code, 'Sign-in was cancelled.');
     case 'auth/popup-blocked':
-      return new AuthError(code, 'Your browser blocked the sign-in popup. Allow popups and retry.');
+      return new AuthError(code, 'Google popup was blocked. We can continue with redirect sign-in.');
+    case 'auth/unauthorized-domain':
+      return new AuthError(code, 'This app domain is not authorized for Google sign-in. Add the current StudySphere domain in Firebase Authentication settings.');
+    case 'auth/operation-not-allowed':
+      return new AuthError(code, 'This sign-in method is disabled in Firebase Authentication settings.');
+    case 'auth/account-exists-with-different-credential':
+      return new AuthError(code, 'An account already exists with this email using another sign-in method. Sign in with that method first.');
+    case 'auth/invalid-phone-number':
+      return new AuthError(code, 'Enter a valid mobile number with country code, for example +91XXXXXXXXXX.');
+    case 'auth/missing-phone-number':
+      return new AuthError(code, 'Enter your mobile number first.');
+    case 'auth/code-expired':
+      return new AuthError(code, 'That OTP has expired. Request a new code.');
+    case 'auth/invalid-verification-code':
+      return new AuthError(code, 'Incorrect OTP. Check the SMS and try again.');
+    case 'auth/quota-exceeded':
+      return new AuthError(code, 'SMS verification limit reached. Please try again later.');
     case 'auth/network-request-failed':
       return new AuthError(code, 'Network error. Check your connection and try again.');
     case 'auth/email-not-verified':
@@ -68,7 +90,7 @@ function mapAuthError(err: unknown): AuthError {
 }
 
 /** Create the Firestore user profile if it does not already exist. */
-async function ensureUserProfile(user: User, provider: 'password' | 'google') {
+async function ensureUserProfile(user: User, provider: 'password' | 'google' | 'phone') {
   const ref = doc(db, COLLECTIONS.users, user.uid);
   const snap = await getDoc(ref);
   if (snap.exists()) return;
@@ -142,11 +164,82 @@ export async function loginWithGoogle() {
   try {
     const { user } = await signInWithPopup(auth, googleProvider);
     await ensureUserProfile(user, 'google');
-    // Google accounts are already verified by the provider.
     await establishSession(user);
     return user;
   } catch (err) {
+    const code = typeof err === 'object' && err !== null && 'code' in err
+      ? String((err as { code: unknown }).code) : '';
+    if (code === 'auth/popup-blocked') {
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
     if (err instanceof AuthError) throw err;
+    throw mapAuthError(err);
+  }
+}
+
+export async function completeGoogleRedirect() {
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result?.user) return null;
+    await ensureUserProfile(result.user, 'google');
+    await establishSession(result.user);
+    return result.user;
+  } catch (err) {
+    if (err instanceof AuthError) throw err;
+    throw mapAuthError(err);
+  }
+}
+
+let phoneRecaptcha: RecaptchaVerifier | null = null;
+
+function getPhoneRecaptcha(buttonId: string) {
+  if (typeof window === 'undefined') throw new Error('Phone sign-in is only available in a browser.');
+  phoneRecaptcha?.clear();
+  phoneRecaptcha = new RecaptchaVerifier(auth, buttonId, {
+    size: 'invisible',
+    'expired-callback': () => {
+      phoneRecaptcha?.clear();
+      phoneRecaptcha = null;
+    }
+  });
+  return phoneRecaptcha;
+}
+
+export async function sendPhoneCode(phoneNumber: string, buttonId: string): Promise<ConfirmationResult> {
+  try {
+    const verifier = getPhoneRecaptcha(buttonId);
+    return await signInWithPhoneNumber(auth, phoneNumber.trim(), verifier);
+  } catch (err) {
+    phoneRecaptcha?.clear();
+    phoneRecaptcha = null;
+    throw mapAuthError(err);
+  }
+}
+
+export async function confirmPhoneCode(confirmation: ConfirmationResult, code: string) {
+  try {
+    const result = await confirmation.confirm(code.trim());
+    await ensureUserProfile(result.user, 'phone');
+    await establishSession(result.user);
+    phoneRecaptcha?.clear();
+    phoneRecaptcha = null;
+    return result.user;
+  } catch (err) {
+    throw mapAuthError(err);
+  }
+}
+
+export async function linkEmailPassword(email: string, password: string) {
+  const user = auth.currentUser;
+  if (!user) throw mapAuthError({ code: 'auth/user-not-found' });
+  try {
+    const credential = EmailAuthProvider.credential(email.trim(), password);
+    const result = await linkWithCredential(user, credential);
+    await ensureUserProfile(result.user, 'phone');
+    await establishSession(result.user);
+    return result.user;
+  } catch (err) {
     throw mapAuthError(err);
   }
 }
@@ -203,6 +296,10 @@ export async function changePassword(currentPassword: string, newPassword: strin
 /** True if the signed-in user authenticates with Google (no password to re-enter). */
 export function isGoogleAccount(): boolean {
   return auth.currentUser?.providerData.some((p) => p.providerId === 'google.com') ?? false;
+}
+
+export function hasPasswordProvider(): boolean {
+  return auth.currentUser?.providerData.some((p) => p.providerId === 'password') ?? false;
 }
 
 /**
