@@ -204,9 +204,9 @@ function getPhoneRecaptcha(containerId: string) {
   return phoneRecaptcha;
 }
 
-export async function sendPhoneCode(phoneNumber: string, containerId: string): Promise<ConfirmationResult> {
+export async function sendPhoneCode(phoneNumber: string, buttonId: string): Promise<ConfirmationResult> {
   try {
-    const verifier = getPhoneRecaptcha(containerId);
+    const verifier = getPhoneRecaptcha(buttonId);
     return await signInWithPhoneNumber(auth, phoneNumber.trim(), verifier);
   } catch (err) {
     phoneRecaptcha?.clear();
