@@ -130,7 +130,7 @@ export function subscribeSharedFocus(roomId: string, cb: (sessions: SharedFocusS
 
 export async function startSharedFocus(roomId: string, uid: string, minutes: number, subject: string | null = null) {
   const safeMinutes = Math.max(5, Math.min(120, Math.round(minutes)));
-  await addDoc(focusCol(roomId), {
+  const ref = await addDoc(focusCol(roomId), {
     roomId,
     phase: 'focus',
     endsAt: Timestamp.fromDate(new Date(Date.now() + safeMinutes * 60 * 1000)),
@@ -139,6 +139,7 @@ export async function startSharedFocus(roomId: string, uid: string, minutes: num
     durationMinutes: safeMinutes,
     createdAt: serverTimestamp(),
   });
+  return ref.id;
 }
 
 export async function stopSharedFocus(roomId: string, uid: string) {
