@@ -15,7 +15,7 @@ import {
   Timestamp,
   where
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { auth, db } from '@/lib/firebase/client';
 import type {
   StudyRoom,
   RoomMember,
@@ -40,6 +40,11 @@ function followingCol(uid: string) { return collection(db, 'users', uid, 'follow
 function notificationsCol(uid: string) { return collection(db, 'users', uid, 'notifications'); }
 
 export async function createStudyRoom(input: { name: string; subject?: string | null; exam?: string | null; state?: string | null; host: CommunityProfile }): Promise<string> {
+  // Always use Firebase Auth's UID for security-rule checks. A stale profile UID
+  // must never cause a legitimate signed-in user to receive permission-denied.
+  const authUid = auth.currentUser?.uid;
+  if (!authUid) throw new Error('You must be signed in to create a study room.');
+
   const ref = doc(roomsCol());
   const batch = writeBatch(db);
 
@@ -48,7 +53,7 @@ export async function createStudyRoom(input: { name: string; subject?: string | 
     subject: input.subject ?? null,
     exam: input.exam ?? null,
     state: input.state ?? null,
-    hostUid: input.host.uid,
+    hostUid: authUid,
     public: true,
     active: true,
     participantCount: 1,
@@ -56,8 +61,8 @@ export async function createStudyRoom(input: { name: string; subject?: string | 
     updatedAt: serverTimestamp(),
   });
 
-  batch.set(memberDoc(ref.id, input.host.uid), {
-    uid: input.host.uid,
+  batch.set(memberDoc(ref.id, authUid), {
+    uid: authUid,
     displayName: input.host.displayName || 'Student',
     photoURL: input.host.photoURL ?? null,
     status: 'online',
@@ -69,7 +74,7 @@ export async function createStudyRoom(input: { name: string; subject?: string | 
 
   // Profile metadata is useful but must not prevent a room from being created.
   try {
-    await upsertCommunityProfile(input.host);
+    await upsertCommunityProfile({ ...input.host, uid: authUid });
   } catch {
     // The room and membership are already created successfully.
   }
