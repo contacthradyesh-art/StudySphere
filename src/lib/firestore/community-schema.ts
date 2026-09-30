@@ -28,6 +28,7 @@ export interface RoomMember {
   streak?: number;
   followersCount?: number;
   followingCount?: number;
+  lastStudyDate?: string | null;
 }
 
 export interface SharedFocusSession {
@@ -45,6 +46,17 @@ export interface RoomMessage {
   uid: string;
   displayName: string;
   text: string;
+  createdAt: Timestamp | null;
+}
+
+export interface CommunityNotification {
+  id: string;
+  type: 'follow' | 'roomInvite' | 'system';
+  title: string;
+  body: string;
+  fromUid: string | null;
+  roomId: string | null;
+  read: boolean;
   createdAt: Timestamp | null;
 }
 
