@@ -4,11 +4,15 @@ service cloud.firestore {
     function isOwner(uid) {
       return request.auth != null && request.auth.uid == uid;
     }
+    function isOwnerOfDoc() {
+      return request.auth != null && request.auth.uid == resource.data.userId;
+    }
+    function isCreatingOwnDoc() {
+      return request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
 
-    // A user can only read/write their own profile and subcollections.
     match /users/{uid} {
       allow read, write: if isOwner(uid);
-
       match /sessions/{sessionId} { allow read, write: if isOwner(uid); }
       match /studyStats/{period} { allow read, write: if isOwner(uid); }
       match /tasks/{taskId} { allow read, write: if isOwner(uid); }
@@ -16,21 +20,14 @@ service cloud.firestore {
       match /monthlyPlan/{monthId} { allow read, write: if isOwner(uid); }
       match /pomodoroSessions/{sessionId} { allow read, write: if isOwner(uid); }
       match /focusSettings/{docId} { allow read, write: if isOwner(uid); }
-      match /notes/{noteId} {
-        allow read, write: if isOwner(uid);
-        match /versions/{versionId} { allow read, write: if isOwner(uid); }
-      }
+      match /notes/{noteId} { allow read, write: if isOwner(uid); match /versions/{versionId} { allow read, write: if isOwner(uid); } }
       match /subjects/{subjectId} { allow read, write: if isOwner(uid); }
       match /journalEntries/{entryId} { allow read, write: if isOwner(uid); }
       match /flashcardDecks/{deckId} { allow read, write: if isOwner(uid); }
       match /flashcards/{cardId} { allow read, write: if isOwner(uid); }
       match /aiConversations/{conversationId} { allow read, write: if isOwner(uid); }
       match /bookmarkedNews/{itemId} { allow read, write: if isOwner(uid); }
-      match /libraryFiles/{fileId} {
-        allow read, write: if isOwner(uid);
-        match /notes/{noteId} { allow read, write: if isOwner(uid); }
-        match /bookmarks/{bookmarkId} { allow read, write: if isOwner(uid); }
-      }
+      match /libraryFiles/{fileId} { allow read, write: if isOwner(uid); match /notes/{noteId} { allow read, write: if isOwner(uid); } match /bookmarks/{bookmarkId} { allow read, write: if isOwner(uid); } }
       match /libraryFolders/{folderId} { allow read, write: if isOwner(uid); }
       match /vocabProgress/{wordId} { allow read, write: if isOwner(uid); }
       match /ethicsCaseStudySessions/{sessionId} { allow read, write: if isOwner(uid); }
@@ -39,21 +36,7 @@ service cloud.firestore {
       match /customMockTests/{testId} { allow read, write: if isOwner(uid); }
       match /gamification/{docId} { allow read, write: if isOwner(uid); }
       match /mapProgress/{stateKey} { allow read, write: if isOwner(uid); }
-
-      // Habit Operating System: definitions + per-day logs.
-      match /habits/{habitId} {
-        allow read, write: if isOwner(uid);
-        match /logs/{logId} {
-          allow read, write: if isOwner(uid);
-        }
-      }
-    }
-
-    function isOwnerOfDoc() {
-      return request.auth != null && request.auth.uid == resource.data.userId;
-    }
-    function isCreatingOwnDoc() {
-      return request.auth != null && request.auth.uid == request.resource.data.userId;
+      match /habits/{habitId} { allow read, write: if isOwner(uid); match /logs/{logId} { allow read, write: if isOwner(uid); } }
     }
 
     match /mockTestResults/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
@@ -63,23 +46,32 @@ service cloud.firestore {
     match /plans/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
     match /missions/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
     match /syllabusProgress/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
-    match /moodEntries/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); allow update, delete: if isOwnerOfDoc(); }
+    match /moodEntries/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
     match /focusSessions/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
     match /topicMastery/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
     match /xpTransactions/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
-    match /flashcardDecks/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
-    match /flashcards/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
     match /sm2Data/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
-    match /journalEntries/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
     match /mistakeEntries/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
 
-    match /currentAffairs/{itemId} {
+    match /currentAffairs/{itemId} { allow read: if request.auth != null; allow write: if false; }
+    match /vocabulary/{wordId} { allow read: if request.auth != null; allow write: if false; }
+
+    // Public realtime study community. Only authenticated users can see room/member state.
+    match /studyRooms/{roomId} {
       allow read: if request.auth != null;
-      allow write: if false;
-    }
-    match /vocabulary/{wordId} {
-      allow read: if request.auth != null;
-      allow write: if false;
+      allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null && resource.data.hostUid == request.auth.uid;
+      match /members/{uid} {
+        allow read: if request.auth != null;
+        allow create, update: if request.auth != null && uid == request.auth.uid;
+        allow delete: if request.auth != null && uid == request.auth.uid;
+      }
+      match /focusSessions/{sessionId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.startedBy == request.auth.uid;
+        allow update, delete: if false;
+      }
     }
   }
 }
