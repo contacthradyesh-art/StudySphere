@@ -162,9 +162,10 @@ export async function reportRoomUser(roomId: string, reporterUid: string, report
   });
 }
 
-export async function followStudent(uid: string, targetUid: string) {
+export async function followStudent(uid: string, targetUid: string, fromName = 'A student') {
   if (uid === targetUid) return;
-  await setDoc(doc(db, 'users', uid, 'following', targetUid), { targetUid, createdAt: serverTimestamp() });
+  await setDoc(doc(db, 'users', uid, 'following', targetUid), { targetUid, createdAt: serverTimestamp(), following: true });
+  await addDoc(notificationsCol(targetUid), { type: 'follow', title: 'New study connection', body: `${fromName} connected with you.`, fromUid: uid, roomId: null, read: false, createdAt: serverTimestamp() });
 }
 
 export async function unfollowStudent(uid: string, targetUid: string) {
