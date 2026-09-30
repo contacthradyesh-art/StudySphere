@@ -121,6 +121,7 @@ export async function startSharedFocus(roomId: string, uid: string, minutes: num
     endsAt: Timestamp.fromDate(new Date(Date.now() + safeMinutes * 60 * 1000)),
     startedBy: uid,
     subject,
+    durationMinutes: safeMinutes,
     createdAt: serverTimestamp()
   });
 }
