@@ -181,3 +181,65 @@ export async function findMyRooms(uid: string) {
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as StudyRoom);
 }
+
+const PROFILE_ROOT = 'communityProfiles';
+
+function profileDoc(uid: string) { return doc(db, PROFILE_ROOT, uid); }
+function followingCol(uid: string) { return collection(db, 'users', uid, 'following'); }
+
+export async function getCommunityProfile(uid: string): Promise<CommunityProfile | null> {
+  const snap = await getDoc(profileDoc(uid));
+  return snap.exists() ? ({ uid: snap.id, ...snap.data() } as CommunityProfile) : null;
+}
+
+export async function upsertCommunityProfile(profile: CommunityProfile) {
+  await setDoc(profileDoc(profile.uid), {
+    uid: profile.uid,
+    displayName: profile.displayName || 'Student',
+    photoURL: profile.photoURL ?? null,
+    state: profile.state ?? null,
+    exam: profile.exam ?? null,
+    subjects: profile.subjects ?? [],
+    isOnline: profile.isOnline ?? true,
+    lastSeenAt: serverTimestamp(),
+    bio: (profile.bio || '').slice(0, 160),
+    studyMinutes: Math.max(0, Number(profile.studyMinutes || 0)),
+    streak: Math.max(0, Number(profile.streak || 0)),
+    followersCount: Math.max(0, Number(profile.followersCount || 0)),
+    followingCount: Math.max(0, Number(profile.followingCount || 0))
+  }, { merge: true });
+}
+
+export async function subscribeCommunityLeaderboard(cb: (profiles: CommunityProfile[]) => void) {
+  const q = query(collection(db, PROFILE_ROOT), orderBy('streak', 'desc'), limit(50));
+  return onSnapshot(q, (snap) => {
+    const rows = snap.docs.map((d) => ({ uid: d.id, ...d.data() }) as CommunityProfile);
+    rows.sort((a, b) => (b.streak || 0) - (a.streak || 0) || (b.studyMinutes || 0) - (a.studyMinutes || 0));
+    cb(rows);
+  });
+}
+
+export async function listFollowing(uid: string): Promise<CommunityProfile[]> {
+  const snap = await getDocs(query(followingCol(uid), orderBy('createdAt', 'desc'), limit(100)));
+  const active = snap.docs.filter((d) => d.data().following !== false).map((d) => d.id);
+  const profiles = await Promise.all(active.map((id) => getCommunityProfile(id)));
+  return profiles.filter(Boolean) as CommunityProfile[];
+}
+
+export async function getFollowingCount(uid: string) {
+  const snap = await getDocs(query(followingCol(uid), limit(100)));
+  return snap.docs.filter((d) => d.data().following !== false).length;
+}
+
+export function subscribeRoomReports(roomId: string, cb: (reports: Array<{ id: string; reporterUid: string; reportedUid: string; reason: string; createdAt: any }>) => void) {
+  const q = query(collection(db, ROOT, roomId, 'reports'), orderBy('createdAt', 'desc'), limit(100));
+  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as any)));
+}
+
+export async function removeRoomMember(roomId: string, uid: string) {
+  await setDoc(memberDoc(roomId, uid), { status: 'away', focusStartedAt: null, lastSeenAt: serverTimestamp() }, { merge: true });
+}
+
+export async function closeStudyRoom(roomId: string) {
+  await setDoc(roomDoc(roomId), { active: false, updatedAt: serverTimestamp() }, { merge: true });
+}
