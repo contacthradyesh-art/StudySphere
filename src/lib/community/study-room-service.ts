@@ -15,7 +15,7 @@ import {
   Timestamp,
   where
 } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase/client';
+import { db } from '@/lib/firebase/client';
 import type {
   StudyRoom,
   RoomMember,
