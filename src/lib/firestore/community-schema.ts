@@ -23,6 +23,11 @@ export interface RoomMember {
   status: RoomPresenceStatus;
   focusStartedAt: Timestamp | null;
   lastSeenAt: Timestamp | null;
+  bio?: string;
+  studyMinutes?: number;
+  streak?: number;
+  followersCount?: number;
+  followingCount?: number;
 }
 
 export interface SharedFocusSession {
