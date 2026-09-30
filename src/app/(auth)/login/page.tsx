@@ -104,7 +104,7 @@ function LoginForm() {
     e.preventDefault();
     setPhoneLoading(true);
     try {
-      const result = await sendPhoneCode(normalizePhone(phone), 'phone-recaptcha');
+      const result = await sendPhoneCode(normalizePhone(phone), 'phone-otp-button');
       setConfirmation(result);
       setOtp('');
       toast.success('OTP sent to your mobile number.');
@@ -172,7 +172,7 @@ function LoginForm() {
             <Input id="phone" type="tel" inputMode="tel" placeholder="+91 9876543210" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
             <p className="text-xs text-muted-foreground">India numbers can be entered as 10 digits. We will send an OTP by SMS.</p>
           </div>
-          <Button type="submit" variant="gradient" className="w-full" disabled={phoneLoading || !phone.trim()}>
+          <Button id="phone-otp-button" type="submit" variant="gradient" className="w-full" disabled={phoneLoading || !phone.trim()}>
             {phoneLoading ? 'Sending OTP...' : 'Send OTP'}
           </Button>
         </form>
@@ -193,7 +193,6 @@ function LoginForm() {
         </form>
       )}
 
-      <div id="phone-recaptcha" className="hidden" />
 
       {showResend && method === 'email' && (
         <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
