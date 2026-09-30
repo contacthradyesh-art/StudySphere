@@ -13,6 +13,8 @@ import { useAuth } from '@/hooks/use-auth';
 import {
   changePassword,
   deleteAccount,
+  hasPasswordProvider,
+  linkEmailPassword,
   isGoogleAccount,
   resendVerification,
   updateUserProfile
@@ -32,6 +34,8 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordEmail, setPasswordEmail] = useState('');
+  const [linkingPassword, setLinkingPassword] = useState(false);
 
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default');
 
@@ -44,6 +48,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (user?.displayName) setDisplayName(user.displayName);
+    if (user?.email) setPasswordEmail(user.email);
   }, [user]);
 
   useEffect(() => {
@@ -156,7 +161,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Password */}
-      {!googleAccount && (
+      {hasPasswordProvider() ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base"><KeyRound className="h-4 w-4" /> Password</CardTitle>
@@ -175,7 +180,49 @@ export default function SettingsPage() {
             </Button>
           </CardContent>
         </Card>
-      )}
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base"><KeyRound className="h-4 w-4" /> Add password login</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Add an email and password so you can also sign in without Google or mobile OTP.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="passwordEmail">Login email</Label>
+              <Input id="passwordEmail" type="email" value={passwordEmail} onChange={(e) => setPasswordEmail(e.target.value)} placeholder="you@example.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="newPassword">New password</Label>
+              <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+            </div>
+            <Button
+              variant="gradient"
+              size="sm"
+              onClick={async () => {
+                if (!passwordEmail.trim() || newPassword.length < 8) {
+                  toast.error('Enter a valid email and a password of at least 8 characters');
+                  return;
+                }
+                setLinkingPassword(true);
+                try {
+                  await linkEmailPassword(passwordEmail, newPassword);
+                  setNewPassword('');
+                  toast.success('Password login added');
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : 'Could not add password login');
+                } finally {
+                  setLinkingPassword(false);
+                }
+              }}
+              disabled={linkingPassword || !passwordEmail.trim() || !newPassword}
+            >
+              {linkingPassword ? 'Adding...' : 'Add password login'}
+            </Button>
+          </CardContent>
+        </Card>
+      )
 
       {/* Notifications */}
       <Card>
