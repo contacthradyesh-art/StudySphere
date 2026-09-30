@@ -21,6 +21,10 @@ service cloud.firestore {
       match /pomodoroSessions/{sessionId} { allow read, write: if isOwner(uid); }
       match /focusSettings/{docId} { allow read, write: if isOwner(uid); }
       match /following/{targetUid} { allow read, write: if isOwner(uid); }
+      match /notifications/{notificationId} {
+        allow read, update, delete: if isOwner(uid);
+        allow create: if request.auth != null && request.resource.data.fromUid == request.auth.uid && uid != request.auth.uid;
+      }
       match /notes/{noteId} { allow read, write: if isOwner(uid); match /versions/{versionId} { allow read, write: if isOwner(uid); } }
       match /subjects/{subjectId} { allow read, write: if isOwner(uid); }
       match /journalEntries/{entryId} { allow read, write: if isOwner(uid); }
