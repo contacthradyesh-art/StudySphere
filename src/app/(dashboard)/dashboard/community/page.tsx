@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Users, Plus, Radio, Timer, BookOpen, ArrowRight, Search } from 'lucide-react';
+import { Users, Plus, Radio, Timer, BookOpen, ArrowRight, Search, User, Trophy, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared/glass-card';
@@ -64,6 +64,13 @@ export default function CommunityPage() {
           <Button variant="gradient" onClick={() => setShowCreate(true)} disabled={!user}><Plus className="h-4 w-4" /> Create room</Button>
         </div>
       </section>
+
+      <div className="flex flex-wrap gap-2">
+        <Link href="/dashboard/community/profile" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-semibold"><User className="h-4 w-4 text-primary"/> My profile</Link>
+        <Link href="/dashboard/community/following" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-semibold"><Users className="h-4 w-4 text-primary"/> Connections</Link>
+        <Link href="/dashboard/community/leaderboard" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-semibold"><Trophy className="h-4 w-4 text-primary"/> Streaks</Link>
+        <Link href="/dashboard/community/manage" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-semibold"><Shield className="h-4 w-4 text-primary"/> Host tools</Link>
+      </div>
 
       <section className="grid gap-3 md:grid-cols-[1fr_180px_180px]">
         <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search rooms, exams, subjects..." className="h-10 w-full rounded-xl border border-input bg-background/60 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" /></div>
