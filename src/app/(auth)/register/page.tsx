@@ -55,8 +55,10 @@ export default function RegisterPage() {
 
   async function onGoogle() {
     try {
-      await loginWithGoogle();
-      router.push('/dashboard');
+      const user = await loginWithGoogle();
+      // Popup flow returns the user. Redirect flow intentionally returns null;
+      // Firebase will return to this page and completeGoogleRedirect() handles it.
+      if (user) router.push('/dashboard');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Google sign-in failed');
     }
