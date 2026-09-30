@@ -15,7 +15,7 @@ import {
   where
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import type { StudyRoom, RoomMember, SharedFocusSession, CommunityProfile, RoomMessage } from '@/lib/firestore/community-schema';
+import type { StudyRoom, RoomMember, SharedFocusSession, CommunityProfile, RoomMessage, CommunityNotification } from '@/lib/firestore/community-schema';
 
 const ROOT = 'studyRooms';
 
@@ -186,6 +186,7 @@ const PROFILE_ROOT = 'communityProfiles';
 
 function profileDoc(uid: string) { return doc(db, PROFILE_ROOT, uid); }
 function followingCol(uid: string) { return collection(db, 'users', uid, 'following'); }
+function notificationsCol(uid: string) { return collection(db, 'users', uid, 'notifications'); }
 
 export async function getCommunityProfile(uid: string): Promise<CommunityProfile | null> {
   const snap = await getDoc(profileDoc(uid));
@@ -206,7 +207,8 @@ export async function upsertCommunityProfile(profile: CommunityProfile) {
     studyMinutes: Math.max(0, Number(profile.studyMinutes || 0)),
     streak: Math.max(0, Number(profile.streak || 0)),
     followersCount: Math.max(0, Number(profile.followersCount || 0)),
-    followingCount: Math.max(0, Number(profile.followingCount || 0))
+    followingCount: Math.max(0, Number(profile.followingCount || 0)),
+    lastStudyDate: profile.lastStudyDate ?? null
   }, { merge: true });
 }
 
@@ -242,4 +244,64 @@ export async function removeRoomMember(roomId: string, uid: string) {
 
 export async function closeStudyRoom(roomId: string) {
   await setDoc(roomDoc(roomId), { active: false, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+
+export function subscribeCommunityNotifications(uid: string, cb: (items: CommunityNotification[]) => void) {
+  const q = query(notificationsCol(uid), orderBy('createdAt', 'desc'), limit(50));
+  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as CommunityNotification)));
+}
+
+export async function markCommunityNotificationRead(uid: string, notificationId: string) {
+  await setDoc(doc(db, 'users', uid, 'notifications', notificationId), { read: true }, { merge: true });
+}
+
+export async function sendRoomInvite(from: CommunityProfile, targetUid: string, roomId: string, roomName: string) {
+  if (!targetUid || targetUid === from.uid) return;
+  await addDoc(notificationsCol(targetUid), {
+    type: 'roomInvite',
+    title: 'Study room invitation',
+    body: `${from.displayName || 'A student'} invited you to “${roomName}”.`,
+    fromUid: from.uid,
+    roomId,
+    read: false,
+    createdAt: serverTimestamp()
+  });
+}
+
+export async function searchCommunityStudents(filters: { exam?: string; state?: string; subject?: string; text?: string }) {
+  const constraints: any[] = [limit(100)];
+  if (filters.exam) constraints.unshift(where('exam', '==', filters.exam));
+  if (filters.state) constraints.unshift(where('state', '==', filters.state));
+  const snap = await getDocs(query(collection(db, PROFILE_ROOT), ...constraints));
+  const term = (filters.text || '').trim().toLowerCase();
+  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }) as CommunityProfile)
+    .filter((p) => !filters.subject || (p.subjects || []).includes(filters.subject!))
+    .filter((p) => !term || [p.displayName, p.exam, p.state, p.bio, ...(p.subjects || [])].filter(Boolean).join(' ').toLowerCase().includes(term));
+}
+
+export async function recordCommunityStudy(uid: string, minutes: number) {
+  const safe = Math.max(1, Math.min(180, Math.round(minutes)));
+  const ref = profileDoc(uid);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) return;
+    const data = snap.data();
+    const today = new Date().toISOString().slice(0, 10);
+    const previous = typeof data.lastStudyDate === 'string' ? data.lastStudyDate : null;
+    let streak = Number(data.streak || 0);
+    if (previous !== today) {
+      const prevDate = previous ? new Date(`${previous}T00:00:00`) : null;
+      const todayDate = new Date(`${today}T00:00:00`);
+      const diff = prevDate ? Math.round((todayDate.getTime() - prevDate.getTime()) / 86400000) : 0;
+      streak = diff === 1 ? streak + 1 : 1;
+    }
+    tx.set(ref, {
+      studyMinutes: Number(data.studyMinutes || 0) + safe,
+      streak,
+      lastStudyDate: today,
+      isOnline: true,
+      lastSeenAt: serverTimestamp()
+    }, { merge: true });
+  });
 }
