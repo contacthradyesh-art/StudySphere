@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Users, Plus, Radio, Timer, BookOpen, ArrowRight, Search, User, Trophy, Shield } from 'lucide-react';
+import { Users, Plus, Radio, Timer, BookOpen, ArrowRight, Search, User, Trophy, Shield, Compass, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared/glass-card';
@@ -67,6 +67,8 @@ export default function CommunityPage() {
 
       <div className="flex flex-wrap gap-2">
         <Link href="/dashboard/community/profile" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-semibold"><User className="h-4 w-4 text-primary"/> My profile</Link>
+        <Link href="/dashboard/community/discover" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-semibold"><Compass className="h-4 w-4 text-primary"/> Find students</Link>
+        <Link href="/dashboard/community/notifications" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-semibold"><Bell className="h-4 w-4 text-primary"/> Notifications</Link>
         <Link href="/dashboard/community/following" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-semibold"><Users className="h-4 w-4 text-primary"/> Connections</Link>
         <Link href="/dashboard/community/leaderboard" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-semibold"><Trophy className="h-4 w-4 text-primary"/> Streaks</Link>
         <Link href="/dashboard/community/manage" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-semibold"><Shield className="h-4 w-4 text-primary"/> Host tools</Link>
