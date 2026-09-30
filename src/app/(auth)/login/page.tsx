@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  completeGoogleRedirect,
   confirmPhoneCode,
   loginWithEmail,
   loginWithGoogle,
@@ -32,20 +31,7 @@ function LoginForm() {
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [phoneLoading, setPhoneLoading] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-    completeGoogleRedirect()
-      .then((user) => {
-        if (mounted && user) {
-          toast.success('Welcome back!');
-          window.location.href = redirect;
-        }
-      })
-      .catch((err) => {
-        if (mounted) toast.error(err instanceof Error ? err.message : 'Google sign-in failed');
-      });
-    return () => { mounted = false; };
-  }, [redirect]);
+
 
   function normalizePhone(value: string) {
     const clean = value.trim().replace(/[\s()-]/g, '');
@@ -104,7 +90,7 @@ function LoginForm() {
     e.preventDefault();
     setPhoneLoading(true);
     try {
-      const result = await sendPhoneCode(normalizePhone(phone), 'phone-otp-button');
+      const result = await sendPhoneCode(normalizePhone(phone), 'phone-recaptcha');
       setConfirmation(result);
       setOtp('');
       toast.success('OTP sent to your mobile number.');
@@ -172,6 +158,7 @@ function LoginForm() {
             <Input id="phone" type="tel" inputMode="tel" placeholder="+91 9876543210" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
             <p className="text-xs text-muted-foreground">India numbers can be entered as 10 digits. We will send an OTP by SMS.</p>
           </div>
+          <div id="phone-recaptcha" className="flex min-h-[78px] justify-center" />
           <Button id="phone-otp-button" type="submit" variant="gradient" className="w-full" disabled={phoneLoading || !phone.trim()}>
             {phoneLoading ? 'Sending OTP...' : 'Send OTP'}
           </Button>
