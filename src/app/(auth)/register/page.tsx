@@ -1,18 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { registerWithEmail, loginWithGoogle } from '@/lib/auth/service';
+import { completeGoogleRedirect, registerWithEmail, loginWithGoogle } from '@/lib/auth/service';
 import { registerSchema } from '@/lib/validators/auth';
 
 export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    completeGoogleRedirect()
+      .then((user) => {
+        if (mounted && user) {
+          toast.success('Account ready!');
+          router.replace('/dashboard');
+        }
+      })
+      .catch((err) => {
+        if (mounted) toast.error(err instanceof Error ? err.message : 'Google sign-in failed');
+      });
+    return () => { mounted = false; };
+  }, [router]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
