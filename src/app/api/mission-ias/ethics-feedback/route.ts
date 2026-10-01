@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyRequestAuth } from '@/lib/auth/verify-request';
+import { enforceUserRateLimit } from '@/lib/auth/rate-limit';
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
@@ -15,6 +17,12 @@ Return ONLY valid JSON, no markdown, matching exactly:
 }`;
 
 export async function POST(req: NextRequest) {
+  const authResult = await verifyRequestAuth(req);
+  if (authResult instanceof NextResponse) return authResult;
+
+  const rateLimitResponse = enforceUserRateLimit(authResult.uid, 'ai-route:mission-ias/ethics-feedback');
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const { scenario, questions, answer } = await req.json();
     if (!answer || typeof answer !== 'string' || answer.trim().length < 20) {
