@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyRequestAuth } from '@/lib/auth/verify-request';
+import { enforceUserRateLimit } from '@/lib/auth/rate-limit';
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
@@ -13,6 +15,12 @@ const SYSTEM_PROMPT = `You are a supportive English communication coach for Indi
 }`;
 
 export async function POST(req: NextRequest) {
+  const authResult = await verifyRequestAuth(req);
+  if (authResult instanceof NextResponse) return authResult;
+
+  const rateLimitResponse = enforceUserRateLimit(authResult.uid, 'ai-route:english-lab/speaking-feedback');
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const { prompt, audio, mimeType } = await req.json();
     if (!audio || typeof audio !== 'string') {
