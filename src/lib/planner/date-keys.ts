@@ -21,3 +21,15 @@ export function weekKey(date: Date = new Date()): string {
 export function monthKey(date: Date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
+
+/** Local-calendar date key in YYYY-MM-DD format. */
+export function toDateKey(date: Date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** Parse an existing YYYY-MM-DD planner key as a local-time Date. */
+export function parseDateKey(key: string): Date {
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(key);
+  if (!match) throw new Error(`Invalid planner date key: ${key}`);
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
