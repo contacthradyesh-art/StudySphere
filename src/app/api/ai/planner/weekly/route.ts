@@ -5,6 +5,7 @@ import { enforceUserRateLimit } from '@/lib/auth/rate-limit';
 import { SUBJECTS } from '@/lib/firestore/planner-schema';
 
 const requestSchema = z.object({
+  goal: z.string().max(200).default(''),
   subjects: z.array(z.enum(SUBJECTS)).min(1).max(8),
   weeklyHours: z.number().min(1).max(80),
   weakSubjects: z.array(z.enum(SUBJECTS)).max(8).default([]),
@@ -49,8 +50,8 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return NextResponse.json({ error: 'AI is not configured.' }, { status: 503 });
 
-    const { subjects, weeklyHours, weakSubjects, examDates, todayKey } = parsedRequest.data;
-    const prompt = JSON.stringify({ subjects, weeklyHours, weakSubjects, examDates, todayKey });
+    const { goal, subjects, weeklyHours, weakSubjects, examDates, todayKey } = parsedRequest.data;
+    const prompt = JSON.stringify({ goal, subjects, weeklyHours, weakSubjects, examDates, todayKey });
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(apiKey)}`,
