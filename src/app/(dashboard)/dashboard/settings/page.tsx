@@ -75,7 +75,7 @@ export default function SettingsPage() {
   useEffect(() => {
     function checkPermission() {
       if (typeof window === 'undefined') return;
-      const bridge = window.StudySphereFocusShield;
+      const bridge = getNativeBridge();
       setNativePermission(bridge?.isPermissionGranted ? Boolean(bridge.isPermissionGranted()) : null);
     }
     checkPermission();
@@ -162,7 +162,7 @@ export default function SettingsPage() {
   }
 
   function activateFocusShield() {
-    const bridge = typeof window !== 'undefined' ? window.StudySphereFocusShield : undefined;
+    const bridge = getNativeBridge();
     if (bridge?.isPermissionGranted && !bridge.isPermissionGranted()) {
       toast.error('Permission required', { description: 'Allow StudySphere Accessibility access, then return here.' });
       bridge.openPermissionSettings?.();
@@ -178,7 +178,7 @@ export default function SettingsPage() {
 
   function stopFocusShield() {
     endFocusSession();
-    if (typeof window !== 'undefined') window.StudySphereFocusShield?.setShieldActive?.(false);
+    getNativeBridge()?.setShieldActive?.(false);
     broadcastFocusStop();
     toast.message('Focus Shield deactivated');
   }
@@ -259,7 +259,7 @@ export default function SettingsPage() {
           <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-3">
             <p className="text-sm font-medium">Android protection permission required</p>
             <p className="mt-1 text-xs text-muted-foreground">Enable Accessibility access so StudySphere can block selected distraction apps during sessions.</p>
-            <Button className="mt-3" variant="gradient" size="sm" onClick={() => window.StudySphereFocusShield?.openPermissionSettings?.()}>Grant permission</Button>
+            <Button className="mt-3" variant="gradient" size="sm" onClick={() => getNativeBridge()?.openPermissionSettings?.()}>Grant permission</Button>
           </div>
         )}
         {!focusActive ? (
