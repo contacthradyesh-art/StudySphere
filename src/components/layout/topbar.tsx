@@ -121,7 +121,7 @@ export function Topbar() {
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-brand text-sm font-bold text-white">{initials}</span>
                 <div className="min-w-0"><p className="truncate text-sm font-semibold">{user?.displayName || 'Student'}</p><p className="truncate text-[11px] text-muted-foreground">{user?.email || ''}</p></div>
               </div>
-              <button type="button" onClick={() => { setProfileOpen(false); router.push('/dashboard/settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted"><UserIcon className="h-4 w-4" /> Profile</button>
+              <button type="button" onClick={() => { setProfileOpen(false); router.push('/dashboard/community/profile'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted"><UserIcon className="h-4 w-4" /> Profile</button>
               <button type="button" onClick={() => { setProfileOpen(false); router.push('/dashboard/settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted"><Settings className="h-4 w-4" /> Settings</button>
               <button type="button" onClick={handleSignOut} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-500 hover:bg-red-500/10"><LogOut className="h-4 w-4" /> Sign out</button>
             </div>
