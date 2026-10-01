@@ -1,5 +1,7 @@
 'use client';
 
+import { toDateKey } from '@/lib/planner/date-keys';
+
 import { useState } from 'react';
 import { Plus, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
@@ -18,7 +20,7 @@ type PendingHabit = Omit<Habit, 'createdAt' | 'updatedAt'> & {
   createdAt: null;
   updatedAt: null;
 };
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => toDateKey();
 
 function readableError(error: unknown) {
   if (error instanceof Error) return error.message;
