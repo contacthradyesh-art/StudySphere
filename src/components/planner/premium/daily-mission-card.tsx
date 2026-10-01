@@ -1,5 +1,7 @@
 'use client';
 
+import { toDateKey } from '@/lib/planner/date-keys';
+
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -17,7 +19,7 @@ import type { usePlannerInsights } from '@/hooks/use-planner-insights';
 
 type Insights = ReturnType<typeof usePlannerInsights>;
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => toDateKey();
 
 export function DailyMissionCard({ insights, onManageAll }: { insights: Insights; onManageAll: () => void }) {
   const { user } = useAuth();
