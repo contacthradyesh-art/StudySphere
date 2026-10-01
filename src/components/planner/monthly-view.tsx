@@ -13,6 +13,7 @@ import { usePlannerStore } from '@/store/planner-store';
 import { addMonthlyGoal, removeMonthlyGoal, toggleMonthlyGoal } from '@/lib/planner/monthly-plan-service';
 import { SUBJECTS, type Subject } from '@/lib/firestore/planner-schema';
 import { cn } from '@/lib/utils';
+import { toDateKey } from '@/lib/planner/date-keys';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
