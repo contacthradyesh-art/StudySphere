@@ -95,7 +95,7 @@ export async function joinStudyRoom(roomId: string, profile: CommunityProfile) {
   await runTransaction(db, async (tx) => {
     const roomRef = roomDoc(roomId);
     const memberRef = memberDoc(roomId, profile.uid);
-    const [roomSnap, memberSnap] = await Promise.all([tx.get(roomRef), tx.get(memberRef)]);
+    const roomSnap = await tx.get(roomRef);
     if (!roomSnap.exists() || roomSnap.data().active === false) throw new Error('Study room is not available');
     const removedUids = roomSnap.data().removedUids;
     if (Array.isArray(removedUids) && removedUids.includes(profile.uid)) throw new Error('You were removed from this room.');
@@ -110,9 +110,6 @@ export async function joinStudyRoom(roomId: string, profile: CommunityProfile) {
       focusStartedAt: null,
       lastSeenAt: serverTimestamp(),
     }, { merge: true });
-
-    // participantCount is reconciled after the transaction, once membership exists.
-    void memberSnap;
   });
   await reconcileRoomParticipantCount(roomId);
   const existingProfile = await getCommunityProfile(profile.uid);
