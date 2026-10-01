@@ -1,5 +1,7 @@
 'use client';
 
+import { toDateKey } from '@/lib/planner/date-keys';
+
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +20,7 @@ const ACCENTS = ['#8b5cf6', '#ec4899', '#6366f1', '#f59e0b', '#10b981', '#ef4444
 function toDateInput(ms: number | null): string {
   if (!ms) return '';
   const d = new Date(ms);
-  return d.toISOString().slice(0, 10);
+  return toDateKey(d);
 }
 function toTimeInput(ms: number | null): string {
   if (!ms) return '';
