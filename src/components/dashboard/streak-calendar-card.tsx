@@ -1,5 +1,7 @@
 'use client';
 
+import { toDateKey } from '@/lib/planner/date-keys';
+
 import { GlassCard } from '@/components/shared/glass-card';
 import { cn } from '@/lib/utils';
 import { Flame, ChevronLeft, ChevronRight, X, Plus, Trash2 } from 'lucide-react';
@@ -17,7 +19,7 @@ const WEEK_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const STORAGE_KEY = 'goal-tracker-v1';
 
 function toKey(d: Date) {
-  return d.toISOString().slice(0, 10);
+  return toDateKey(d);
 }
 
 function loadData(): DayGoals {
