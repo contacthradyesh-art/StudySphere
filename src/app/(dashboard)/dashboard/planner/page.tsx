@@ -36,6 +36,7 @@ import { buildCoachReport } from '@/lib/planner/ai-coach';
 import { requireAuth } from '@/lib/require-auth';
 import { cn } from '@/lib/utils';
 import type { NewTask, Task, WeeklySlot } from '@/lib/firestore/planner-schema';
+import { toDateKey } from '@/lib/planner/date-keys';
 
 type Tab = 'today' | 'tasks' | 'goals' | 'habits' | 'insights' | 'coach';
 const TABS: { id: Tab; label: string }[] = [
