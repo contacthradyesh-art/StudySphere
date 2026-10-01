@@ -17,11 +17,13 @@ export default function FollowingPage() {
   const [people, setPeople] = useState<CommunityProfile[]>([]);
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
   const [roomId, setRoomId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    void listFollowing(user.uid).then(setPeople).catch(() => setPeople([]));
-    void findMyRooms(user.uid).then(setRooms).catch(() => setRooms([]));
+    setLoading(true); setError(false);
+    void Promise.all([listFollowing(user.uid), findMyRooms(user.uid)]).then(([peopleResult, roomsResult]) => { setPeople(peopleResult); setRooms(roomsResult); }).catch(() => { setPeople([]); setRooms([]); setError(true); }).finally(() => setLoading(false));
   }, [user]);
 
   async function invite(uid: string) {
@@ -37,7 +39,7 @@ export default function FollowingPage() {
   return <div className="space-y-5">
     <div><p className="text-xs text-primary">Study Together / Connections</p><h1 className="text-2xl font-black">My study connections</h1><p className="mt-1 text-sm text-muted-foreground">Students you chose to keep connected with.</p></div>
     {people.length > 0 && <GlassCard><div className="flex flex-wrap items-center gap-2"><Send className="h-4 w-4 text-primary"/><span className="text-sm font-semibold">Invite a connection to your room</span><select value={roomId} onChange={e=>setRoomId(e.target.value)} className="h-9 min-w-48 rounded-lg border border-input bg-background/60 px-2 text-xs"><option value="">Choose your room</option>{rooms.map(room=><option key={room.id} value={room.id}>{room.name}</option>)}</select></div></GlassCard>}
-    {people.length===0?<GlassCard><UserPlus className="h-5 w-5 text-primary"/><p className="mt-3 font-semibold">No connections yet</p><p className="mt-1 text-sm text-muted-foreground">Join a room and connect with students preparing for the same exam.</p><Link href="/dashboard/community/discover" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">Find students <ArrowRight className="h-4 w-4"/></Link></GlassCard>:
+    {loading?<GlassCard><p className="text-sm text-muted-foreground">Loading connections… / कनेक्शन लोड हो रहे हैं…</p></GlassCard>:error?<GlassCard><p className="font-semibold">Could not load connections / कनेक्शन लोड नहीं हो सके</p><p className="mt-1 text-sm text-muted-foreground">Please refresh and try again / रीफ्रेश करके फिर प्रयास करें।</p></GlassCard>:people.length===0?<GlassCard><UserPlus className="h-5 w-5 text-primary"/><p className="mt-3 font-semibold">No connections yet</p><p className="mt-1 text-sm text-muted-foreground">Join a room and connect with students preparing for the same exam.</p><Link href="/dashboard/community/discover" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">Find students <ArrowRight className="h-4 w-4"/></Link></GlassCard>:
     <div className="grid gap-3 sm:grid-cols-2">{people.map(person=><GlassCard key={person.uid}><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-full bg-gradient-brand font-bold text-white">{(person.displayName?.[0]||'S').toUpperCase()}</div><div className="min-w-0"><p className="truncate font-semibold">{person.displayName}</p><p className="text-xs text-muted-foreground">{person.exam||'Student'} · {person.state||'India'}</p></div></div><p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{person.bio||'Focused student on StudySphere.'}</p>{roomId&&<Button size="sm" variant="outline" className="mt-3" onClick={()=>void invite(person.uid)}><Send className="h-3.5 w-3.5"/>Invite to room</Button>}</GlassCard>)}</div>}
   </div>;
 }
