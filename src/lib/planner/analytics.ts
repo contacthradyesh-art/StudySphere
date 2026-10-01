@@ -5,6 +5,8 @@
  * subject-progress) are defined and exported here.
  */
 
+import { toDateKey } from '@/lib/planner/date-keys';
+
 import { startOfDayMs, DAY_MS } from '@/lib/streak';
 import type { PomodoroSession } from '@/lib/firestore/pomodoro-schema';
 import type { Task, WeeklySlot, Subject } from '@/lib/firestore/planner-schema';
@@ -66,7 +68,7 @@ function tsToDate(session: PomodoroSession): Date | null {
 }
 
 function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return toDateKey(d);
 }
 
 function formatHour(h: number): string {
