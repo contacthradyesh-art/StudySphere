@@ -22,11 +22,12 @@ export default function DiscoverStudentsPage(){
   const [text,setText]=useState('');
   const [following,setFollowing]=useState<Record<string,boolean>>({});
   const [loading,setLoading]=useState(false);
+  const [error,setError]=useState(false);
 
   async function search(){
     setLoading(true);
-    try{ const result=await searchCommunityStudents({exam:exam||undefined,subject:subject||undefined,state:state.trim()||undefined,text}); setRows(result.filter(p=>p.uid!==user?.uid)); }
-    catch{toast.error('Could not load students');}
+    try{ setError(false); const result=await searchCommunityStudents({exam:exam||undefined,subject:subject||undefined,state:state.trim()||undefined,text}); setRows(result.filter(p=>p.uid!==user?.uid)); }
+    catch{setError(true);toast.error('Could not load students / छात्र लोड नहीं हो सके');}
     finally{setLoading(false);}
   }
   useEffect(()=>{void search();},[exam,subject,state]);
@@ -48,7 +49,7 @@ export default function DiscoverStudentsPage(){
       <input value={state} onChange={e=>setState(e.target.value)} placeholder="State" className="h-10 rounded-xl border border-input bg-background/60 px-3 text-sm"/>
       <Button variant="gradient" onClick={()=>void search()} disabled={loading}>{loading?'Searching…':'Search'}</Button>
     </div></GlassCard>
-    {rows.length===0?<GlassCard><User className="h-5 w-5 text-primary"/><p className="mt-3 font-semibold">No matching public profiles</p><p className="mt-1 text-sm text-muted-foreground">Try another exam, subject or state.</p></GlassCard>:
+    {error?<GlassCard><p className="font-semibold">Could not load students / छात्र लोड नहीं हो सके</p><p className="mt-1 text-sm text-muted-foreground">Please try again / फिर प्रयास करें।</p></GlassCard>:rows.length===0?<GlassCard><User className="h-5 w-5 text-primary"/><p className="mt-3 font-semibold">No matching public profiles</p><p className="mt-1 text-sm text-muted-foreground">Try another exam, subject or state.</p></GlassCard>:
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{rows.map(p=><GlassCard key={p.uid}><div className="flex items-start gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-brand font-bold text-white">{(p.displayName?.[0]||'S').toUpperCase()}</div><div className="min-w-0 flex-1"><Link href={`/dashboard/community/student/${p.uid}`} className="truncate font-semibold hover:text-primary">{p.displayName}</Link><p className="text-xs text-muted-foreground"><BookOpen className="mr-1 inline h-3.5 w-3.5"/>{p.exam||'Student'}</p><p className="text-xs text-muted-foreground"><MapPin className="mr-1 inline h-3.5 w-3.5"/>{p.state||'India'}</p></div></div><p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{p.bio||'Focused student on StudySphere.'}</p><div className="mt-3 flex flex-wrap gap-1">{(p.subjects||[]).slice(0,3).map(s=><span key={s} className="rounded-full bg-primary/10 px-2 py-1 text-[10px] text-primary">{s}</span>)}</div><Button className="mt-4 w-full" variant={following[p.uid]?'outline':'gradient'} onClick={()=>void toggle(p)}>{following[p.uid]?<><UserMinus className="h-4 w-4"/> Connected</>:<><UserPlus className="h-4 w-4"/> Connect</>}</Button></GlassCard>)}</div>}
   </div>;
 }
