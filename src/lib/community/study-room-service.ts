@@ -99,12 +99,9 @@ export async function joinStudyRoom(roomId: string, profile: CommunityProfile) {
     if (!roomSnap.exists() || roomSnap.data().active === false) throw new Error('Study room is not available');
     const removedUids = roomSnap.data().removedUids;
     if (Array.isArray(removedUids) && removedUids.includes(profile.uid)) throw new Error('You were removed from this room.');
-    if (!memberSnap.exists() || memberSnap.data().status === 'away') {
-      const current = Number(roomSnap.data().participantCount || 0);
-      tx.update(roomRef, { participantCount: current + 1, updatedAt: serverTimestamp() });
-    } else {
-      tx.update(roomRef, { updatedAt: serverTimestamp() });
-    }
+
+    // Create/restore the member first. A non-host cannot update the room's
+    // participantCount until this member document exists under the current rules.
     tx.set(memberRef, {
       uid: profile.uid,
       displayName: profile.displayName || 'Student',
@@ -113,6 +110,9 @@ export async function joinStudyRoom(roomId: string, profile: CommunityProfile) {
       focusStartedAt: null,
       lastSeenAt: serverTimestamp(),
     }, { merge: true });
+
+    // participantCount is reconciled after the transaction, once membership exists.
+    void memberSnap;
   });
   await reconcileRoomParticipantCount(roomId);
   const existingProfile = await getCommunityProfile(profile.uid);
