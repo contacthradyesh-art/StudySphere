@@ -9,6 +9,7 @@ import { FLASHCARD_COLLECTIONS, type Flashcard } from '@/lib/firestore/flashcard
 import { getTestResults } from '@/lib/repositories/mockTestRepository';
 import { useAuth } from './use-auth';
 import type { AnalyticsData, HeatmapEntry, TrendPoint, SubjectAccuracyEntry } from '@/features/analytics/types';
+import { toDateKey } from '@/lib/planner/date-keys';
 import type { StoredTestResult } from '@/lib/firestore/mock-test-schema';
 
 const SUBJECT_COLORS: Record<string, string> = {
@@ -172,18 +173,18 @@ export function useAnalyticsData() {
       const days: TrendPoint[] = Array.from({ length: 14 }).map((_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - (13 - i));
-        return { date: d.toISOString().split('T')[0], studyMinutes: 0, accuracy: 0, testsCompleted: 0 };
+        return { date: toDateKey(d), studyMinutes: 0, accuracy: 0, testsCompleted: 0 };
       });
       const dayIndex = new Map(days.map((d, i) => [d.date, i]));
       for (const s of sessions) {
         if (s.phase !== 'focus' || !s.endedAt?.toDate) continue;
-        const dateKey = s.endedAt.toDate().toISOString().split('T')[0];
+        const dateKey = toDateKey(s.endedAt.toDate());
         const idx = dayIndex.get(dateKey);
         if (idx === undefined) continue;
         days[idx].studyMinutes += Math.round((s.completedSeconds ?? 0) / 60);
       }
       for (const r of testResults) {
-        const dateKey = r.completedAt?.toDate?.().toISOString().split('T')[0];
+        const dateKey = r.completedAt?.toDate ? toDateKey(r.completedAt.toDate()) : undefined;
         const idx = dateKey ? dayIndex.get(dateKey) : undefined;
         if (idx !== undefined) days[idx].testsCompleted += 1;
       }
@@ -193,7 +194,7 @@ export function useAnalyticsData() {
       const retentionRate = cards.length
         ? Math.round((reviewedCards.length / cards.length) * 100)
         : 0;
-      const today = new Date().toISOString().split('T')[0];
+      const today = toDateKey();
       const onTrackCards = cards.filter((c) => c.dueDate >= today);
       const revisionHealth = cards.length
         ? Math.round((onTrackCards.length / cards.length) * 100)
