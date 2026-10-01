@@ -72,7 +72,14 @@ export default function FocusShieldPage() {
       if (event.data?.channel === 'studysphere-focus' && event.data?.type === 'EXTENSION_READY') setExtensionConnected(true);
     }
     window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
+    window.postMessage({ channel: 'studysphere-focus', type: 'EXTENSION_PING' }, window.location.origin);
+    const retry = window.setTimeout(() => {
+      window.postMessage({ channel: 'studysphere-focus', type: 'EXTENSION_PING' }, window.location.origin);
+    }, 250);
+    return () => {
+      window.clearTimeout(retry);
+      window.removeEventListener('message', onMessage);
+    };
   }, []);
 
   useEffect(() => {
