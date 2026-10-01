@@ -76,6 +76,7 @@ export default function CommunityProfilePage() {
   }
 
   async function save() {
+    if (!profile) return;
     setSaving(true);
     try {
       await upsertCommunityProfile(profile);
