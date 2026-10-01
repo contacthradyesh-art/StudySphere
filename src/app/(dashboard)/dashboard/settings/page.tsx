@@ -3,12 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { BadgeCheck, BellRing, KeyRound, Palette, ShieldAlert, User as UserIcon } from 'lucide-react';
+import { BadgeCheck, BellRing, KeyRound, Palette, ShieldAlert, ShieldCheck, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
+import { GlassCard } from '@/components/shared/glass-card';
+import { useFocusShieldState } from '@/hooks/use-focus-shield-state';
+import { getFocusSettings, saveFocusSettings } from '@/lib/pomodoro/session-service';
+import { DEFAULT_FOCUS_SETTINGS, type FocusSettings } from '@/lib/firestore/pomodoro-schema';
+import { buildBlockList, broadcastFocusStart, broadcastFocusStop } from '@/lib/focus/extension-contract';
 import { useAuth } from '@/hooks/use-auth';
 import {
   changePassword,
@@ -30,6 +35,13 @@ export default function SettingsPage() {
 
   const [displayName, setDisplayName] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
+
+  type ShieldSettings = Omit<FocusSettings, 'updatedAt'>;
+  const [focusSettings, setFocusSettings] = useState<ShieldSettings>(DEFAULT_FOCUS_SETTINGS);
+  const [savingFocus, setSavingFocus] = useState(false);
+  const [extensionConnected, setExtensionConnected] = useState(false);
+  const [nativePermission, setNativePermission] = useState<boolean | null>(null);
+  const { active: focusActive, endsAt: focusEndsAt, startSession: startFocusSession, endSession: endFocusSession } = useFocusShieldState();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -53,6 +65,38 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setNotifPermission(notificationsSupported() ? Notification.permission : 'unsupported');
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    getFocusSettings(user.uid).then(setFocusSettings).catch(() => setFocusSettings(DEFAULT_FOCUS_SETTINGS));
+  }, [user]);
+
+  useEffect(() => {
+    function checkPermission() {
+      if (typeof window === 'undefined') return;
+      const bridge = window.StudySphereFocusShield;
+      setNativePermission(bridge?.isPermissionGranted ? Boolean(bridge.isPermissionGranted()) : null);
+    }
+    checkPermission();
+    document.addEventListener('visibilitychange', checkPermission);
+    return () => document.removeEventListener('visibilitychange', checkPermission);
+  }, []);
+
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.source !== window) return;
+      if (event.data?.channel === 'studysphere-focus' && event.data?.type === 'EXTENSION_READY') setExtensionConnected(true);
+    }
+    window.addEventListener('message', onMessage);
+    window.postMessage({ channel: 'studysphere-focus', type: 'EXTENSION_PING' }, window.location.origin);
+    const retry = window.setTimeout(() => {
+      window.postMessage({ channel: 'studysphere-focus', type: 'EXTENSION_PING' }, window.location.origin);
+    }, 250);
+    return () => {
+      window.clearTimeout(retry);
+      window.removeEventListener('message', onMessage);
+    };
   }, []);
 
   if (!loading && !user) {
@@ -98,6 +142,45 @@ export default function SettingsPage() {
     } finally {
       setChangingPassword(false);
     }
+  }
+
+  function patchFocus(patch: Partial<ShieldSettings>) {
+    setFocusSettings((current) => ({ ...current, ...patch }));
+  }
+
+  async function saveFocus() {
+    if (!user) return;
+    setSavingFocus(true);
+    try {
+      await saveFocusSettings(user.uid, focusSettings);
+      toast.success('Focus Shield settings saved');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save Focus Shield settings');
+    } finally {
+      setSavingFocus(false);
+    }
+  }
+
+  function activateFocusShield() {
+    const bridge = typeof window !== 'undefined' ? window.StudySphereFocusShield : undefined;
+    if (bridge?.isPermissionGranted && !bridge.isPermissionGranted()) {
+      toast.error('Permission required', { description: 'Allow StudySphere Accessibility access, then return here.' });
+      bridge.openPermissionSettings?.();
+      return;
+    }
+    const blockList = buildBlockList(focusSettings);
+    const end = Date.now() + focusSettings.focusDurationMinutes * 60 * 1000;
+    startFocusSession(focusSettings.focusDurationMinutes, blockList.length);
+    bridge?.setShieldActive?.(true);
+    broadcastFocusStart(blockList, end, focusSettings.disableNotifications);
+    toast.success('Focus Shield activated');
+  }
+
+  function stopFocusShield() {
+    endFocusSession();
+    if (typeof window !== 'undefined') window.StudySphereFocusShield?.setShieldActive?.(false);
+    broadcastFocusStop();
+    toast.message('Focus Shield deactivated');
   }
 
   async function enableNotifications() {
@@ -154,11 +237,54 @@ export default function SettingsPage() {
               )}
             </div>
           </div>
-          <Button variant="gradient" size="sm" onClick={saveProfile} disabled={savingProfile}>
-            {savingProfile ? 'Saving...' : 'Save profile'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="gradient" size="sm" onClick={saveProfile} disabled={savingProfile}>
+              {savingProfile ? 'Saving...' : 'Save profile'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/community/profile')}>Public study profile</Button>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Focus Shield */}
+      <GlassCard>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 font-semibold"><ShieldCheck className="h-5 w-5 text-primary" /> Focus Shield</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Quick controls for distraction blocking and focus sessions.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/focus')}>Open full Focus Shield</Button>
+        </div>
+        {nativePermission === false && (
+          <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-3">
+            <p className="text-sm font-medium">Android protection permission required</p>
+            <p className="mt-1 text-xs text-muted-foreground">Enable Accessibility access so StudySphere can block selected distraction apps during sessions.</p>
+            <Button className="mt-3" variant="gradient" size="sm" onClick={() => window.StudySphereFocusShield?.openPermissionSettings?.()}>Grant permission</Button>
+          </div>
+        )}
+        {!focusActive ? (
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"><span>Block YouTube Shorts</span><input type="checkbox" checked={focusSettings.blockShorts} onChange={(e) => patchFocus({ blockShorts: e.target.checked })} /></label>
+              <label className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"><span>Block Instagram Reels</span><input type="checkbox" checked={focusSettings.blockReels} onChange={(e) => patchFocus({ blockReels: e.target.checked })} /></label>
+              <label className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"><span>Block Facebook Reels</span><input type="checkbox" checked={focusSettings.blockFacebookReels} onChange={(e) => patchFocus({ blockFacebookReels: e.target.checked })} /></label>
+              <label className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"><span>Distraction-free mode</span><input type="checkbox" checked={focusSettings.distractionFreeMode} onChange={(e) => patchFocus({ distractionFreeMode: e.target.checked })} /></label>
+              <label className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"><span>Disable study notifications</span><input type="checkbox" checked={focusSettings.disableNotifications} onChange={(e) => patchFocus({ disableNotifications: e.target.checked })} /></label>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border border-border px-3 py-2 text-sm"><span className="shrink-0">Duration</span><input className="flex-1" type="range" min={5} max={120} step={5} value={focusSettings.focusDurationMinutes} onChange={(e) => patchFocus({ focusDurationMinutes: Number(e.target.value) })} /><span className="w-12 text-right font-semibold">{focusSettings.focusDurationMinutes}m</span></div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => void saveFocus()} disabled={savingFocus}>{savingFocus ? 'Saving…' : 'Save Focus settings'}</Button>
+              <Button variant="gradient" size="sm" onClick={activateFocusShield}><ShieldCheck className="h-4 w-4" /> Activate</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Browser extension: {extensionConnected ? 'connected' : 'not detected'} · Android protection: {nativePermission === true ? 'enabled' : nativePermission === false ? 'permission needed' : 'not available'}</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div><p className="font-semibold">Focus Shield is active</p><p className="text-xs text-muted-foreground">Blocking {buildBlockList(focusSettings).length} pattern(s){focusEndsAt ? ` until ${new Date(focusEndsAt).toLocaleTimeString()}` : ''}.</p></div>
+            <Button variant="destructive" size="sm" onClick={stopFocusShield}><ShieldAlert className="h-4 w-4" /> End Shield</Button>
+          </div>
+        )}
+      </GlassCard>
 
       {/* Password */}
       {hasPasswordProvider() ? (

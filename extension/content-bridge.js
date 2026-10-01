@@ -10,6 +10,10 @@ window.addEventListener('message', (event) => {
   if (event.source !== window) return;
   const data = event.data;
   if (!data || data.channel !== EXTENSION_CHANNEL) return;
+  if (data.type === 'EXTENSION_PING') {
+    window.postMessage({ channel: EXTENSION_CHANNEL, type: 'EXTENSION_READY' }, window.location.origin);
+    return;
+  }
   if (data.type !== 'FOCUS_START' && data.type !== 'FOCUS_STOP') return;
   chrome.runtime.sendMessage(data);
 });
