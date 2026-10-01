@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { authedFetch } from '@/lib/auth/authed-fetch';
 import { toast } from 'sonner';
 import { Scale, Sparkles, Loader2, BookOpen, Users, Search, Trophy, History } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -45,7 +46,7 @@ function CaseStudyTab({
     setFeedback(null);
     setAnswer('');
     try {
-      const res = await fetch('/api/mission-ias/ethics-case-study', {
+      const res = await authedFetch('/api/mission-ias/ethics-case-study', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic: topic.trim() || undefined })
@@ -68,7 +69,7 @@ function CaseStudyTab({
     }
     setSubmitting(true);
     try {
-      const res = await fetch('/api/mission-ias/ethics-feedback', {
+      const res = await authedFetch('/api/mission-ias/ethics-feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scenario: caseStudy.scenario, questions: caseStudy.questions, answer })
