@@ -12,6 +12,7 @@ export interface StudyRoom {
   public: boolean;
   active: boolean;
   participantCount: number;
+  removedUids?: string[];
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
 }
