@@ -74,6 +74,7 @@ service cloud.firestore {
     match /communityProfiles/{uid} {
       allow read: if request.auth != null;
       allow create, update, delete: if isOwner(uid);
+      match /studyRecords/{sessionId} { allow read, write: if isOwner(uid); }
     }
 
     match /studyRooms/{roomId} {
@@ -81,13 +82,17 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid;
       allow update: if request.auth != null &&
         (resource.data.hostUid == request.auth.uid ||
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantCount', 'updatedAt']));
+         (isRoomMember(roomId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantCount', 'updatedAt'])));
       allow delete: if isRoomHost(roomId);
 
       match /members/{uid} {
         allow read: if request.auth != null;
         allow create, update: if request.auth != null &&
-          (uid == request.auth.uid || isRoomHost(roomId));
+          (isRoomHost(roomId) ||
+           (uid == request.auth.uid &&
+            (request.resource.data.get('status', 'away') == 'away' ||
+             !(request.auth.uid in get(/databases/$(database)/documents/studyRooms/$(roomId)).data.get('removedUids', [])))));
         allow delete: if request.auth != null && (uid == request.auth.uid || isRoomHost(roomId));
       }
 
