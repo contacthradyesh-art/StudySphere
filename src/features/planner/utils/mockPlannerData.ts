@@ -1,7 +1,9 @@
+import { toDateKey } from '@/lib/planner/date-keys';
+
 import type { DailyPlan, WeeklyPlan, Mission, PlanTask } from "../types";
 
 function getDateString(offset: number): string {
-  const d = new Date(); d.setDate(d.getDate() + offset); return d.toISOString().split("T")[0];
+  const d = new Date(); d.setDate(d.getDate() + offset); return toDateKey(d);
 }
 function getDayLabel(offset: number): string {
   const d = new Date(); d.setDate(d.getDate() + offset);
