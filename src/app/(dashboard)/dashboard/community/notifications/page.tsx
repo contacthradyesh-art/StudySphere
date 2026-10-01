@@ -12,7 +12,7 @@ export default function CommunityNotificationsPage() {
   const { user } = useAuth();
   const [items, setItems] = useState<CommunityNotification[]>([]);
   const [error, setError] = useState(false);
-  useEffect(() => { if (!user) return; return subscribeCommunityNotifications(user.uid, setItems); }, [user]);
+  useEffect(() => { if (!user) return; return subscribeCommunityNotifications(user.uid, setItems, () => setError(true)); }, [user]);
   const icon = (type: CommunityNotification['type']) => type === 'roomInvite' ? <Radio className="h-4 w-4 text-primary"/> : <UserPlus className="h-4 w-4 text-primary"/>;
   return <div className="space-y-5">
     <div><p className="text-xs text-primary">Study Together</p><h1 className="text-2xl font-black">Notifications</h1><p className="mt-1 text-sm text-muted-foreground">Connections and study-room invitations.</p></div>
