@@ -11,6 +11,7 @@ import type { CommunityNotification } from '@/lib/firestore/community-schema';
 export default function CommunityNotificationsPage() {
   const { user } = useAuth();
   const [items, setItems] = useState<CommunityNotification[]>([]);
+  const [error, setError] = useState(false);
   useEffect(() => { if (!user) return; return subscribeCommunityNotifications(user.uid, setItems); }, [user]);
   const icon = (type: CommunityNotification['type']) => type === 'roomInvite' ? <Radio className="h-4 w-4 text-primary"/> : <UserPlus className="h-4 w-4 text-primary"/>;
   return <div className="space-y-5">
