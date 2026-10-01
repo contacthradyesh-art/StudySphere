@@ -69,7 +69,7 @@ export default function PlannerPage() {
   return <div className="space-y-5 animate-fade-in">
     <header className="flex flex-wrap items-end justify-between gap-4"><div><p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-violet-300">Life OS</p><h1 className="text-2xl font-black tracking-tight md:text-3xl">Life Planner</h1><p className="mt-1 text-sm text-muted-foreground">One command center for your day, tasks, goals, habits and progress.</p></div><Button variant="gradient" onClick={() => { setEditing(null); setDialogOpen(true); }}><Plus className="h-4 w-4" /> Plan task</Button></header>
     <nav className="overflow-x-auto pb-1 scrollbar-hide" aria-label="Planner sections"><div className="flex w-fit items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.035] p-1">{TABS.map((item) => <button key={item.id} type="button" onClick={() => setTab(item.id)} className={cn('whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition-all', tab === item.id ? 'bg-white/[0.10] text-foreground shadow-sm ring-1 ring-white/10' : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground')}>{item.label}</button>)}</div></nav>
-    {tab === 'today' && <div className="space-y-5"><DeadlineCommandCard /><DayCommandCenter tasks={tasks} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onNewTask={() => { setEditing(null); setDialogOpen(true); }} /></div>}
+    {tab === 'today' && <div className="space-y-5"><OverdueTasks tasks={overdueTasks} onMoveToToday={async (task) => { if (!requireAuth(user)) return; await updateTask(user.uid, task.id, { dueDate: todayIso }); toast.success('Moved to today / आज पर ले आया गया'); }} onMarkDone={handleToggle} /><DeadlineCommandCard /><DayCommandCenter tasks={tasks} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onNewTask={() => { setEditing(null); setDialogOpen(true); }} /></div>}
     {tab === 'tasks' && <TasksWorkspace tasks={tasks} tasksToday={tasksToday} grouped={grouped} loading={loading} weeklySlots={weeklySlots} weeklyLoading={weeklyLoading} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onDelete={handleDelete} />}
     {tab === 'goals' && <GoalsTab />}{tab === 'habits' && <HabitsTab />}
     {tab === 'insights' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><FocusAnalytics data={focusAnalytics} /><StudyHeatmap days={heatmapDays} /></section><SubjectProgress subjects={subjectStats} /></div>}
@@ -77,6 +77,21 @@ export default function PlannerPage() {
     <TaskDialog open={dialogOpen} initial={editing} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={handleSubmit} />
   </div>;
 }
+function OverdueTasks({ tasks, onMoveToToday, onMarkDone }: { tasks: Task[]; onMoveToToday: (task: Task) => Promise<void>; onMarkDone: (task: Task) => void }) {
+  if (tasks.length === 0) return null;
+  return <GlassCard className="border-amber-400/20 bg-amber-400/[0.035]">
+    <div className="flex items-start justify-between gap-3">
+      <div><p className="text-sm font-bold text-amber-200">Overdue / बकाया</p><p className="mt-1 text-xs text-muted-foreground">Move unfinished tasks to today or mark them done / अधूरे काम आज पर लाएं या पूरा करें।</p></div>
+      <span className="rounded-full bg-amber-400/10 px-2 py-1 text-[11px] text-amber-200">{tasks.length}</span>
+    </div>
+    <div className="mt-3 space-y-2">{tasks.map((task) => <div key={task.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-background/40 p-3">
+      <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{task.title}</p><p className="text-[11px] text-muted-foreground">{task.dueDate} · {task.priority}</p></div>
+      <Button size="sm" variant="outline" onClick={() => void onMoveToToday(task)}>Move to today / आज करें</Button>
+      <Button size="sm" variant="gradient" onClick={() => onMarkDone(task)}>Mark done / पूरा करें</Button>
+    </div>)}</div>
+  </GlassCard>;
+}
+
 function TasksWorkspace({ tasks, tasksToday, grouped, loading, weeklySlots, weeklyLoading, onToggle, onEdit, onDelete }: { tasks: Task[]; tasksToday: Task[]; grouped: { pending: Task[]; done: Task[] }; loading: boolean; weeklySlots: WeeklySlot[]; weeklyLoading: boolean; onToggle: (task: Task) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; }) {
   const [view, setView] = useState<'today' | 'all' | 'weekly' | 'monthly'>('today');
   return <section className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-bold">Task workspace</p><p className="text-xs text-muted-foreground">Keep execution simple. Use the timeline for time, tasks for everything else.</p></div><div className="flex rounded-xl border border-white/10 bg-white/[0.035] p-1">{(['today', 'all', 'weekly', 'monthly'] as const).map((item) => <button key={item} type="button" onClick={() => setView(item)} className={cn('rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-colors', view === item ? 'bg-white/[0.09] text-foreground' : 'text-muted-foreground hover:text-foreground')}>{item}</button>)}</div></div>
