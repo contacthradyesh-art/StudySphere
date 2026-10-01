@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { toDateKey } from '@/lib/planner/date-keys';
 import { usePlannerStore } from '@/store/planner-store';
 import { useDashboardStats } from '@/hooks/use-dashboard-stats';
 import { useGamification } from '@/hooks/use-gamification';
@@ -9,7 +10,7 @@ export function usePlannerInsights() {
   const { stats } = useDashboardStats();
   const gamification = useGamification(stats.streakDays);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = toDateKey();
 
   const tasksToday = tasks.filter(
     (t) => t.dueDate === today
