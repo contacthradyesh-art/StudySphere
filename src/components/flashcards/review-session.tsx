@@ -1,5 +1,7 @@
 'use client';
 
+import { toDateKey } from '@/lib/planner/date-keys';
+
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -19,7 +21,7 @@ const GRADES: { grade: Grade; label: string; variant: 'destructive' | 'outline' 
   { grade: 5, label: 'Easy', variant: 'gradient' }
 ];
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => toDateKey();
 
 /** Flip-and-grade review using SM-2; only cards due today (or earlier). */
 export function ReviewSession({ cards, onGrade }: ReviewSessionProps) {
