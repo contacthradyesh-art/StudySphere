@@ -16,7 +16,8 @@ service cloud.firestore {
     }
     function isRoomMember(roomId) {
       return request.auth != null &&
-        exists(/databases/$(database)/documents/studyRooms/$(roomId)/members/$(request.auth.uid));
+        exists(/databases/$(database)/documents/studyRooms/$(roomId)/members/$(request.auth.uid)) &&
+        !(request.auth.uid in get(/databases/$(database)/documents/studyRooms/$(roomId)).data.get('removedUids', []));
     }
 
     match /users/{uid} {

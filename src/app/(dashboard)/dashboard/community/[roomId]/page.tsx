@@ -75,9 +75,14 @@ export default function StudyRoomPage() {
     if (!roomId) return;
     const a = subscribeRoomMembers(roomId, setMembers);
     const b = subscribeSharedFocus(roomId, setFocus);
-    const c = subscribeRoomMessages(roomId, setMessages);
-    return () => { a(); b(); c(); };
+    return () => { a(); b(); };
   }, [roomId]);
+
+  // Messages are readable only by room members (Firestore rules), so listen after joining.
+  useEffect(() => {
+    if (!roomId || !joined || removed) return;
+    return subscribeRoomMessages(roomId, setMessages);
+  }, [roomId, joined, removed]);
 
   useEffect(() => {
     if (!activeEnds) { setRemaining(0); return; }
