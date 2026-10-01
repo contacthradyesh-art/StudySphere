@@ -4,6 +4,21 @@ import { NextResponse } from 'next/server';
 
 const COOKIE = 'mission_ias_access';
 const MAX_AGE = 60 * 60 * 24 * 30;
+const MAX_WRONG_ATTEMPTS = 5;
+const BLOCK_MS = 15 * 60 * 1000;
+
+type PasswordAttempt = { wrongAttempts: number; blockedUntil: number };
+const globalAttempts = globalThis as typeof globalThis & {
+  __missionIasPasswordAttempts?: Map<string, PasswordAttempt>;
+};
+const passwordAttempts =
+  globalAttempts.__missionIasPasswordAttempts ?? new Map<string, PasswordAttempt>();
+globalAttempts.__missionIasPasswordAttempts = passwordAttempts;
+
+function getClientIp(request: Request) {
+  const forwarded = request.headers.get('x-forwarded-for');
+  return forwarded?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
+}
 
 function getPassword() {
   return process.env.MISSION_IAS_ACCESS_PASSWORD?.trim() || '';
@@ -32,6 +47,22 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const clientIp = getClientIp(request);
+  const attempt = passwordAttempts.get(clientIp);
+  const now = Date.now();
+
+  if (attempt?.blockedUntil && attempt.blockedUntil > now) {
+    const retryAfter = Math.max(1, Math.ceil((attempt.blockedUntil - now) / 1000));
+    return NextResponse.json(
+      { error: 'Too many incorrect attempts. Try again later.' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    );
+  }
+
+  if (attempt?.blockedUntil && attempt.blockedUntil <= now) {
+    passwordAttempts.delete(clientIp);
+  }
+
   const configuredPassword = getPassword();
   if (!configuredPassword) {
     return NextResponse.json({ error: 'Mission IAS lock is not configured on the server.' }, { status: 503 });
@@ -48,8 +79,23 @@ export async function POST(request: Request) {
   const a = createHash('sha256').update(password).digest();
   const b = createHash('sha256').update(configuredPassword).digest();
   if (!timingSafeEqual(a, b)) {
+    const next = passwordAttempts.get(clientIp) ?? { wrongAttempts: 0, blockedUntil: 0 };
+    next.wrongAttempts += 1;
+    if (next.wrongAttempts >= MAX_WRONG_ATTEMPTS) {
+      next.blockedUntil = now + BLOCK_MS;
+    }
+    passwordAttempts.set(clientIp, next);
+
+    if (next.blockedUntil > now) {
+      return NextResponse.json(
+        { error: 'Too many incorrect attempts. Try again later.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(BLOCK_MS / 1000)) } },
+      );
+    }
     return NextResponse.json({ error: 'Incorrect Mission IAS password.' }, { status: 401 });
   }
+
+  passwordAttempts.delete(clientIp);
 
   const expires = Math.floor(Date.now() / 1000) + MAX_AGE;
   const payload = String(expires);
