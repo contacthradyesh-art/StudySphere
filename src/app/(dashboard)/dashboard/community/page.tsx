@@ -27,7 +27,7 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => { setLoading(true); return subscribePublicRooms((items) => { setRooms(items); setLoading(false); setLoadError(false); }); }, []);
+  useEffect(() => { setLoading(true); return subscribePublicRooms((items) => { setRooms(items); setLoading(false); setLoadError(false); }, () => { setLoading(false); setLoadError(true); }); }, []);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
