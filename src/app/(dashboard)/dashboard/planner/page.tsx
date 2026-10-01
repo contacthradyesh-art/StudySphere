@@ -64,7 +64,9 @@ export default function PlannerPage() {
   async function handleSubmit(data: NewTask) { if (!requireAuth(user)) return; try { if (editing) await updateTask(user.uid, editing.id, data); else await createTask(user.uid, data); toast.success(editing ? 'Task updated' : 'Task created'); } catch { toast.error('Could not save task'); } finally { setDialogOpen(false); setEditing(null); } }
   async function handleToggle(task: Task) { if (!requireAuth(user)) return; const completed = !task.completed; await toggleTask(user.uid, task.id, completed); if (completed) void awardXp(user.uid, 'completeTask'); }
   async function handleDelete(task: Task) { if (!requireAuth(user)) return; await deleteTask(user.uid, task.id); toast.success('Task deleted'); }
-  const todayIso = new Date().toISOString().slice(0, 10); const tasksToday = useMemo(() => tasks.filter((t) => t.dueDate === todayIso), [tasks, todayIso]);
+  const todayIso = toDateKey();
+  const overdueTasks = useMemo(() => tasks.filter((task) => !task.completed && task.dueDate < todayIso), [tasks, todayIso]);
+  const tasksToday = useMemo(() => tasks.filter((t) => t.dueDate === todayIso), [tasks, todayIso]);
   useEffect(() => { if (requestedTab && TABS.some((item) => item.id === requestedTab)) setTab(requestedTab); }, [requestedTab]);
   return <div className="space-y-5 animate-fade-in">
     <header className="flex flex-wrap items-end justify-between gap-4"><div><p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-violet-300">Life OS</p><h1 className="text-2xl font-black tracking-tight md:text-3xl">Life Planner</h1><p className="mt-1 text-sm text-muted-foreground">One command center for your day, tasks, goals, habits and progress.</p></div><Button variant="gradient" onClick={() => { setEditing(null); setDialogOpen(true); }}><Plus className="h-4 w-4" /> Plan task</Button></header>
