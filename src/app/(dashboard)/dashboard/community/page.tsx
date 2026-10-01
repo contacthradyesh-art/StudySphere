@@ -24,8 +24,10 @@ export default function CommunityPage() {
   const [newExam, setNewExam] = useState('UPSSSC PET');
   const [newSubject, setNewSubject] = useState('General Studies');
   const [roomName, setRoomName] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => subscribePublicRooms(setRooms), []);
+  useEffect(() => { setLoading(true); return subscribePublicRooms((items) => { setRooms(items); setLoading(false); setLoadError(false); }); }, []);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -66,8 +68,8 @@ export default function CommunityPage() {
       <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_90%_10%,rgba(139,92,246,0.22),transparent_35%),linear-gradient(145deg,#15111f,#0b0a10)] p-5 shadow-2xl sm:p-7">
         <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-fuchsia-500/10 blur-3xl" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-200/70">StudySphere · Community</p><h1 className="mt-2 text-3xl font-black tracking-tight text-white">Study together. Focus together.</h1><p className="mt-2 max-w-2xl text-sm text-white/55">Find students by exam and subject, join a live room, chat, and focus together.</p></div>
-          <Button variant="gradient" onClick={() => setShowCreate(true)} disabled={!user}><Plus className="h-4 w-4" /> Create room</Button>
+          <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-200/70">StudySphere · Community</p><h1 className="mt-2 text-3xl font-black tracking-tight text-white">Study together. Focus together. / साथ पढ़ें, साथ फोकस करें।</h1><p className="mt-2 max-w-2xl text-sm text-white/55">Find students by exam and subject, join a live room, chat, and focus together. / परीक्षा और विषय के अनुसार छात्र खोजें, रूम जॉइन करें और साथ पढ़ें।</p></div>
+          <Button variant="gradient" onClick={() => setShowCreate(true)} disabled={!user}><Plus className="h-4 w-4" /> Create room / रूम बनाएं</Button>
         </div>
       </section>
 
@@ -94,8 +96,8 @@ export default function CommunityPage() {
       </section>
 
       <section>
-        <div className="mb-3"><h2 className="text-base font-semibold">Live study rooms</h2><p className="text-xs text-muted-foreground">{visible.length} matching rooms · realtime</p></div>
-        {visible.length === 0 ? <GlassCard><p className="text-sm font-semibold">No matching rooms.</p><p className="mt-1 text-xs text-muted-foreground">Create a room for your exam and subject.</p></GlassCard> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{visible.map((room) => <GlassCard key={room.id} className="group"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-semibold">{room.name}</p><div className="mt-2 flex flex-wrap gap-1.5"><span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] text-primary">{room.exam || 'General'}</span><span className="rounded-full bg-white/5 px-2 py-1 text-[10px] text-muted-foreground">{room.subject || 'General study'}</span></div></div><span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-400">{room.participantCount || 0} online</span></div><Link href={`/dashboard/community/${room.id}`} className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary">Join room <ArrowRight className="h-3 w-3" /></Link></GlassCard>)}</div>}
+        <div className="mb-3"><h2 className="text-base font-semibold">Live study rooms / लाइव स्टडी रूम</h2><p className="text-xs text-muted-foreground">{visible.length} matching rooms · realtime</p></div>
+        {loading ? <GlassCard><p className="text-sm text-muted-foreground">Loading rooms… / रूम लोड हो रहे हैं…</p></GlassCard> : loadError ? <GlassCard><p className="font-semibold">Could not load rooms / रूम लोड नहीं हो सके</p><p className="mt-1 text-xs text-muted-foreground">Please refresh and try again / रीफ्रेश करके फिर प्रयास करें।</p></GlassCard> : visible.length === 0 ? <GlassCard><p className="text-sm font-semibold">No matching rooms.</p><p className="mt-1 text-xs text-muted-foreground">Create a room for your exam and subject.</p></GlassCard> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{visible.map((room) => <GlassCard key={room.id} className="group"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-semibold">{room.name}</p><div className="mt-2 flex flex-wrap gap-1.5"><span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] text-primary">{room.exam || 'General'}</span><span className="rounded-full bg-white/5 px-2 py-1 text-[10px] text-muted-foreground">{room.subject || 'General study'}</span></div></div><span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-400">{room.participantCount || 0} online</span></div><Link href={`/dashboard/community/${room.id}`} className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary">Join room <ArrowRight className="h-3 w-3" /></Link></GlassCard>)}</div>}
       </section>
 
       {showCreate && <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={(e) => e.currentTarget === e.target && setShowCreate(false)}>
