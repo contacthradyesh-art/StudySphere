@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -12,15 +12,18 @@ import {
   loginWithEmail,
   loginWithGoogle,
   resendVerification,
+  restoreSessionFromFirebase,
+  safeRedirect,
   sendPhoneCode,
 } from '@/lib/auth/service';
 import type { ConfirmationResult } from 'firebase/auth';
 import { loginSchema } from '@/lib/validators/auth';
 
 function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
-  const redirect = params.get('redirect') ?? '/dashboard';
+  const redirect = safeRedirect(params.get('redirect'));
+  const relogin = params.get('relogin') === '1';
+  const lastCreds = useRef<{ email: string; password: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showResend, setShowResend] = useState(false);
@@ -32,6 +35,22 @@ function LoginForm() {
   const [phoneLoading, setPhoneLoading] = useState(false);
 
 
+
+  // Server session cookie lasts 5 days while Firebase stays signed in on the device.
+  // Re-create the cookie silently so users are never stuck on the login screen.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (relogin) {
+        // A guard sent us here because there is no usable Firebase user: clear the stale cookie.
+        await fetch('/api/auth/session', { method: 'DELETE' }).catch(() => undefined);
+        return;
+      }
+      const restored = await restoreSessionFromFirebase();
+      if (restored && !cancelled) window.location.href = redirect;
+    })();
+    return () => { cancelled = true; };
+  }, [redirect, relogin]);
 
   function normalizePhone(value: string) {
     const clean = value.trim().replace(/[\s()-]/g, '');
@@ -50,10 +69,11 @@ function LoginForm() {
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
     setLoading(true);
     setShowResend(false);
+    lastCreds.current = { email: parsed.data.email, password: parsed.data.password };
     try {
       await loginWithEmail(parsed.data.email, parsed.data.password);
       toast.success('Welcome back!');
-      router.push(redirect);
+      window.location.href = redirect;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Invalid email or password';
       toast.error(message);
@@ -66,10 +86,15 @@ function LoginForm() {
   async function onResend() {
     setResendLoading(true);
     try {
-      await resendVerification();
-      toast.success('Verification email sent! Check your inbox.');
-    } catch {
-      toast.error('Could not send email. Try again.');
+      const creds = lastCreds.current;
+      if (!creds) {
+        toast.error('Enter your email and password, then try Resend again.');
+        return;
+      }
+      await resendVerification(creds.email, creds.password);
+      toast.success('Verification email sent! Check your inbox and spam folder.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not send email. Try again.');
     } finally {
       setResendLoading(false);
     }

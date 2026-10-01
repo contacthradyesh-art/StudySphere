@@ -58,7 +58,7 @@ export default function DashboardPage() {
             <h1 className="mt-2 text-3xl font-black tracking-tight text-white">{greeting}, {firstName}.</h1>
             <p className="mt-1 text-sm text-white/55">Plan less. Focus more. Study with people across India.</p>
           </div>
-          <Link href="/dashboard/settings" className="grid h-10 w-10 place-items-center rounded-full border border-violet-300/25 bg-white/5 text-sm font-bold text-violet-100">
+          <Link href="/dashboard/community/profile" aria-label="Open profile" className="grid h-10 w-10 place-items-center rounded-full border border-violet-300/25 bg-white/5 text-sm font-bold text-violet-100">
             {(user?.displayName?.[0] || 'S').toUpperCase()}
           </Link>
         </div>

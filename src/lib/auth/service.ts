@@ -91,6 +91,8 @@ function mapAuthError(err: unknown): AuthError {
         code,
         'Please verify your email before signing in. Check your inbox for the verification link.'
       );
+    case 'auth/already-verified':
+      return new AuthError(code, 'Your email is already verified. Please log in.');
     case 'auth/session-failed':
       return new AuthError(code, 'Could not start your session. Please try again.');
     default:
@@ -171,6 +173,12 @@ export async function loginWithEmail(email: string, password: string) {
 
 export async function loginWithGoogle() {
   try {
+    if (isEmbeddedWebView()) {
+      throw new AuthError(
+        'auth/webview-google-blocked',
+        'Google sign-in does not work inside the app. Please use Email or Phone login. / ऐप में Google लॉगिन काम नहीं करता — कृपया Email या Phone से लॉगिन करें।'
+      );
+    }
     const { user } = await signInWithPopup(auth, googleProvider);
     await ensureUserProfile(user, 'google');
     await establishSession(user);
@@ -247,8 +255,60 @@ export async function resetPassword(email: string) {
   }
 }
 
-export async function resendVerification() {
-  if (auth.currentUser) await sendEmailVerification(auth.currentUser);
+/**
+ * Resend the verification email. loginWithEmail() signs unverified users out, so
+ * auth.currentUser is null by then; sign in again with the credentials just
+ * entered, send the mail, and sign back out. Throws on failure (never fake success).
+ */
+export async function resendVerification(email?: string, password?: string) {
+  try {
+    if (auth.currentUser) {
+      await sendEmailVerification(auth.currentUser);
+      return;
+    }
+    if (!email || !password) throw mapAuthError({ code: 'auth/user-not-found' });
+    const { user } = await signInWithEmailAndPassword(auth, email.trim(), password);
+    try {
+      if (user.emailVerified) {
+        throw new AuthError('auth/already-verified', 'Your email is already verified. Please log in.');
+      }
+      await sendEmailVerification(user);
+    } finally {
+      await fbSignOut(auth);
+    }
+  } catch (err) {
+    if (err instanceof AuthError) throw err;
+    throw mapAuthError(err);
+  }
+}
+
+/** True when the Firebase client already has a signed-in user who may use the app. */
+export async function restoreSessionFromFirebase(): Promise<boolean> {
+  try {
+    await auth.authStateReady();
+    const user = auth.currentUser;
+    if (!user) return false;
+    const usesPassword = user.providerData.some((p) => p.providerId === 'password');
+    if (usesPassword && !user.emailVerified) return false;
+    await establishSession(user);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Google OAuth is blocked inside embedded Android WebViews (disallowed_useragent). */
+export function isEmbeddedWebView(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const w = window as unknown as { Capacitor?: { isNativePlatform?: () => boolean }; StudySphereFocusShield?: unknown };
+  return Boolean(w.Capacitor?.isNativePlatform?.()) || Boolean(w.StudySphereFocusShield) || /; wv\)/.test(ua);
+}
+
+/** Only allow same-site dashboard paths as a post-login redirect target. */
+export function safeRedirect(target: string | null | undefined, fallback = '/dashboard'): string {
+  if (!target || !target.startsWith('/') || target.startsWith('//') || target.includes('\\')) return fallback;
+  return target;
 }
 
 export async function signOut() {

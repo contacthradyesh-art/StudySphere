@@ -88,9 +88,54 @@ public class MainActivity extends BridgeActivity {
             startActivity(intent);
         }
 
+        /** Bridge version, so the web app can feature-detect the newer session API. */
+        @JavascriptInterface
+        public int getBridgeVersion() {
+            return 2;
+        }
+
+        /** Legacy call (old web builds). Capped so the shield can never stay on forever. */
         @JavascriptInterface
         public void setShieldActive(boolean active) {
-            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("active", active).apply();
+            android.content.SharedPreferences.Editor edit = getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("active", active);
+            if (active) edit.putLong("endsAt", System.currentTimeMillis() + 2L * 60 * 60 * 1000);
+            else edit.putLong("endsAt", 0);
+            edit.apply();
+        }
+
+        /** Starts a timed shield for exactly the selected apps; it expires on its own at endsAtMillis. */
+        @JavascriptInterface
+        public boolean setShieldSession(long endsAtMillis, String packagesJson) {
+            long now = System.currentTimeMillis();
+            long maxEnd = now + 6L * 60 * 60 * 1000;
+            if (endsAtMillis <= now) {
+                getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("active", false).putLong("endsAt", 0).apply();
+                return false;
+            }
+            JSONArray clean = new JSONArray();
+            try {
+                JSONArray input = new JSONArray(packagesJson == null ? "[]" : packagesJson);
+                for (int i = 0; i < input.length() && clean.length() < 40; i++) {
+                    String pkg = input.optString(i, "");
+                    if (pkg.matches("[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)+")) clean.put(pkg);
+                }
+            } catch (Exception ignored) {
+                return false;
+            }
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .putBoolean("active", clean.length() > 0)
+                .putLong("endsAt", Math.min(endsAtMillis, maxEnd))
+                .putString("packages", clean.toString())
+                .apply();
+            return clean.length() > 0;
+        }
+
+        @JavascriptInterface
+        public String getShieldState() {
+            android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+            long endsAt = prefs.getLong("endsAt", 0);
+            boolean active = prefs.getBoolean("active", false) && endsAt > System.currentTimeMillis();
+            return "{\"active\":" + active + ",\"endsAt\":" + endsAt + "}";
         }
 
         @JavascriptInterface

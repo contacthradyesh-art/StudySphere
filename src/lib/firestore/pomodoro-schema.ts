@@ -51,6 +51,8 @@ export interface FocusSettings {
   blockReels: boolean;
   blockFacebookReels: boolean;
   customBlockList: string[];
+  /** Android app ids (see FOCUS_APPS) blocked during a session, on top of the presets. */
+  blockedApps?: string[];
   disableNotifications: boolean;
   distractionFreeMode: boolean;
   focusDurationMinutes: number;
@@ -62,6 +64,7 @@ export const DEFAULT_FOCUS_SETTINGS: Omit<FocusSettings, 'updatedAt'> = {
   blockReels: true,
   blockFacebookReels: true,
   customBlockList: [],
+  blockedApps: [],
   disableNotifications: true,
   distractionFreeMode: false,
   focusDurationMinutes: 25
