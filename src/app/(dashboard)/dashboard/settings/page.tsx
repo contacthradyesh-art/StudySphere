@@ -90,7 +90,13 @@ export default function SettingsPage() {
     }
     window.addEventListener('message', onMessage);
     window.postMessage({ channel: 'studysphere-focus', type: 'EXTENSION_PING' }, window.location.origin);
-    return () => window.removeEventListener('message', onMessage);
+    const retry = window.setTimeout(() => {
+      window.postMessage({ channel: 'studysphere-focus', type: 'EXTENSION_PING' }, window.location.origin);
+    }, 250);
+    return () => {
+      window.clearTimeout(retry);
+      window.removeEventListener('message', onMessage);
+    };
   }, []);
 
   if (!loading && !user) {
