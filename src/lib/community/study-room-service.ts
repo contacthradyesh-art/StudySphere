@@ -32,12 +32,31 @@ function roomsCol() { return collection(db, ROOT); }
 function roomDoc(roomId: string) { return doc(db, ROOT, roomId); }
 function membersCol(roomId: string) { return collection(db, ROOT, roomId, 'members'); }
 function memberDoc(roomId: string, uid: string) { return doc(db, ROOT, roomId, 'members', uid); }
+function studyRecordDoc(uid: string, sessionId: string) { return doc(db, PROFILE_ROOT, uid, 'studyRecords', sessionId); }
 function focusCol(roomId: string) { return collection(db, ROOT, roomId, 'focusSessions'); }
 function messagesCol(roomId: string) { return collection(db, ROOT, roomId, 'messages'); }
 function reportsCol(roomId: string) { return collection(db, ROOT, roomId, 'reports'); }
 function profileDoc(uid: string) { return doc(db, PROFILE_ROOT, uid); }
 function followingCol(uid: string) { return collection(db, 'users', uid, 'following'); }
 function notificationsCol(uid: string) { return collection(db, 'users', uid, 'notifications'); }
+
+export function subscribeStudyRoom(roomId: string, cb: (room: StudyRoom | null) => void, onError?: (error: Error) => void) {
+  return onSnapshot(roomDoc(roomId), (snap) => {
+    cb(snap.exists() ? ({ id: snap.id, ...snap.data() } as StudyRoom) : null);
+  }, (error) => onError?.(error instanceof Error ? error : new Error('Could not load study room.')));
+}
+
+export async function reconcileRoomParticipantCount(roomId: string) {
+  const snap = await getDocs(membersCol(roomId));
+  const cutoff = Date.now() - 90_000;
+  const count = snap.docs.reduce((total, member) => {
+    const data = member.data();
+    const lastSeen = data.lastSeenAt && typeof data.lastSeenAt.toMillis === 'function' ? data.lastSeenAt.toMillis() : 0;
+    return total + (data.status !== 'away' && lastSeen >= cutoff ? 1 : 0);
+  }, 0);
+  await setDoc(roomDoc(roomId), { participantCount: count, updatedAt: serverTimestamp() }, { merge: true });
+  return count;
+}
 
 export async function createStudyRoom(input: { name: string; subject?: string | null; exam?: string | null; state?: string | null; host: CommunityProfile }): Promise<string> {
   const response = await fetch('/api/community/create-room', {
@@ -77,6 +96,8 @@ export async function joinStudyRoom(roomId: string, profile: CommunityProfile) {
     const memberRef = memberDoc(roomId, profile.uid);
     const [roomSnap, memberSnap] = await Promise.all([tx.get(roomRef), tx.get(memberRef)]);
     if (!roomSnap.exists() || roomSnap.data().active === false) throw new Error('Study room is not available');
+    const removedUids = roomSnap.data().removedUids;
+    if (Array.isArray(removedUids) && removedUids.includes(profile.uid)) throw new Error('You were removed from this room.');
     if (!memberSnap.exists() || memberSnap.data().status === 'away') {
       const current = Number(roomSnap.data().participantCount || 0);
       tx.update(roomRef, { participantCount: current + 1, updatedAt: serverTimestamp() });
@@ -92,6 +113,7 @@ export async function joinStudyRoom(roomId: string, profile: CommunityProfile) {
       lastSeenAt: serverTimestamp(),
     }, { merge: true });
   });
+  await reconcileRoomParticipantCount(roomId);
   const existingProfile = await getCommunityProfile(profile.uid);
   if (existingProfile) {
     await setDoc(profileDoc(profile.uid), { isOnline: true, lastSeenAt: serverTimestamp() }, { merge: true });
@@ -112,6 +134,7 @@ export async function leaveStudyRoom(roomId: string, uid: string) {
     }
     tx.set(memberRef, { status: 'away', focusStartedAt: null, lastSeenAt: serverTimestamp() }, { merge: true });
   });
+  await reconcileRoomParticipantCount(roomId);
 }
 
 export async function updateRoomPresence(roomId: string, profile: CommunityProfile, status: RoomMember['status']) {
@@ -271,7 +294,22 @@ export function subscribeRoomReports(roomId: string, cb: (reports: Array<{ id: s
 }
 
 export async function removeRoomMember(roomId: string, uid: string) {
-  await setDoc(memberDoc(roomId, uid), { status: 'away', focusStartedAt: null, lastSeenAt: serverTimestamp() }, { merge: true });
+  await runTransaction(db, async (tx) => {
+    const roomRef = roomDoc(roomId);
+    const memberRef = memberDoc(roomId, uid);
+    const [roomSnap, memberSnap] = await Promise.all([tx.get(roomRef), tx.get(memberRef)]);
+    if (!roomSnap.exists()) throw new Error('Study room is not available.');
+    const removedUids = Array.isArray(roomSnap.data().removedUids) ? roomSnap.data().removedUids as string[] : [];
+    if (!memberSnap.exists() || removedUids.includes(uid)) return;
+    const current = Number(roomSnap.data().participantCount || 0);
+    const wasCounted = memberSnap.data().status !== 'away';
+    tx.update(roomRef, {
+      participantCount: wasCounted ? Math.max(0, current - 1) : current,
+      removedUids: [...removedUids, uid],
+      updatedAt: serverTimestamp(),
+    });
+    tx.set(memberRef, { status: 'away', focusStartedAt: null, lastSeenAt: serverTimestamp() }, { merge: true });
+  });
 }
 
 export async function closeStudyRoom(roomId: string) {
@@ -313,14 +351,17 @@ export async function searchCommunityStudents(filters: { exam?: string; state?: 
     .filter((p) => !term || [p.displayName, p.exam, p.state, p.bio, ...(p.subjects || [])].filter(Boolean).join(' ').toLowerCase().includes(term));
 }
 
-export async function recordCommunityStudy(uid: string, minutes: number) {
+export async function recordCommunityStudy(uid: string, minutes: number, sessionId: string) {
   const safe = Math.max(1, Math.min(180, Math.round(minutes)));
+  if (!sessionId) return;
   const ref = profileDoc(uid);
+  const recordRef = studyRecordDoc(uid, sessionId);
   await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) return;
+    const [snap, recordSnap] = await Promise.all([tx.get(ref), tx.get(recordRef)]);
+    if (!snap.exists() || recordSnap.exists()) return;
     const data = snap.data();
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
     const previous = typeof data.lastStudyDate === 'string' ? data.lastStudyDate : null;
     let streak = Number(data.streak || 0);
     if (previous !== today) {
@@ -329,6 +370,7 @@ export async function recordCommunityStudy(uid: string, minutes: number) {
       const diff = prevDate ? Math.round((todayDate.getTime() - prevDate.getTime()) / 86400000) : 0;
       streak = diff === 1 ? streak + 1 : 1;
     }
+    tx.set(recordRef, { minutes: safe, createdAt: serverTimestamp() });
     tx.set(ref, {
       studyMinutes: Number(data.studyMinutes || 0) + safe,
       streak,
