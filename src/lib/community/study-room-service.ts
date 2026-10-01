@@ -80,9 +80,9 @@ export async function createStudyRoom(input: { name: string; subject?: string | 
 
   return String(payload.roomId);
 }
-export function subscribePublicRooms(cb: (rooms: StudyRoom[]) => void) {
+export function subscribePublicRooms(cb: (rooms: StudyRoom[]) => void, onError?: (error: Error) => void) {
   const q = query(roomsCol(), where('public', '==', true), where('active', '==', true), orderBy('updatedAt', 'desc'), limit(50));
-  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as StudyRoom)));
+  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as StudyRoom)), (error) => onError?.(error instanceof Error ? error : new Error('Could not load rooms.')));
 }
 
 export function subscribeRoomMembers(roomId: string, cb: (members: RoomMember[]) => void) {
@@ -267,13 +267,13 @@ export async function upsertCommunityProfile(profile: CommunityProfile) {
   }, { merge: true });
 }
 
-export function subscribeCommunityLeaderboard(cb: (profiles: CommunityProfile[]) => void) {
+export function subscribeCommunityLeaderboard(cb: (profiles: CommunityProfile[]) => void, onError?: (error: Error) => void) {
   const q = query(collection(db, PROFILE_ROOT), orderBy('streak', 'desc'), limit(50));
   return onSnapshot(q, (snap) => {
     const rows = snap.docs.map((d) => ({ uid: d.id, ...d.data() }) as CommunityProfile);
     rows.sort((a, b) => (b.streak || 0) - (a.streak || 0) || (b.studyMinutes || 0) - (a.studyMinutes || 0));
     cb(rows);
-  });
+  }, (error) => onError?.(error instanceof Error ? error : new Error('Could not load leaderboard.')));
 }
 
 export async function listFollowing(uid: string): Promise<CommunityProfile[]> {
@@ -316,9 +316,9 @@ export async function closeStudyRoom(roomId: string) {
   await setDoc(roomDoc(roomId), { active: false, updatedAt: serverTimestamp() }, { merge: true });
 }
 
-export function subscribeCommunityNotifications(uid: string, cb: (items: CommunityNotification[]) => void) {
+export function subscribeCommunityNotifications(uid: string, cb: (items: CommunityNotification[]) => void, onError?: (error: Error) => void) {
   const q = query(notificationsCol(uid), orderBy('createdAt', 'desc'), limit(50));
-  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as CommunityNotification)));
+  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as CommunityNotification)), (error) => onError?.(error instanceof Error ? error : new Error('Could not load notifications.')));
 }
 
 export async function markCommunityNotificationRead(uid: string, notificationId: string) {
