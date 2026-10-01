@@ -12,19 +12,11 @@ import { useFocusShieldState } from '@/hooks/use-focus-shield-state';
 import { getFocusSettings, saveFocusSettings } from '@/lib/pomodoro/session-service';
 import { broadcastFocusStart, broadcastFocusStop, buildBlockList } from '@/lib/focus/extension-contract';
 import { DEFAULT_FOCUS_SETTINGS, type FocusSettings } from '@/lib/firestore/pomodoro-schema';
+import { FOCUS_APPS, getShieldBridge, packagesForSettings, startNativeShield, stopNativeShield } from '@/lib/focus/native-shield';
 import { cn } from '@/lib/utils';
 
 type Settings = Omit<FocusSettings, 'updatedAt'>;
-type FocusShieldBridge = {
-  isPermissionGranted?: () => boolean;
-  openPermissionSettings?: () => void;
-  setShieldActive?: (active: boolean) => void;
-};
-
-function getNativeBridge(): FocusShieldBridge | undefined {
-  if (typeof window === 'undefined') return undefined;
-  return (window as Window & { StudySphereFocusShield?: FocusShieldBridge }).StudySphereFocusShield;
-}
+const getNativeBridge = getShieldBridge;
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -43,6 +35,8 @@ export default function FocusShieldPage() {
   const { active, endsAt, startSession, endSession } = useFocusShieldState();
   const [extensionConnected, setExtensionConnected] = useState(false);
   const [nativePermission, setNativePermission] = useState<boolean | null>(null);
+  const [isAndroidApp, setIsAndroidApp] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const wasActive = useRef(active);
 
   const checkNativePermission = () => {
@@ -56,8 +50,15 @@ export default function FocusShieldPage() {
 
   useEffect(() => {
     if (!user) return;
-    getFocusSettings(user.uid).then(setSettings);
+    getFocusSettings(user.uid)
+      .then(setSettings)
+      .catch(() => undefined)
+      .finally(() => setSettingsLoaded(true));
   }, [user]);
+
+  useEffect(() => {
+    setIsAndroidApp(Boolean(getNativeBridge()));
+  }, []);
 
   useEffect(() => {
     checkNativePermission();
@@ -83,14 +84,18 @@ export default function FocusShieldPage() {
   }, []);
 
   useEffect(() => {
-    const bridge = getNativeBridge();
     if (wasActive.current && !active) {
       broadcastFocusStop();
-      bridge?.setShieldActive?.(false);
+      stopNativeShield();
     }
-    if (active) bridge?.setShieldActive?.(true);
     wasActive.current = active;
   }, [active]);
+
+  // Keep the Android side in sync (e.g. the app was reopened mid-session).
+  useEffect(() => {
+    if (active && endsAt && settingsLoaded) startNativeShield(endsAt, settings);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, endsAt, settingsLoaded]);
 
   function patch(p: Partial<Settings>) {
     setSettings((s) => ({ ...s, ...p }));
@@ -114,16 +119,26 @@ export default function FocusShieldPage() {
       return;
     }
 
+    const blockList = buildBlockList(settings);
+    const packages = packagesForSettings(settings);
+    if (blockList.length === 0 && (!bridge || packages.length === 0)) {
+      toast.error('Select at least one app or site to block / कम से कम एक ऐप या साइट चुनें');
+      return;
+    }
+
     const end = Date.now() + settings.focusDurationMinutes * 60 * 1000;
-    startSession(settings.focusDurationMinutes, buildBlockList(settings).length);
-    bridge?.setShieldActive?.(true);
-    broadcastFocusStart(buildBlockList(settings), end, settings.disableNotifications);
+    if (bridge && packages.length > 0 && !startNativeShield(end, settings)) {
+      toast.error('Android shield could not start. Please try again.');
+      return;
+    }
+    startSession(settings.focusDurationMinutes, blockList.length + packages.length);
+    broadcastFocusStart(blockList, end, settings.disableNotifications);
     toast.success('Focus Shield activated');
   }
 
   function emergencyExit() {
     endSession();
-    getNativeBridge()?.setShieldActive?.(false);
+    stopNativeShield();
     broadcastFocusStop();
     toast.message('Focus Shield deactivated');
   }
@@ -151,7 +166,7 @@ export default function FocusShieldPage() {
         <GlassCard className="flex flex-col items-center gap-4 py-10 text-center">
           <ShieldCheck className="h-12 w-12 text-primary" />
           <p className="text-lg font-semibold">Shield is active</p>
-          <p className="text-sm text-muted-foreground">Blocking {buildBlockList(settings).length} pattern(s){endsAt && ` until ${new Date(endsAt).toLocaleTimeString()}`}.</p>
+          <p className="text-sm text-muted-foreground">Blocking {buildBlockList(settings).length + packagesForSettings(settings).length} item(s){endsAt && ` until ${new Date(endsAt).toLocaleTimeString()}`}.</p>
           <Button variant="destructive" onClick={emergencyExit}><ShieldOff className="h-4 w-4" /> Emergency exit</Button>
         </GlassCard>
       ) : (
@@ -164,6 +179,32 @@ export default function FocusShieldPage() {
             <Toggle label="Disable notifications" checked={settings.disableNotifications} onChange={(v) => patch({ disableNotifications: v })} />
             <Toggle label="Distraction-free mode" checked={settings.distractionFreeMode} onChange={(v) => patch({ distractionFreeMode: v })} />
           </GlassCard>
+
+          {isAndroidApp && (
+            <GlassCard className="space-y-1 lg:col-span-2">
+              <h2 className="mb-1 font-semibold">Apps to block / ब्लॉक करने वाले ऐप्स</h2>
+              <p className="mb-2 text-xs text-muted-foreground">On Android the whole app is blocked during the session (Shorts/Reels cannot be blocked separately). / सेशन के दौरान पूरा ऐप बंद रहता है।</p>
+              <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+                {FOCUS_APPS.map((app) => (
+                  <Toggle
+                    key={app.id}
+                    label={`${app.label} / ${app.labelHi}`}
+                    checked={packagesForSettings(settings).includes(app.packageName)}
+                    onChange={(v) => {
+                      const current = new Set(settings.blockedApps ?? []);
+                      if (v) current.add(app.id); else current.delete(app.id);
+                      // YouTube/Instagram/Facebook are also driven by the preset toggles above.
+                      const presetOff: Partial<Settings> = {};
+                      if (!v && app.id === 'youtube') presetOff.blockShorts = false;
+                      if (!v && app.id === 'instagram') presetOff.blockReels = false;
+                      if (!v && app.id === 'facebook') presetOff.blockFacebookReels = false;
+                      patch({ blockedApps: Array.from(current), ...presetOff });
+                    }}
+                  />
+                ))}
+              </div>
+            </GlassCard>
+          )}
 
           <GlassCard className="space-y-4">
             <h2 className="font-semibold">Custom block list</h2>

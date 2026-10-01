@@ -4,4 +4,5 @@
     <string name="title_activity_main">StudySphere</string>
     <string name="package_name">com.studysphere.app</string>
     <string name="custom_url_scheme">com.studysphere.app</string>
+    <string name="focus_shield_service_description">Focus Shield blocks the distraction apps you choose (for example YouTube or Instagram) only while a StudySphere focus session is running. It reads which app is open, nothing else, and collects no personal data. / फोकस शील्ड केवल फोकस सेशन के दौरान आपके चुने हुए ऐप्स (जैसे YouTube, Instagram) को बंद करता है। यह सिर्फ यह देखता है कि कौन सा ऐप खुला है, कोई निजी डेटा नहीं लेता।</string>
 </resources>

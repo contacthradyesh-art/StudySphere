@@ -19,6 +19,8 @@
         <activity
             android:name=".FocusBlockedActivity"
             android:exported="false"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="true"
             android:theme="@style/AppTheme.NoActionBarLaunch" />
 
         <activity

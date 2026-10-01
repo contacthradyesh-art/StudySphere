@@ -14,6 +14,7 @@ import { useFocusShieldState } from '@/hooks/use-focus-shield-state';
 import { getFocusSettings, saveFocusSettings } from '@/lib/pomodoro/session-service';
 import { DEFAULT_FOCUS_SETTINGS, type FocusSettings } from '@/lib/firestore/pomodoro-schema';
 import { buildBlockList, broadcastFocusStart, broadcastFocusStop } from '@/lib/focus/extension-contract';
+import { getShieldBridge, packagesForSettings, startNativeShield, stopNativeShield } from '@/lib/focus/native-shield';
 import { useAuth } from '@/hooks/use-auth';
 import {
   changePassword,
@@ -29,16 +30,7 @@ import {
   requestNotificationPermission
 } from '@/lib/notifications/reminders';
 
-type FocusShieldBridge = {
-  isPermissionGranted?: () => boolean;
-  openPermissionSettings?: () => void;
-  setShieldActive?: (active: boolean) => void;
-};
-
-function getNativeBridge(): FocusShieldBridge | undefined {
-  if (typeof window === 'undefined') return undefined;
-  return (window as Window & { StudySphereFocusShield?: FocusShieldBridge }).StudySphereFocusShield;
-}
+const getNativeBridge = getShieldBridge;
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -111,7 +103,7 @@ export default function SettingsPage() {
   }, []);
 
   if (!loading && !user) {
-    router.replace('/login');
+    router.replace('/login?relogin=1');
     return null;
   }
 
@@ -180,16 +172,24 @@ export default function SettingsPage() {
       return;
     }
     const blockList = buildBlockList(focusSettings);
+    const packages = packagesForSettings(focusSettings);
+    if (blockList.length === 0 && (!bridge || packages.length === 0)) {
+      toast.error('Select at least one app or site to block. Open full Focus Shield to choose apps.');
+      return;
+    }
     const end = Date.now() + focusSettings.focusDurationMinutes * 60 * 1000;
-    startFocusSession(focusSettings.focusDurationMinutes, blockList.length);
-    bridge?.setShieldActive?.(true);
+    if (bridge && packages.length > 0 && !startNativeShield(end, focusSettings)) {
+      toast.error('Android shield could not start. Please try again.');
+      return;
+    }
+    startFocusSession(focusSettings.focusDurationMinutes, blockList.length + packages.length);
     broadcastFocusStart(blockList, end, focusSettings.disableNotifications);
     toast.success('Focus Shield activated');
   }
 
   function stopFocusShield() {
     endFocusSession();
-    getNativeBridge()?.setShieldActive?.(false);
+    stopNativeShield();
     broadcastFocusStop();
     toast.message('Focus Shield deactivated');
   }

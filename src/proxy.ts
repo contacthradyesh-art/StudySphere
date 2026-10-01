@@ -57,7 +57,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  if (isAuthPage && hasSession) {
+  if (isAuthPage && hasSession && request.nextUrl.searchParams.get('relogin') !== '1') {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);
