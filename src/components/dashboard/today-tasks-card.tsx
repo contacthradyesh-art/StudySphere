@@ -1,5 +1,7 @@
 'use client';
 
+import { toDateKey } from '@/lib/planner/date-keys';
+
 import Link from 'next/link';
 import { GlassCard } from '@/components/shared/glass-card';
 import { PriorityBadge } from '@/components/planner/priority-badge';
@@ -10,7 +12,7 @@ import { usePlannerStore, selectTasksForDate } from '@/store/planner-store';
 export function TodayTasksCard({ delay }: { delay?: number }) {
   useTasksSync();
   const tasks = usePlannerStore((s) => s.tasks);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toDateKey();
   const todays = selectTasksForDate(tasks, today).slice(0, 5);
 
   return (
