@@ -29,6 +29,17 @@ import {
   requestNotificationPermission
 } from '@/lib/notifications/reminders';
 
+type FocusShieldBridge = {
+  isPermissionGranted?: () => boolean;
+  openPermissionSettings?: () => void;
+  setShieldActive?: (active: boolean) => void;
+};
+
+function getNativeBridge(): FocusShieldBridge | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return (window as Window & { StudySphereFocusShield?: FocusShieldBridge }).StudySphereFocusShield;
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
