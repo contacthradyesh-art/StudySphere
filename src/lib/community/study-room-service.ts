@@ -16,6 +16,7 @@ import {
   where
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { authedFetch } from '@/lib/auth/authed-fetch';
 import type {
   StudyRoom,
   RoomMember,
@@ -59,7 +60,7 @@ export async function reconcileRoomParticipantCount(roomId: string) {
 }
 
 export async function createStudyRoom(input: { name: string; subject?: string | null; exam?: string | null; state?: string | null; host: CommunityProfile }): Promise<string> {
-  const response = await fetch('/api/community/create-room', {
+  const response = await authedFetch('/api/community/create-room', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

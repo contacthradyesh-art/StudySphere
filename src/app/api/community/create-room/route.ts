@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, verifySessionCookie } from '@/lib/firebase/admin';
+import { verifyRequestAuth } from '@/lib/auth/verify-request';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,25 +14,39 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Firebase admin is not configured.' }, { status: 500 });
     }
 
+    // Prefer the session cookie; if it is missing/expired, fall back to the Firebase ID token.
     const cookieStore = await cookies();
     const session = cookieStore.get(SESSION_COOKIE)?.value;
-    if (!session) {
-      return NextResponse.json({ error: 'You are not signed in.' }, { status: 401 });
+    let uid: string | null = null;
+    let tokenName = '';
+    if (session) {
+      try {
+        const decoded = await verifySessionCookie(session);
+        uid = decoded.uid;
+        tokenName = String((decoded as { name?: string }).name || '');
+      } catch {
+        uid = null;
+      }
     }
+    if (!uid) {
+      const verified = await verifyRequestAuth(request as NextRequest);
+      if (verified instanceof NextResponse) return verified;
+      uid = verified.uid;
+    }
+    const userId: string = uid;
 
-    const decoded = await verifySessionCookie(session);
     const body = await request.json();
 
     const name = String(body?.name || '').trim().slice(0, 100) || 'Study Room';
     const subject = body?.subject ? String(body.subject).slice(0, 100) : null;
     const exam = body?.exam ? String(body.exam).slice(0, 100) : null;
     const state = body?.state ? String(body.state).slice(0, 100) : null;
-    const displayName = String(body?.displayName || decoded.name || 'Student').slice(0, 80);
+    const displayName = String(body?.displayName || tokenName || 'Student').slice(0, 80);
     const photoURL = body?.photoURL ? String(body.photoURL).slice(0, 500) : null;
 
     const roomRef = adminDb.collection('studyRooms').doc();
-    const memberRef = roomRef.collection('members').doc(decoded.uid);
-    const profileRef = adminDb.collection('communityProfiles').doc(decoded.uid);
+    const memberRef = roomRef.collection('members').doc(userId);
+    const profileRef = adminDb.collection('communityProfiles').doc(userId);
 
     const batch = adminDb.batch();
 
@@ -40,7 +55,7 @@ export async function POST(request: Request) {
       subject,
       exam,
       state,
-      hostUid: decoded.uid,
+      hostUid: userId,
       public: true,
       active: true,
       participantCount: 1,
@@ -49,7 +64,7 @@ export async function POST(request: Request) {
     });
 
     batch.set(memberRef, {
-      uid: decoded.uid,
+      uid: userId,
       displayName,
       photoURL,
       status: 'online',
@@ -58,7 +73,7 @@ export async function POST(request: Request) {
     });
 
     batch.set(profileRef, {
-      uid: decoded.uid,
+      uid: userId,
       displayName,
       photoURL,
       state,
