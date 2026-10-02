@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ElementType, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Plus, CalendarDays, ListChecks, Target, Flame, BarChart3, Check, Circle, Clock3, BookOpen, ListTodo, Sparkles } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -68,7 +68,7 @@ export default function PlannerPage() {
   const overdueTasks = useMemo(() => tasks.filter((task) => !task.completed && task.dueDate < todayIso), [tasks, todayIso]);
   const tasksToday = useMemo(() => tasks.filter((t) => t.dueDate === todayIso), [tasks, todayIso]);
   useEffect(() => { if (requestedTab && TABS.some((item) => item.id === requestedTab)) setTab(requestedTab); }, [requestedTab]);
-  const tabIcons: Record<Tab, React.ElementType> = {
+  const tabIcons: Record<Tab, ElementType> = {
     today: CalendarDays, tasks: ListChecks, goals: Target, habits: Flame, insights: BarChart3, coach: Sparkles
   };
 
