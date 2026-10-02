@@ -5,35 +5,62 @@ on:
     branches: [main]
     paths:
       - 'android/**'
-      - 'src/**'
-      - 'public/**'
+      - 'public/icons/**'
+      - 'scripts/generate-android-assets.py'
       - 'capacitor.config.ts'
-      - 'package.json'
-      - 'package-lock.json'
       - '.github/workflows/android-build.yml'
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node 22
+      - name: Set up Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
 
-      - name: Install web dependencies
+      - name: Install dependencies (Capacitor CLI + Android platform)
         run: npm ci
 
-      - name: Build web assets for Capacitor
-        run: npm run build
+      # The app loads the live site from server.url in capacitor.config.ts, so the bundled
+      # web folder only needs to exist. No full Next.js build is needed (or possible: it has no static export).
+      - name: Create placeholder web assets
+        run: |
+          mkdir -p out
+          cat > out/index.html <<'HTML'
+          <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StudySphere</title></head>
+          <body style="font-family:sans-serif;background:#0b0b12;color:#fff;display:grid;place-items:center;height:100vh;margin:0"><p>Loading StudySphere…</p></body></html>
+          HTML
+          test -s out/index.html
 
-      - name: Verify web output
-        run: test -f out/index.html
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate launcher icons and splash screens
+        run: |
+          pip install pillow
+          python scripts/generate-android-assets.py
+
+      - name: Restore fixed debug keystore (stable signature)
+        run: |
+          base64 -d android/app/debug.keystore.b64 > android/app/debug.keystore
+          # Fail loudly if the base64 file was corrupted when it was copied into the repo.
+          echo "13f9f092cc49d665b001c40f49cd44b28a2ac452a2c24b8d2b229ffd5b7da421  android/app/debug.keystore" | sha256sum -c -
 
       - name: Sync Capacitor Android project
         run: npx cap sync android
@@ -52,11 +79,29 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Verify APK exists
-        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify APK and print signer
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          cp "$APK" StudySphere.apk
+          ls -l StudySphere.apk
+          APKSIGNER=$(ls $ANDROID_HOME/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          if [ -n "$APKSIGNER" ]; then "$APKSIGNER" verify --print-certs StudySphere.apk | head -5; fi
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: StudySphere-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: StudySphere.apk
+
+      - name: Publish APK as a direct download (GitHub Release)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: StudySphere APK (latest)
+          body: |
+            Latest StudySphere Android APK, built from commit ${{ github.sha }}.
+            Download **StudySphere.apk** below and install it. Same signing key every time, so new builds update the app in place.
+          files: StudySphere.apk
+          prerelease: false
+          make_latest: true
