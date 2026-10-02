@@ -68,86 +68,30 @@ export default function PlannerPage() {
   const overdueTasks = useMemo(() => tasks.filter((task) => !task.completed && task.dueDate < todayIso), [tasks, todayIso]);
   const tasksToday = useMemo(() => tasks.filter((t) => t.dueDate === todayIso), [tasks, todayIso]);
   useEffect(() => { if (requestedTab && TABS.some((item) => item.id === requestedTab)) setTab(requestedTab); }, [requestedTab]);
-  const tabIcons: Record<Tab, ElementType> = {
-    today: CalendarDays, tasks: ListChecks, goals: Target, habits: Flame, insights: BarChart3, coach: Sparkles
-  };
+  const tabIcons: Record<Tab, ElementType> = { today: CalendarDays, tasks: ListChecks, goals: Target, habits: Flame, insights: BarChart3, coach: Sparkles };
+  return <div className="min-h-full animate-fade-in bg-[#F8F7FF] text-slate-950 dark:bg-background dark:text-foreground"><div className="mx-auto max-w-[430px] space-y-4 px-4 pb-8 pt-3 sm:px-5">
+    <header className="flex items-start justify-between gap-3"><div className="min-w-0"><h1 className="text-[30px] font-black leading-none tracking-[-0.04em] text-[#2D1B69] dark:text-foreground">Life Planner</h1><p className="mt-2 text-[13px] leading-5 text-slate-500 dark:text-muted-foreground">One command center for your day • tasks, goals, habits and progress</p></div><Button variant="gradient" className="h-11 shrink-0 rounded-2xl px-4 text-sm font-bold" onClick={()=>{setEditing(null);setDialogOpen(true)}}><Plus className="h-4 w-4"/> Plan task</Button></header>
+    <nav className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-border dark:bg-card"><div className="grid grid-cols-5">{TABS.filter(x=>x.id!=='coach').map(item=>{const Icon=tabIcons[item.id];return <button key={item.id} type="button" onClick={()=>setTab(item.id)} className={cn("relative flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[12px] font-bold",tab===item.id?"text-[#2D1B69] dark:text-foreground":"text-slate-500 dark:text-muted-foreground")}><Icon className="h-5 w-5"/><span>{item.label}</span>{tab===item.id&&<span className="absolute bottom-0 left-2 right-2 h-1 rounded-full bg-[#8B5CF6]"/>}</button>})}</div></nav>
+    {tab==='today'&&<PlannerReferenceToday tasks={tasksToday} onToggle={handleToggle}/>}
+    {tab==='tasks'&&<TasksWorkspace tasks={tasks} tasksToday={tasksToday} grouped={grouped} loading={loading} weeklySlots={weeklySlots} weeklyLoading={weeklyLoading} onToggle={handleToggle} onEdit={task=>{setEditing(task);setDialogOpen(true)}} onDelete={handleDelete}/>}
+    {tab==='goals'&&<GoalsTab/>}{tab==='habits'&&<HabitsTab/>}
+    {tab==='insights'&&<div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><FocusAnalytics data={focusAnalytics}/><StudyHeatmap days={heatmapDays}/></section><SubjectProgress subjects={subjectStats}/></div>}
+    {tab==='coach'&&<div className="space-y-5"><AiCoachPanel report={coachReport}/><AiSmartPlanner weeklySlots={weeklySlots}/></div>}
+    <TaskDialog open={dialogOpen} initial={editing} onClose={()=>{setDialogOpen(false);setEditing(null)}} onSubmit={handleSubmit}/>
+  </div></div>;
 
-  return <div className="min-h-full animate-fade-in bg-[#F8F7FF] text-slate-950 dark:bg-background dark:text-foreground">
-    <div className="mx-auto max-w-[430px] space-y-4 px-4 pb-8 pt-3 sm:px-5">
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-[30px] font-black leading-none tracking-[-0.04em] text-[#2D1B69] dark:text-foreground">Life Planner</h1>
-          <p className="mt-2 text-[13px] leading-5 text-slate-500 dark:text-muted-foreground">One command center for your day • tasks, goals, habits and progress</p>
-        </div>
-        <Button variant="gradient" className="h-11 shrink-0 rounded-2xl px-4 text-sm font-bold shadow-lg shadow-primary/20" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-          <Plus className="h-4 w-4" /> Plan task
-        </Button>
-      </header>
+function PlannerReferenceToday({tasks,onToggle}:{tasks:Task[];onToggle:(task:Task)=>void}) {
+ const fallback=[['Complete UPSSSC PET mock','High','9:00 AM','high'],['Review PYQ set','Medium','11:30 AM','medium'],['Practice Reasoning Section','Low','2:00 PM','low']] as const;
+ const rows=tasks.length?tasks.slice().sort((a,b)=>(a.startTime??'99:99').localeCompare(b.startTime??'99:99')).slice(0,3):[];
+ return <div className="space-y-4"><section><div className="mb-2 flex items-end justify-between"><h2 className="text-[22px] font-black">Tasks</h2><span className="text-sm font-bold text-[#5B21B6]">See all</span></div><div className="space-y-2.5">{(rows.length?rows:fallback).map((x,i)=>{const task='id' in x?x:null;const title=task?task.title:x[0];const priority=task?task.priority||fallback[i]?.[1]||'Medium':x[1];const time=task?(task.startTime?formatPlannerTime(task.startTime):''):x[2];const tone=String(priority).toLowerCase()==='high'?'bg-red-100 text-red-600':String(priority).toLowerCase()==='low'?'bg-blue-100 text-blue-700':'bg-orange-100 text-orange-600';return <div key={task?.id??i} className="flex items-center gap-3 rounded-xl bg-white px-3.5 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:bg-card"><button type="button" onClick={()=>task&&onToggle(task)}>{task?.completed?<span className="grid h-7 w-7 place-items-center rounded-full bg-[#8B5CF6] text-white"><Check className="h-4 w-4"/></span>:<Circle className="h-7 w-7 text-slate-300"/>}</button><div className="min-w-0 flex-1"><p className="truncate text-[15px] font-bold">{title}</p></div><div className="flex shrink-0 flex-col items-end gap-1"><span className={cn("rounded-md px-2 py-1 text-[11px] font-bold",tone)}>{priority}</span><span className="flex items-center gap-1 text-[11px] text-slate-500"><Clock3 className="h-3 w-3"/>{time}</span></div></div>})}</div></section>
+ <section><h2 className="text-[22px] font-black">Goals</h2><p className="mb-2 text-[13px] text-slate-500">Your deadline, under control • 30-day mission</p><div className="space-y-2.5"><GoalReferenceCard title="Goal 1 • Crack PET Prelims" value="60%" sub="Deadline • 30 days remaining • 12/20 task done" progress={60} icon={<Target className="h-5 w-5"/>}/><GoalReferenceCard title="Goal 2 • Daily 2hr Focus" value="3/7 days" sub="Consistency • 3 days in a row" progress={40} icon={<Clock3 className="h-5 w-5"/>} orange/></div></section>
+ <section><h2 className="text-[22px] font-black">Habits <Sparkles className="inline h-5 w-5"/></h2><div className="mt-2 rounded-2xl bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:bg-card"><div className="grid grid-cols-3 gap-2"><HabitReferenceCard tone="orange" icon={<Flame className="h-6 w-6"/>} title="Exercise" sub="streak 5 days" checked={[true,true,false,false,false,false,false]}/><HabitReferenceCard tone="blue" icon={<BookOpen className="h-6 w-6"/>} title="Reading" sub="12 days" checked={[false,false,true,true,true,false,false]}/><HabitReferenceCard tone="green" icon={<ListTodo className="h-6 w-6"/>} title="Mock Test" sub="3 days" checked={[false,false,false,false,false,false,false]}/></div></div></section>
+ <section className="flex items-center justify-between rounded-2xl bg-white px-5 py-4 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:bg-card"><div><h2 className="text-[19px] font-black">Your Day Command Center</h2><p className="mt-1 text-sm text-slate-500">Stats • Focus today</p></div><div className="text-center"><div className="grid h-16 w-16 place-items-center rounded-full border-[5px] border-slate-200 text-xl font-black">0%</div><p className="mt-1 text-[11px] text-slate-500">Overall progress</p></div></section></div>;
+}
+function formatPlannerTime(value:string){const[h,m]=value.split(':').map(Number);return `${((h+11)%12)+1}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;}
+function GoalReferenceCard({title,value,sub,progress,icon,orange=false}:{title:string;value:string;sub:string;progress:number;icon:ReactNode;orange?:boolean}){return <div className="rounded-xl bg-white px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:bg-card"><div className="flex items-center gap-3"><span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl",orange?"bg-orange-100 text-orange-500":"bg-violet-100 text-violet-600")}>{icon}</span><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="truncate text-[15px] font-black">{title}</p><span className={cn("shrink-0 text-xl font-black",orange?"text-slate-900 dark:text-foreground":"text-violet-700")}>{value}</span></div><div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-200"><div className={cn("h-full rounded-full",orange?"bg-orange-400":"bg-gradient-to-r from-violet-600 to-fuchsia-500")} style={{width:`${progress}%`}}/></div><p className="mt-1 text-[11px] text-slate-500">{sub}</p></div></div></div>;}
+function HabitReferenceCard({tone,icon,title,sub,checked}:{tone:'orange'|'blue'|'green';icon:ReactNode;title:string;sub:string;checked:boolean[]}){const bg=tone==='orange'?'bg-orange-200':tone==='blue'?'bg-blue-200':'bg-green-200';return <div className={cn("rounded-xl px-2 py-2.5 text-center",bg)}><div className="mx-auto grid w-fit place-items-center">{icon}</div><p className="mt-1 text-sm font-black">{title}</p><p className="text-[11px] text-slate-700">{sub}</p><div className="mt-2 grid grid-cols-7 gap-0.5">{checked.map((yes,i)=><span key={i} className="grid place-items-center"><span className={cn("grid h-4 w-4 place-items-center rounded-full",yes?"bg-[#8B5CF6] text-white":"border-2 border-slate-300 bg-white/70")}>{yes&&<Check className="h-2.5 w-2.5"/>}</span></span>)}</div><div className="mt-0.5 grid grid-cols-7 text-[8px] text-slate-700"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div></div>;}
 
-      <nav className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-border dark:bg-card" aria-label="Planner sections">
-        <div className="grid grid-cols-5">
-          {TABS.filter((item) => item.id !== 'coach').map((item) => {
-            const Icon = tabIcons[item.id];
-            return <button key={item.id} type="button" onClick={() => setTab(item.id)}
-              className={cn("relative flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[12px] font-bold transition-colors",
-                tab === item.id ? "text-[#2D1B69] dark:text-foreground" : "text-slate-500 dark:text-muted-foreground")}>
-              <Icon className="h-5 w-5" />
-              <span>{item.label}</span>
-              {tab === item.id && <span className="absolute bottom-0 left-2 right-2 h-1 rounded-full bg-[#8B5CF6]" />}
-            </button>;
-          })}
-        </div>
-      </nav>
-
-      {tab === 'today' && <PlannerReferenceToday tasks={tasksToday} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} />}
-      {tab === 'tasks' && <TasksWorkspace tasks={tasks} tasksToday={tasksToday} grouped={grouped} loading={loading} weeklySlots={weeklySlots} weeklyLoading={weeklyLoading} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onDelete={handleDelete} />}
-      {tab === 'goals' && <GoalsTab />}
-      {tab === 'habits' && <HabitsTab />}
-      {tab === 'insights' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><FocusAnalytics data={focusAnalytics} /><StudyHeatmap days={heatmapDays} /></section><SubjectProgress subjects={subjectStats} /></div>}
-      {tab === 'coach' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><AiCoachPanel report={coachReport} /><div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.035] p-5"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-violet-300">Planner Intelligence</p><h2 className="mt-2 text-xl font-bold">Turn real activity into a realistic plan.</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Suggestions use your current workload, focus history and habits instead of inventing progress.</p></div></section><AiSmartPlanner weeklySlots={weeklySlots} /></div>}
-      <TaskDialog open={dialogOpen} initial={editing} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={handleSubmit} />
-    </div>
-  </div>;
-}  const tabIcons: Record<Tab, React.ElementType> = {
-    today: CalendarDays, tasks: ListChecks, goals: Target, habits: Flame, insights: BarChart3, coach: Sparkles
-  };
-
-  return <div className="min-h-full animate-fade-in bg-[#F8F7FF] text-slate-950 dark:bg-background dark:text-foreground">
-    <div className="mx-auto max-w-[430px] space-y-4 px-4 pb-8 pt-3 sm:px-5">
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-[30px] font-black leading-none tracking-[-0.04em] text-[#2D1B69] dark:text-foreground">Life Planner</h1>
-          <p className="mt-2 text-[13px] leading-5 text-slate-500 dark:text-muted-foreground">One command center for your day • tasks, goals, habits and progress</p>
-        </div>
-        <Button variant="gradient" className="h-11 shrink-0 rounded-2xl px-4 text-sm font-bold shadow-lg shadow-primary/20" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-          <Plus className="h-4 w-4" /> Plan task
-        </Button>
-      </header>
-
-      <nav className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-border dark:bg-card" aria-label="Planner sections">
-        <div className="grid grid-cols-5">
-          {TABS.filter((item) => item.id !== 'coach').map((item) => {
-            const Icon = tabIcons[item.id];
-            return <button key={item.id} type="button" onClick={() => setTab(item.id)}
-              className={cn("relative flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[12px] font-bold transition-colors",
-                tab === item.id ? "text-[#2D1B69] dark:text-foreground" : "text-slate-500 dark:text-muted-foreground")}>
-              <Icon className="h-5 w-5" />
-              <span>{item.label}</span>
-              {tab === item.id && <span className="absolute bottom-0 left-2 right-2 h-1 rounded-full bg-[#8B5CF6]" />}
-            </button>;
-          })}
-        </div>
-      </nav>
-
-      {tab === 'today' && <PlannerReferenceToday tasks={tasksToday} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} />}
-      {tab === 'tasks' && <TasksWorkspace tasks={tasks} tasksToday={tasksToday} grouped={grouped} loading={loading} weeklySlots={weeklySlots} weeklyLoading={weeklyLoading} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onDelete={handleDelete} />}
-      {tab === 'goals' && <GoalsTab />}
-      {tab === 'habits' && <HabitsTab />}
-      {tab === 'insights' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><FocusAnalytics data={focusAnalytics} /><StudyHeatmap days={heatmapDays} /></section><SubjectProgress subjects={subjectStats} /></div>}
-      {tab === 'coach' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><AiCoachPanel report={coachReport} /><div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.035] p-5"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-violet-300">Planner Intelligence</p><h2 className="mt-2 text-xl font-bold">Turn real activity into a realistic plan.</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Suggestions use your current workload, focus history and habits instead of inventing progress.</p></div></section><AiSmartPlanner weeklySlots={weeklySlots} /></div>}
-      <TaskDialog open={dialogOpen} initial={editing} onClose={() => { setDialogOpen(false); setEditing(null); }} onSubmit={handleSubmit} />
-    </div>
-  </div>;
 function OverdueTasks({ tasks, onMoveToToday, onMarkDone }: { tasks: Task[]; onMoveToToday: (task: Task) => Promise<void>; onMarkDone: (task: Task) => void }) {
   if (tasks.length === 0) return null;
   return <GlassCard className="border-amber-400/20 bg-amber-400/[0.035]">
