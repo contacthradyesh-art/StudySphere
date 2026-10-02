@@ -5,11 +5,13 @@ android {
     compileSdk = rootProject.ext.compileSdkVersion
 
     defaultConfig {
-        applicationId "com.studysphere.app"
+        // Different applicationId prevents Android's "package conflicts with an existing package"
+        // error when an older StudySphere APK uses a different signing key.
+        applicationId "com.studysphere.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
-        versionName "1.2.0"
+        versionCode 1
+        versionName "2.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
@@ -17,8 +19,8 @@ android {
     }
 
     signingConfigs {
-        // Fixed debug key, decoded from android/app/debug.keystore.b64 by the CI workflow (debug builds only).
-        // Every CI build is signed with the SAME key, so a new APK installs over the previous one as an update.
+        // Fixed debug key, decoded from android/app/debug.keystore.b64 by the CI workflow.
+        // Every CI build is signed with the SAME key, so future APKs from this package update in place.
         debug {
             if (file('debug.keystore').exists()) {
                 storeFile file('debug.keystore')
@@ -31,7 +33,6 @@ android {
 
     buildTypes {
         release {
-            // Production Play Store build: shrink and optimize the native shell.
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
