@@ -1,7 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.studysphere.app',
+  // New package ID so this APK can install even when an older StudySphere
+  // signed with a different key is already installed on the phone.
+  appId: 'com.studysphere.mobile',
   appName: 'StudySphere',
   webDir: 'out',
 
