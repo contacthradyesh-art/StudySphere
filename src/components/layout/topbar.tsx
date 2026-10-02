@@ -64,15 +64,15 @@ export function Topbar() {
   const isDark = resolvedTheme === 'dark';
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 min-w-0 items-center justify-between border-b border-border/60 bg-background/85 px-3 backdrop-blur-xl sm:px-4 md:px-6">
-      <button type="button" onClick={() => router.push('/dashboard/planner')} className="hidden min-w-0 max-w-xl flex-1 items-center gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2 text-left md:flex" aria-label="Search StudySphere">
+    <header className="sticky top-0 z-40 flex h-14 min-w-0 items-center justify-end border-b border-border/60 bg-background/90 px-3 backdrop-blur-xl sm:px-4 md:h-16 md:px-6">
+      <button type="button" onClick={() => router.push('/dashboard/planner')} className="hidden min-w-0 max-w-xl flex-1 items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-left md:flex" aria-label="Search StudySphere">
         <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="truncate text-sm text-muted-foreground">Search tasks, goals, subjects...</span>
         <span className="ml-auto rounded border border-border px-1.5 text-[10px] text-muted-foreground">Ctrl K</span>
       </button>
 
       <div className="ml-auto flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-muted" aria-label="Search planner" onClick={() => router.push('/dashboard/planner')}>
+        <Button variant="ghost" size="icon" className="ss-press h-10 w-10 rounded-xl hover:bg-muted" aria-label="Search planner" onClick={() => router.push('/dashboard/planner')}>
           <Search className="h-5 w-5" />
         </Button>
 

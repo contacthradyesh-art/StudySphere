@@ -6,8 +6,8 @@ import { Toaster } from 'sonner';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'StudySphere - AI Student Productivity',
-  description: 'Plan, focus, and study smarter with StudySphere.',
+  title: 'StudySphere - Student OS',
+  description: 'Plan, focus, revise and study together with StudySphere.',
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#6d28d9',
+  themeColor: '#08060F',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -32,8 +32,8 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="font-sans">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <body>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
           <AuthProvider>{children}</AuthProvider>
           <Toaster richColors position="top-center" />
           <PwaInit />
