@@ -94,29 +94,28 @@ export default function CommunityPage() {
       </div>
 
       <main className="mx-auto max-w-7xl px-4 pb-10 pt-3 sm:px-6 lg:px-8">
-        <header className="mb-5 flex items-center justify-center">
-          <h1 className="flex items-center gap-2 text-[25px] font-black tracking-tight sm:text-3xl">
+        <header className="mb-4 flex items-center justify-center sm:justify-start">
+          <h1 className="flex items-center gap-2 text-[28px] font-black tracking-tight sm:text-3xl">
             <Sparkles className="h-5 w-5 text-primary" />
             Together
           </h1>
         </header>
 
-        <section className="ss-surface relative overflow-hidden p-6 sm:p-9">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_8%,hsl(var(--primary)/.16),transparent_28%),radial-gradient(circle_at_8%_100%,hsl(var(--primary)/.07),transparent_42%)] dark:bg-[radial-gradient(circle_at_78%_8%,hsl(var(--primary)/.22),transparent_28%),radial-gradient(circle_at_8%_100%,hsl(var(--primary)/.10),transparent_42%)]" />
-          <div className="pointer-events-none absolute -right-10 top-0 h-44 w-44 rounded-full bg-fuchsia-500/10 blur-3xl dark:bg-fuchsia-500/15" />
-          <div className="relative grid gap-7 md:grid-cols-[1fr_auto] md:items-end">
+        <section className="ss-surface relative overflow-hidden p-5 sm:p-7">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_12%,hsl(var(--primary)/.16),transparent_32%),radial-gradient(circle_at_5%_100%,hsl(var(--primary)/.07),transparent_42%)] dark:bg-[radial-gradient(circle_at_82%_12%,hsl(var(--primary)/.22),transparent_32%),radial-gradient(circle_at_5%_100%,hsl(var(--primary)/.10),transparent_42%)]" />
+          <div className="pointer-events-none absolute -right-10 top-0 h-40 w-40 rounded-full bg-fuchsia-500/10 blur-3xl dark:bg-fuchsia-500/15" />
+          <div className="relative grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
             <div>
-              <h2 className="relative max-w-2xl text-[32px] font-black leading-[1.02] tracking-tight sm:text-5xl">
+              <h2 className="text-[30px] font-black leading-[1.03] tracking-tight sm:text-4xl">
                 Study together.<br />Focus together.
               </h2>
-              <p className="relative mt-3 text-lg font-semibold text-foreground">साथ पढ़ें, साथ फोकस करें</p>
-              <p className="relative mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-                Join live study rooms or host your own session and learn together in real-time
+              <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+                Collaborate in real-time with peers. Stay focused and productive.
               </p>
             </div>
             <Button
               variant="gradient"
-              className="relative h-14 rounded-2xl px-7 text-base font-bold shadow-lg shadow-primary/15"
+              className="h-14 rounded-2xl px-7 text-base font-bold shadow-lg shadow-primary/15"
               onClick={() => setShowCreate(true)}
               disabled={!user}
             >
@@ -125,7 +124,7 @@ export default function CommunityPage() {
           </div>
         </section>
 
-        <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+        <nav className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           <QuickLink href="/dashboard/community/profile" icon={User} label="My profile" />
           <QuickLink href="/dashboard/community/discover" icon={Search} label="Find students" />
           <QuickLink href="/dashboard/community/notifications" icon={Bell} label="Notifications" />
@@ -134,7 +133,7 @@ export default function CommunityPage() {
           <QuickLink href="/dashboard/community/manage" icon={Shield} label="Host tools" />
         </nav>
 
-        <section className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto_auto]">
+        <section className="mt-5 grid gap-3 md:grid-cols-[1fr_180px_180px]">
           <label className="relative block">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" />
             <input
@@ -148,11 +147,13 @@ export default function CommunityPage() {
           <FilterSelect label="Language" value="EN" onChange={() => undefined} options={['EN','HI','Hinglish']} />
         </section>
 
-        <section className="mt-8 grid gap-6 lg:grid-cols-[.72fr_1.28fr]">
+        <section className="mt-8">
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-xl font-bold">Live Overview</h2>
-              <span className="text-xs text-muted-foreground">Realtime</span>
+              <h2 className="text-2xl font-black tracking-tight">Live Overview</h2>
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-300">
+                Realtime <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              </span>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <OverviewCard icon={Users} label="Students in rooms" value={studentCount.toString()} sub="active now" />
@@ -162,13 +163,13 @@ export default function CommunityPage() {
             </div>
           </div>
 
-          <div className="min-w-0">
-            <div className="mb-3 flex items-center justify-between">
+          <div className="mt-8 min-w-0">
+            <div className="mb-3 flex items-end justify-between gap-3">
               <div>
                 <h2 className="text-xl font-bold">Live Study Rooms</h2>
                 <p className="text-sm text-muted-foreground">Join active study sessions · Live now</p>
               </div>
-              <span className="text-sm font-semibold text-primary">See all</span>
+              <Link href="/dashboard/community/discover" className="text-sm font-semibold text-primary">See all</Link>
             </div>
 
             {loading ? (
@@ -206,7 +207,7 @@ export default function CommunityPage() {
 
 function QuickLink({ href, icon: Icon, label }: { href: string; icon: typeof User; label: string }) {
   return (
-    <Link href={href} className="ss-press flex shrink-0 items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:bg-primary/5 hover:text-foreground">
+    <Link href={href} className="ss-press flex min-w-0 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-3 py-3.5 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:bg-primary/5 hover:text-foreground sm:px-4">
       <Icon className="h-4 w-4 text-primary" /> {label}
     </Link>
   );
@@ -241,8 +242,8 @@ function RoomCard({ room }: { room: StudyRoom }) {
   return (
     <Link href={`/dashboard/community/${room.id}`} className="ss-press ss-surface group relative block overflow-hidden p-5 hover:-translate-y-0.5 hover:border-primary/35">
       <div className="pointer-events-none absolute -right-16 top-0 h-32 w-32 rounded-full bg-fuchsia-500/8 blur-3xl dark:bg-fuchsia-500/12" />
-      <div className="relative flex items-center justify-between gap-3">
-        <h3 className="min-w-0 truncate text-2xl font-black tracking-tight sm:text-3xl">{room.name}</h3>
+      <div className="relative flex items-start justify-between gap-3">
+        <h3 className="min-w-0 truncate text-xl font-black tracking-tight sm:text-2xl">{room.name}</h3>
         <span className="shrink-0 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-300">
           <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-400" />{count} online
         </span>
