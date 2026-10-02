@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  Users, Plus, Radio, Timer, BookOpen, ArrowRight, Search, User, Trophy,
-  Shield, Compass, Bell, ChevronDown, Sparkles, MapPin
+  Users, Plus, Radio, Timer, ArrowRight, Search, User, Trophy,
+  Shield, Bell, ChevronDown, Sparkles, MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -87,36 +87,36 @@ export default function CommunityPage() {
   const studentCount = visible.reduce((n, r) => n + (r.participantCount || 0), 0);
 
   return (
-    <div className="min-h-full overflow-hidden bg-[#090610] text-white">
+    <div className="min-h-full overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute left-[8%] top-20 h-72 w-72 rounded-full bg-violet-700/20 blur-[110px]" />
-        <div className="absolute right-[-10%] top-[38%] h-96 w-96 rounded-full bg-fuchsia-600/15 blur-[130px]" />
-        <div className="absolute left-[-15%] bottom-10 h-80 w-80 rounded-full bg-indigo-600/15 blur-[120px]" />
+        <div className="absolute left-[8%] top-20 h-72 w-72 rounded-full bg-primary/10 blur-[120px] dark:bg-primary/12" />
+        <div className="absolute right-[-10%] top-[38%] h-96 w-96 rounded-full bg-fuchsia-500/8 blur-[130px] dark:bg-fuchsia-500/10" />
       </div>
 
       <main className="mx-auto max-w-7xl px-4 pb-10 pt-3 sm:px-6 lg:px-8">
         <header className="mb-5 flex items-center justify-center">
           <h1 className="flex items-center gap-2 text-[25px] font-black tracking-tight sm:text-3xl">
-            <Sparkles className="h-5 w-5 fill-violet-400 text-violet-300" />
+            <Sparkles className="h-5 w-5 text-primary" />
             Together
           </h1>
         </header>
 
-        <section className="relative overflow-hidden rounded-[28px] border border-violet-300/25 bg-[radial-gradient(circle_at_72%_10%,rgba(214,89,255,.42),transparent_28%),radial-gradient(circle_at_10%_100%,rgba(103,56,255,.28),transparent_40%),linear-gradient(145deg,#21103f,#10091d_65%,#0b0811)] p-6 shadow-[0_0_70px_rgba(125,61,255,.16)] sm:p-9">
-          <div className="absolute -right-10 top-0 h-44 w-44 rounded-full bg-fuchsia-400/20 blur-3xl" />
+        <section className="ss-surface relative overflow-hidden p-6 sm:p-9">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_8%,hsl(var(--primary)/.16),transparent_28%),radial-gradient(circle_at_8%_100%,hsl(var(--primary)/.07),transparent_42%)] dark:bg-[radial-gradient(circle_at_78%_8%,hsl(var(--primary)/.22),transparent_28%),radial-gradient(circle_at_8%_100%,hsl(var(--primary)/.10),transparent_42%)]" />
+          <div className="pointer-events-none absolute -right-10 top-0 h-44 w-44 rounded-full bg-fuchsia-500/10 blur-3xl dark:bg-fuchsia-500/15" />
           <div className="relative grid gap-7 md:grid-cols-[1fr_auto] md:items-end">
             <div>
-              <h2 className="max-w-2xl text-[32px] font-black leading-[1.02] tracking-tight sm:text-5xl">
+              <h2 className="relative max-w-2xl text-[32px] font-black leading-[1.02] tracking-tight sm:text-5xl">
                 Study together.<br />Focus together.
               </h2>
-              <p className="mt-3 text-lg font-semibold text-white/90">साथ पढ़ें, साथ फोकस करें</p>
-              <p className="mt-4 max-w-xl text-sm leading-6 text-white/65 sm:text-base">
+              <p className="relative mt-3 text-lg font-semibold text-foreground">साथ पढ़ें, साथ फोकस करें</p>
+              <p className="relative mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
                 Join live study rooms or host your own session and learn together in real-time
               </p>
             </div>
             <Button
               variant="gradient"
-              className="h-14 rounded-2xl px-7 text-base font-bold shadow-[0_0_30px_rgba(214,76,255,.32)]"
+              className="relative h-14 rounded-2xl px-7 text-base font-bold shadow-lg shadow-primary/15"
               onClick={() => setShowCreate(true)}
               disabled={!user}
             >
@@ -136,12 +136,12 @@ export default function CommunityPage() {
 
         <section className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto_auto]">
           <label className="relative block">
-            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-violet-300/80" />
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search rooms, topics, or students..."
-              className="h-14 w-full rounded-2xl border border-violet-300/30 bg-[#100b19]/90 pl-12 pr-4 text-sm outline-none placeholder:text-white/35 focus:border-violet-400/70 focus:ring-2 focus:ring-violet-500/15"
+              className="h-14 w-full rounded-2xl border border-border bg-card pl-12 pr-4 text-sm outline-none placeholder:text-muted-foreground focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
             />
           </label>
           <FilterSelect label="Topic" value={exam} onChange={setExam} options={['All', ...EXAMS.filter(x => x !== 'Other')]} />
@@ -152,7 +152,7 @@ export default function CommunityPage() {
           <div>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-xl font-bold">Live Overview</h2>
-              <span className="text-xs text-white/35">Realtime</span>
+              <span className="text-xs text-muted-foreground">Realtime</span>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <OverviewCard icon={Users} label="Students in rooms" value={studentCount.toString()} sub="active now" />
@@ -166,17 +166,17 @@ export default function CommunityPage() {
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold">Live Study Rooms</h2>
-                <p className="text-sm text-violet-200/55">Join active study sessions · Live now</p>
+                <p className="text-sm text-muted-foreground">Join active study sessions · Live now</p>
               </div>
-              <span className="text-sm font-semibold text-fuchsia-300">See all</span>
+              <span className="text-sm font-semibold text-primary">See all</span>
             </div>
 
             {loading ? (
-              <div className="rounded-3xl border border-violet-300/20 bg-white/[.035] p-8 text-center text-sm text-white/50">Loading rooms…</div>
+              <div className="ss-surface p-8 text-center text-sm text-muted-foreground">Loading rooms…</div>
             ) : loadError ? (
-              <div className="rounded-3xl border border-red-400/20 bg-white/[.035] p-8 text-center"><p className="font-semibold">Could not load rooms</p><p className="mt-1 text-sm text-white/45">Please refresh and try again.</p></div>
+              <div className="ss-surface border-red-400/20 p-8 text-center"><p className="font-semibold">Could not load rooms</p><p className="mt-1 text-sm text-muted-foreground">Please refresh and try again.</p></div>
             ) : visible.length === 0 ? (
-              <div className="rounded-3xl border border-violet-300/20 bg-white/[.035] p-8 text-center"><p className="font-semibold">No matching rooms</p><p className="mt-1 text-sm text-white/45">Create a room for your exam and subject.</p></div>
+              <div className="ss-surface p-8 text-center"><p className="font-semibold">No matching rooms</p><p className="mt-1 text-sm text-muted-foreground">Create a room for your exam and subject.</p></div>
             ) : (
               <div className="grid gap-3">
                 {visible.slice(0, 8).map((room) => <RoomCard key={room.id} room={room} />)}
@@ -186,14 +186,14 @@ export default function CommunityPage() {
         </section>
 
         {showCreate && (
-          <div className="fixed inset-0 z-[60] grid place-items-center bg-black/75 p-4 backdrop-blur-md" onMouseDown={(e) => e.currentTarget === e.target && setShowCreate(false)}>
-            <div className="w-full max-w-md rounded-3xl border border-violet-300/20 bg-[#140d20] p-5 shadow-2xl">
+          <div className="fixed inset-0 z-[60] grid place-items-center bg-background/80 p-4 backdrop-blur-md" onMouseDown={(e) => e.currentTarget === e.target && setShowCreate(false)}>
+            <div className="ss-surface w-full max-w-md p-5 shadow-2xl">
               <h2 className="text-xl font-bold">Create a study room</h2>
-              <p className="mt-1 text-xs text-white/45">Choose the exam and subject so students can find you.</p>
-              <input value={roomName} onChange={(e) => setRoomName(e.target.value)} placeholder="Room name" className="mt-4 h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-sm outline-none" />
+              <p className="mt-1 text-xs text-muted-foreground">Choose the exam and subject so students can find you.</p>
+              <input value={roomName} onChange={(e) => setRoomName(e.target.value)} placeholder="Room name" className="mt-4 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary/50" />
               <div className="mt-3 grid grid-cols-2 gap-3">
-                <select value={newExam} onChange={(e) => setNewExam(e.target.value)} className="h-11 rounded-xl border border-white/10 bg-[#1b1128] px-3 text-sm">{EXAMS.filter(x => x !== 'Other').map(x => <option key={x}>{x}</option>)}</select>
-                <select value={newSubject} onChange={(e) => setNewSubject(e.target.value)} className="h-11 rounded-xl border border-white/10 bg-[#1b1128] px-3 text-sm">{SUBJECTS.map(x => <option key={x}>{x}</option>)}</select>
+                <select value={newExam} onChange={(e) => setNewExam(e.target.value)} className="h-11 rounded-xl border border-border bg-background px-3 text-sm">{EXAMS.filter(x => x !== 'Other').map(x => <option key={x}>{x}</option>)}</select>
+                <select value={newSubject} onChange={(e) => setNewSubject(e.target.value)} className="h-11 rounded-xl border border-border bg-background px-3 text-sm">{SUBJECTS.map(x => <option key={x}>{x}</option>)}</select>
               </div>
               <div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button><Button variant="gradient" onClick={createRoom} disabled={creating}>{creating ? 'Creating…' : 'Create & enter'}</Button></div>
             </div>
@@ -206,8 +206,8 @@ export default function CommunityPage() {
 
 function QuickLink({ href, icon: Icon, label }: { href: string; icon: typeof User; label: string }) {
   return (
-    <Link href={href} className="flex shrink-0 items-center gap-2 rounded-2xl border border-violet-300/20 bg-white/[.025] px-4 py-3 text-xs font-semibold text-white/85 transition hover:border-violet-300/45 hover:bg-violet-500/10">
-      <Icon className="h-4 w-4 text-violet-300" /> {label}
+    <Link href={href} className="ss-press flex shrink-0 items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:bg-primary/5 hover:text-foreground">
+      <Icon className="h-4 w-4 text-primary" /> {label}
     </Link>
   );
 }
@@ -215,22 +215,22 @@ function QuickLink({ href, icon: Icon, label }: { href: string; icon: typeof Use
 function FilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
   return (
     <label className="relative">
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="h-14 w-full min-w-[145px] appearance-none rounded-2xl border border-violet-300/30 bg-[#100b19]/90 px-4 pr-10 text-sm outline-none focus:border-violet-400/70">
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="h-14 w-full min-w-[145px] appearance-none rounded-2xl border border-border bg-card px-4 pr-10 text-sm outline-none focus:border-primary/50">
         {options.map(x => <option key={x}>{x}</option>)}
       </select>
-      <span className="pointer-events-none absolute left-4 top-1 text-[10px] font-semibold text-violet-200/45">{label}</span>
-      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-200/70" />
+      <span className="pointer-events-none absolute left-4 top-1 text-[10px] font-semibold text-muted-foreground">{label}</span>
+      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
     </label>
   );
 }
 
 function OverviewCard({ icon: Icon, label, value, sub }: { icon: typeof Users; label: string; value: string; sub: string }) {
   return (
-    <div className="relative min-h-[150px] overflow-hidden rounded-3xl border border-violet-300/25 bg-[radial-gradient(circle_at_15%_100%,rgba(199,71,255,.18),transparent_50%),linear-gradient(145deg,rgba(31,18,48,.9),rgba(15,10,24,.92))] p-4">
-      <Icon className="h-6 w-6 text-violet-300" />
-      <p className="mt-2 text-sm font-semibold text-violet-200/75">{label}</p>
+    <div className="ss-surface relative min-h-[150px] overflow-hidden p-4">
+      <Icon className="h-6 w-6 text-primary" />
+      <p className="mt-2 text-sm font-semibold text-muted-foreground">{label}</p>
       <p className="mt-4 text-4xl font-black tracking-tight">{value}</p>
-      <p className="mt-1 text-xs text-white/40">{sub}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
     </div>
   );
 }
@@ -239,29 +239,29 @@ function RoomCard({ room }: { room: StudyRoom }) {
   const count = room.participantCount || 0;
   const avatars = Math.min(Math.max(count, 1), 3);
   return (
-    <Link href={`/dashboard/community/${room.id}`} className="group relative block overflow-hidden rounded-[26px] border border-violet-300/30 bg-[radial-gradient(circle_at_90%_30%,rgba(194,86,255,.18),transparent_35%),linear-gradient(145deg,rgba(34,23,53,.92),rgba(16,10,26,.96))] p-5 shadow-[0_10px_35px_rgba(73,31,111,.12)] transition hover:-translate-y-0.5 hover:border-fuchsia-300/55 hover:shadow-[0_14px_45px_rgba(151,55,255,.18)]">
-      <div className="absolute -right-16 top-0 h-32 w-32 rounded-full bg-fuchsia-500/10 blur-3xl" />
+    <Link href={`/dashboard/community/${room.id}`} className="ss-press ss-surface group relative block overflow-hidden p-5 hover:-translate-y-0.5 hover:border-primary/35">
+      <div className="pointer-events-none absolute -right-16 top-0 h-32 w-32 rounded-full bg-fuchsia-500/8 blur-3xl dark:bg-fuchsia-500/12" />
       <div className="relative flex items-center justify-between gap-3">
         <h3 className="min-w-0 truncate text-2xl font-black tracking-tight sm:text-3xl">{room.name}</h3>
-        <span className="shrink-0 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
+        <span className="shrink-0 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-300">
           <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-400" />{count} online
         </span>
       </div>
       <div className="relative mt-3 flex flex-wrap gap-2">
-        <span className="rounded-lg bg-violet-500/80 px-3 py-1.5 text-xs font-bold">{room.exam || 'General'}</span>
-        <span className="rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold text-white/80">{room.subject || 'General Study'}</span>
+        <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">{room.exam || 'General'}</span>
+        <span className="rounded-lg bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground">{room.subject || 'General Study'}</span>
       </div>
       <div className="relative mt-5 flex items-center justify-between gap-4">
         <div className="flex -space-x-2">
           {Array.from({ length: avatars }).map((_, i) => (
-            <div key={i} className="grid h-10 w-10 place-items-center rounded-full border-2 border-[#211533] bg-gradient-to-br from-violet-400 to-fuchsia-500 text-xs font-black text-white shadow-lg">
+            <div key={i} className="grid h-10 w-10 place-items-center rounded-full border-2 border-card bg-gradient-to-br from-violet-400 to-fuchsia-500 text-xs font-black text-white shadow-lg">
               {String.fromCharCode(65 + ((room.name.length + i) % 26))}
             </div>
           ))}
-          {count > 3 && <span className="ml-2 self-center text-sm font-semibold text-white/70">+{count - 3}</span>}
-          {count === 0 && <span className="ml-2 self-center text-xs text-white/35">Be the first to join</span>}
+          {count > 3 && <span className="ml-2 self-center text-sm font-semibold text-muted-foreground">+{count - 3}</span>}
+          {count === 0 && <span className="ml-2 self-center text-xs text-muted-foreground">Be the first to join</span>}
         </div>
-        <span className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-3 text-sm font-black shadow-[0_0_24px_rgba(206,69,255,.25)] transition group-hover:scale-[1.02]">
+        <span className="ss-press inline-flex shrink-0 items-center gap-2 rounded-2xl bg-gradient-brand px-5 py-3 text-sm font-black text-white shadow-lg shadow-primary/20 transition group-hover:scale-[1.02]">
           Join room <ArrowRight className="h-4 w-4" />
         </span>
       </div>
