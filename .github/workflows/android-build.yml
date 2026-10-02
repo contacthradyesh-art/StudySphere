@@ -101,7 +101,7 @@ jobs:
           name: StudySphere APK (latest)
           body: |
             Latest StudySphere Android APK, built from commit ${{ github.sha }}.
-            Download **StudySphere.apk** below and install it. Same signing key every time, so new builds update the app in place.
+            This build uses the new Android package `com.studysphere.mobile` so it can install alongside older StudySphere builds that used a different signing key. Future APKs using this package and key will update in place.
           files: StudySphere.apk
           prerelease: false
           make_latest: true
