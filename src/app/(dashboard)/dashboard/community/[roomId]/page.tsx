@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { Clock3, Play, Users, Radio, Square, LogOut, Send, Flag, UserPlus, UserMinus, ArrowLeft, MessageCircle, Video, MicOff, ShieldCheck, Coffee, ChevronRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { GlassCard } from '@/components/shared/glass-card';
 import { useAuth } from '@/hooks/use-auth';
 import {
   joinStudyRoom,
