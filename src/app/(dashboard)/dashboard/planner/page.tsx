@@ -26,12 +26,14 @@ import { useHabitsSync } from '@/hooks/use-habits';
 import { useSessionsSync } from '@/hooks/use-sessions';
 import { usePlannerInsights } from '@/hooks/use-planner-insights';
 import { useHabitInsights } from '@/hooks/use-habit-insights';
+import { useLifeGoalInsights } from '@/hooks/use-lifegoal-insights';
 import { useAuth } from '@/hooks/use-auth';
 import { usePlannerStore } from '@/store/planner-store';
 import { usePomodoroStore } from '@/store/pomodoro-store';
 import { createTask, deleteTask, toggleTask, updateTask } from '@/lib/planner/task-service';
 import { toggleHabitLog } from '@/lib/habits/habit-service';
 import type { HabitProgress } from '@/hooks/use-habit-insights';
+import type { LifeGoalProgress } from '@/hooks/use-lifegoal-insights';
 import { awardXp } from '@/lib/gamification/xp-service';
 import { buildFocusAnalytics, buildSubjectStats, buildHeatmap } from '@/lib/planner/analytics';
 import { buildCoachReport } from '@/lib/planner/ai-coach';
@@ -53,7 +55,7 @@ export default function PlannerPage() {
   const weeklySlots = usePlannerStore((s) => s.weeklySlots);
   const weeklyLoading = usePlannerStore((s) => s.weeklyLoading);
   const sessions = usePomodoroStore((s) => s.sessions);
-  const insights = usePlannerInsights(); const habitInsights = useHabitInsights();
+  const insights = usePlannerInsights(); const habitInsights = useHabitInsights(); const goalInsights = useLifeGoalInsights();
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab') as Tab | null;
   const initialTab: Tab = requestedTab && TABS.some((item) => item.id === requestedTab) ? requestedTab : 'today';
@@ -80,7 +82,7 @@ export default function PlannerPage() {
       <nav className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-border dark:bg-card"><div className="grid grid-cols-5">
         {TABS.filter((item) => item.id !== 'coach').map((item) => { const Icon = tabIcons[item.id]; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={cn("relative flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[12px] font-bold", tab === item.id ? "text-[#2D1B69] dark:text-foreground" : "text-slate-500 dark:text-muted-foreground")}><Icon className="h-5 w-5" /><span>{item.label}</span>{tab === item.id && <span className="absolute bottom-0 left-2 right-2 h-1 rounded-full bg-[#8B5CF6]" />}</button>; })}
       </div></nav>
-      {tab === 'today' && <PlannerReferenceToday tasks={tasksToday} onToggle={handleToggle} habits={habitInsights.habitProgress} onToggleHabit={(habitId, completed) => { if (user) void toggleHabitLog(user.uid, habitId, todayIso, completed); }} />}
+      {tab === 'today' && <PlannerReferenceToday tasks={tasksToday} onToggle={handleToggle} habits={habitInsights.habitProgress} goals={goalInsights.goalProgress.filter((g) => g.goal.status === 'active')} onToggleHabit={(habitId, completed) => { if (user) void toggleHabitLog(user.uid, habitId, todayIso, completed); }} />}
       {tab === 'tasks' && <TasksWorkspace tasks={tasks} tasksToday={tasksToday} grouped={grouped} loading={loading} weeklySlots={weeklySlots} weeklyLoading={weeklyLoading} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onDelete={handleDelete} />}
       {tab === 'goals' && <GoalsTab />}{tab === 'habits' && <HabitsTab />}
       {tab === 'insights' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><FocusAnalytics data={focusAnalytics} /><StudyHeatmap days={heatmapDays} /></section><SubjectProgress subjects={subjectStats} /></div>}
@@ -90,7 +92,7 @@ export default function PlannerPage() {
   </div>;
 }
 
-function PlannerReferenceToday({ tasks, onToggle, habits, onToggleHabit }: { tasks: Task[]; onToggle: (task: Task) => void; habits: HabitProgress[]; onToggleHabit: (habitId: string, completed: boolean) => void }) {
+function PlannerReferenceToday({ tasks, onToggle, habits, goals, onToggleHabit }: { tasks: Task[]; onToggle: (task: Task) => void; habits: HabitProgress[]; goals: LifeGoalProgress[]; onToggleHabit: (habitId: string, completed: boolean) => void }) {
   const fallback = [
     { title: 'Complete UPSSSC PET mock', priority: 'High', time: '9:00 AM', tone: 'high' },
     { title: 'Review PYQ set', priority: 'Medium', time: '11:30 AM', tone: 'medium' },
@@ -112,9 +114,8 @@ function PlannerReferenceToday({ tasks, onToggle, habits, onToggleHabit }: { tas
         </div>;
       })}</div>
     </section>
-    <section><h2 className="text-[22px] font-black">Goals</h2><p className="mb-2 text-[13px] text-slate-500">Your deadline, under control • 30-day mission</p><div className="space-y-2.5">
-      <GoalReferenceCard title="Goal 1 • Crack PET Prelims" value="60%" sub="Deadline • 30 days remaining • 12/20 task done" progress={60} icon={<Target className="h-5 w-5" />} />
-      <GoalReferenceCard title="Goal 2 • Daily 2hr Focus" value="3/7 days" sub="Consistency • 3 days in a row" progress={40} icon={<Clock3 className="h-5 w-5" />} orange />
+    <section><div className="flex items-center justify-between"><div><h2 className="text-[22px] font-black">Goals</h2><p className="text-[13px] text-slate-500">Your deadline, under control • live goals</p></div><span className="text-[11px] font-semibold text-muted-foreground">{goals.length} active</span></div><div className="mt-2 space-y-2.5">
+      {goals.length === 0 ? <div className="rounded-xl bg-white px-4 py-5 text-center shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:bg-card"><p className="text-sm font-semibold">No goals yet</p><p className="mt-1 text-[11px] text-muted-foreground">Goals tab se goal add karo — yahan real-time dikhega.</p></div> : goals.map((item) => <LiveGoalReferenceCard key={item.goal.id} data={item} />)}
     </div></section>
     <section><div className="flex items-center justify-between"><h2 className="text-[22px] font-black">Habits <Sparkles className="inline h-5 w-5" /></h2><span className="text-[11px] font-semibold text-muted-foreground">{habits.length} active</span></div><div className="mt-2 rounded-2xl bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:bg-card"><div className="grid grid-cols-3 gap-2">
       {habits.length === 0 ? <div className="col-span-3 py-6 text-center"><p className="text-sm font-semibold">No habits yet</p><p className="mt-1 text-[11px] text-muted-foreground">Habits tab se habit add karo — yahan real-time dikhegi.</p></div> : habits.map((item) => <LiveHabitReferenceCard key={item.habit.id} data={item} onToggle={() => onToggleHabit(item.habit.id, !item.completedToday)} />)}
@@ -123,6 +124,21 @@ function PlannerReferenceToday({ tasks, onToggle, habits, onToggleHabit }: { tas
   </div>;
 }
 function formatPlannerTime(value: string) { const [h, m] = value.split(':').map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; }
+function LiveGoalReferenceCard({ data }: { data: LifeGoalProgress }) {
+  const { goal, progress, completedMilestones, totalMilestones } = data;
+  const deadlineText = goal.deadline ? `Deadline • ${goal.deadline}` : 'No deadline';
+  return <div className="rounded-xl bg-white px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:bg-card">
+    <div className="flex items-center gap-3">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: `${goal.color || '#8b5cf6'}20`, color: goal.color || '#8b5cf6' }}><Target className="h-5 w-5" /></span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2"><p className="truncate text-[15px] font-black">{goal.title}</p><span className="shrink-0 text-xl font-black" style={{ color: goal.color || '#8b5cf6' }}>{progress}%</span></div>
+        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-muted"><div className="h-full rounded-full" style={{ width: `${progress}%`, background: `linear-gradient(90deg, ${goal.color || '#8b5cf6'}, #ec4899)` }} /></div>
+        <p className="mt-1 truncate text-[11px] text-slate-500">{deadlineText} • {completedMilestones}/{totalMilestones} milestones done</p>
+      </div>
+    </div>
+  </div>;
+}
+
 function GoalReferenceCard({ title, value, sub, progress, icon, orange = false }: { title: string; value: string; sub: string; progress: number; icon: ReactNode; orange?: boolean }) {
   return <div className="rounded-xl bg-white px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:bg-card"><div className="flex items-center gap-3"><span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", orange ? "bg-orange-100 text-orange-500" : "bg-violet-100 text-violet-600")}>{icon}</span><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="truncate text-[15px] font-black">{title}</p><span className={cn("shrink-0 text-xl font-black", orange ? "text-slate-900 dark:text-foreground" : "text-violet-700")}>{value}</span></div><div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-200"><div className={cn("h-full rounded-full", orange ? "bg-orange-400" : "bg-gradient-to-r from-violet-600 to-fuchsia-500")} style={{ width: `${progress}%` }} /></div><p className="mt-1 text-[11px] text-slate-500">{sub}</p></div></div></div>;
 }
