@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Plus, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared/glass-card';
@@ -55,9 +56,11 @@ export function GoalsTab() {
     setDialogOpen(false);
     try {
       await createLifeGoal(user.uid, data, order, id);
+      toast.success('Goal created successfully');
     } catch (error) {
       removeLifeGoal(id);
       console.error('Goal creation failed:', error);
+      toast.error('Goal save failed', { description: error instanceof Error ? error.message : 'Please check your connection and try again.' });
     } finally {
       setSaving(false);
     }
