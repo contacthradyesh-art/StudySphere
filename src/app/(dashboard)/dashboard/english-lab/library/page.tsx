@@ -193,13 +193,6 @@ const LESSONS: Lesson[] = [
     examples: ['record (noun) vs record (verb) can differ in stress.', 'want to may sound reduced in connected speech; train recognition, not forced imitation.'],
     practice: ['Shadow 30 seconds daily.', 'Mark stressed words in a sentence.', 'Record and compare rhythm, not just individual sounds.']
   },
-  {
-    id: 'exam-mixed', title: 'SSC Mixed English Sprint', track: 'ssc', skill: 'grammar', level: 'B1 → B2', time: '25 min', exam: 'CGL + CHSL',
-    summary: 'A compact daily drill combining the exact families named in the SSC syllabus.',
-    learn: ['Error spotting', 'Fill in the blanks', 'Synonyms/homonyms and antonyms', 'Spellings / mis-spelt words', 'Idioms & phrases', 'One-word substitution', 'Sentence improvement', 'Active/passive voice', 'Direct/indirect narration', 'Sentence shuffling, cloze and comprehension'],
-    examples: ['Do not solve every question with the same method: grammar items need rules; vocabulary items need context; comprehension needs evidence.', 'Accuracy first, then speed.'],
-    practice: ['5 grammar + 5 vocabulary + 5 passage-based questions.', 'Review every wrong answer.', 'Repeat weak categories until accuracy stabilises.']
-  }
 ];
 
 const TRACKS: { id: Track; label: string; desc: string }[] = [
