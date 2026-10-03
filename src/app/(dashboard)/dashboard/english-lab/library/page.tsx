@@ -44,7 +44,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'parts-of-speech', title: 'Parts of Speech — the working system', track: 'foundation', skill: 'grammar', level: 'A1 → B1', time: '30 min', exam: 'CGL + CHSL',
     summary: 'Noun, pronoun, adjective, verb, adverb, preposition, conjunction, determiner/article and interjection — learn them by function, not definitions alone.',
-    summaryHi: "Noun, pronoun, adjective, verb, adverb, preposition, conjunction aur interjection ko definition se nahi, sentence mein unke role se samjho.",
+    summaryHi: "संज्ञा, सर्वनाम, क्रिया, विशेषण, क्रिया-विशेषण, preposition, conjunction और interjection को examples के साथ समझें।",
     learn: ['Nouns name people, places, things, ideas; pronouns replace nouns.', 'Adjectives modify nouns; adverbs commonly modify verbs, adjectives or other adverbs.', 'Prepositions show relationships such as time, place, direction and cause.', 'Conjunctions connect words, phrases or clauses; identify the relationship they create.'],
     examples: ['a quick runner → adjective + noun', 'runs quickly → verb + adverb', 'under the table → preposition + noun phrase', 'because he studied → conjunction + clause'],
     practice: ['Label every word in five short sentences.', 'Find the word whose grammatical role changes with context.', 'Build one sentence using each major part of speech.']
@@ -52,7 +52,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'articles', title: 'Articles & Determiners', track: 'ssc', skill: 'grammar', level: 'A2 → B1', time: '35 min', exam: 'CGL + CHSL',
     summary: 'Master a/an/the, zero article and high-frequency determiner traps used in fill-in-the-blanks, error spotting and sentence improvement.',
-    summaryHi: "A, an aur the ka use context aur sound ke basis par samjho; SSC mein article ke common traps par focus karo.",
+    summaryHi: "Indefinite और definite articles का practical use, pronunciation-based traps और SSC error patterns।",
     learn: ['Use a/an for a singular countable noun when it is non-specific; choose by sound, not spelling.', 'Use the for a specific/identified noun and many unique or superlative references.', 'Do not automatically put an article before plural or uncountable nouns when speaking generally.', 'Watch fixed patterns: go to school, have breakfast, by bus — article choice depends on meaning.'],
     examples: ['an honest man — vowel sound', 'a university — /juː/ consonant sound', 'The sun rises in the east.', 'Books are useful. / The books on my desk are useful.'],
     practice: ['Make 20 a/an/the decisions and explain every choice.', 'Collect article errors from PYQs.', 'Rewrite general vs specific noun sentences.']
@@ -60,7 +60,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'tenses', title: 'Tenses: timeline before formula', track: 'ssc', skill: 'grammar', level: 'A2 → B2', time: '50 min', exam: 'CGL + CHSL',
     summary: 'Understand tense through time + aspect. Then use it for spotting errors, cloze passages and sentence completion.',
-    summaryHi: "Tense ko sirf formula ki tarah yaad na karo; action kab hua aur uska present/past/future se kya relation hai, ye samjho.",
+    summaryHi: "Present, Past और Future के 12 tenses को signal words, formulas, Hindi clues और exam traps के साथ सीखें।",
     learn: ['Present simple: habits, facts, routines; present continuous: happening/temporary situations.', 'Past simple: completed past event; past continuous: action in progress at a past time.', 'Present perfect connects a past event to the present; avoid using it with a finished past-time marker like yesterday.', 'Past perfect marks the earlier of two past events when the sequence matters.', 'Future meaning can be expressed through will, be going to and present continuous depending on intention/evidence/arrangement.'],
     examples: ['She studies every day.', 'She is studying now.', 'She visited Delhi last year.', 'She has visited Delhi three times.', 'When I arrived, the train had left.'],
     practice: ['Draw a timeline for 15 sentences.', 'Correct mixed-tense error questions.', 'Write a six-sentence story using six different tense patterns.']
@@ -68,7 +68,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'subject-verb', title: 'Subject–Verb Agreement', track: 'ssc', skill: 'grammar', level: 'B1 → B2', time: '40 min', exam: 'CGL + CHSL',
     summary: 'One of the highest-value grammar systems for competitive exams: identify the real subject before choosing the verb.',
-    summaryHi: "Sentence ka asli subject pehchano aur uske according verb choose karo; beech ke extra words se confuse mat ho.",
+    summaryHi: "SSC CGL/CHSL में बार-बार आने वाले subject–verb errors को rules और traps के साथ सीखें।",
     learn: ['Ignore interrupting phrases: The quality of the apples is good.', 'Each, every, everyone, everybody, either and neither normally take singular verbs.', 'With either/or and neither/nor, agreement follows the nearer subject in standard exam usage.', 'Amounts, distances and periods can take singular verbs when treated as one unit.', 'Collective nouns depend on intended meaning and exam convention; follow the sentence context.'],
     examples: ['The list of items is long.', 'Each of the boys is ready.', 'Neither the teacher nor the students are late.', 'Ten kilometres is a long distance to walk.'],
     practice: ['Circle the true subject before answering.', 'Solve 30 agreement questions without looking at options first.', 'Keep an error notebook of recurring traps.']
@@ -84,7 +84,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'prepositions', title: 'Prepositions: time, place, movement & collocation', track: 'ssc', skill: 'grammar', level: 'A2 → B2', time: '40 min', exam: 'CGL + CHSL',
     summary: 'Stop translating prepositions word-for-word. Learn them through relationships and fixed combinations.',
-    summaryHi: "In, on, at, since, for, by aur with ko Hindi se word-to-word translate karne ke bajay relationship aur fixed usage se seekho.",
+    summaryHi: "in/on/at, since/for, between/among, by/with और common preposition errors को examples से master करें।",
     learn: ['Time: at a clock time, on a day/date, in a month/year/period.', 'Place: at a point, on a surface, in an enclosed area/space — context matters.', 'Movement: to, into, onto, through, across and towards describe different paths.', 'Learn collocations: interested in, depend on, good at, afraid of, responsible for.'],
     examples: ['at 7 p.m. / on Monday / in July', 'She is good at mathematics.', 'He walked across the road.', 'The train went through the tunnel.'],
     practice: ['Create a personal preposition map.', 'Learn 10 exam-relevant adjective/verb + preposition pairs daily.', 'Solve fill-in-the-blank sets with explanation, not guessing.']
@@ -92,7 +92,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'voice', title: 'Active & Passive Voice', track: 'ssc', skill: 'grammar', level: 'B1 → B2', time: '45 min', exam: 'CGL + CHSL',
     summary: 'Convert meaning without losing tense, object, auxiliary or agreement.',
-    summaryHi: "Active se passive banate waqt tense aur object ko preserve karo; passive mein auxiliary + past participle ka role samjho.",
+    summaryHi: "Tense identify करें, object find करें और passive construction को rule-based तरीके से बनाएं।",
     learn: ['Passive normally uses be + past participle; the tense is carried by the auxiliary.', 'Only transitive verbs can normally form a passive because a passive needs an object-derived subject.', 'Keep the original tense: writes → is written; wrote → was written; has written → has been written.', 'Use by + agent only when the doer is relevant or useful.'],
     examples: ['The clerk checks the form. → The form is checked by the clerk.', 'They completed the work. → The work was completed.', 'She has written the letter. → The letter has been written.'],
     practice: ['Convert 5 sentences for each major tense.', 'Spot wrong auxiliaries in passive constructions.', 'Explain why an intransitive verb cannot be passivised in the usual way.']
@@ -100,7 +100,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'narration', title: 'Direct & Indirect Speech', track: 'ssc', skill: 'grammar', level: 'B1 → B2', time: '45 min', exam: 'CHSL + CGL',
     summary: 'Master reporting verbs, tense backshift, pronouns, time/place words and question/command structures.',
-    summaryHi: "Direct se indirect speech mein reporting verb, tense, pronoun aur time/place words ke changes ko step-by-step samjho.",
+    summaryHi: "Reporting verbs, tense backshift, pronoun changes और time-word changes को examples के साथ सीखें।",
     learn: ['Statements commonly use that; yes/no questions use if/whether; wh-questions keep the wh-word.', 'Commands/requests often use to + base verb after an appropriate reporting verb.', 'When the reporting verb is past, exam questions often require tense backshift unless the fact is timeless or the context prevents it.', 'Pronouns and time/place references change according to speaker, listener and situation.'],
     examples: ['He said, “I am busy.” → He said that he was busy.', 'She said, “Do you know him?” → She asked if I knew him.', 'The teacher said, “Work hard.” → The teacher advised us to work hard.'],
     practice: ['Convert 10 statements, 10 questions and 10 commands.', 'Make a table of common tense changes.', 'Watch for pronoun-reference errors.']
@@ -108,7 +108,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'error-spotting', title: 'Error Spotting: a repeatable 7-step method', track: 'ssc', skill: 'grammar', level: 'B1 → B2', time: '30 min', exam: 'CGL + CHSL',
     summary: 'Turn error spotting from intuition into a checklist.',
-    summaryHi: "Error spotting ko guesswork na banao: subject-verb, tense, article, preposition, pronoun aur parallelism ko checklist se check karo.",
+    summaryHi: "Sentence correction को rule-by-rule approach से करें: subject, tense, article, preposition, pronoun और modifier checks।",
     learn: ['1) Find the main subject + verb.', '2) Check agreement.', '3) Check tense and auxiliary.', '4) Check article/determiner.', '5) Check preposition/collocation.', '6) Check pronoun/reference and modifier placement.', '7) Read the whole sentence for meaning and parallel structure.'],
     examples: ['The quality of these products are poor. → is poor.', 'He is senior than me. → senior to me.', 'She discussed about the issue. → discussed the issue.'],
     practice: ['Do 20 questions in 10 minutes.', 'For every wrong answer, name the rule category.', 'Re-test only the categories where accuracy is below 80%.']
@@ -116,7 +116,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'vocabulary-engine', title: 'Vocabulary Engine: roots, families, collocations', track: 'foundation', skill: 'vocabulary', level: 'A2 → C1', time: '45 min', exam: 'All',
     summary: 'Build usable vocabulary instead of collecting isolated word lists.',
-    summaryHi: "Words ko akela yaad karne ke bajay meaning, part of speech, collocation, word family aur sentence ke saath learn karo.",
+    summaryHi: "SSC और competitive English में repeatedly useful words को Hindi meaning, synonym, antonym और sentence के साथ सीखें।",
     learn: ['Learn a word with meaning, part of speech, pronunciation, one collocation and one sentence.', 'Use word families: decide, decision, decisive, decisively.', 'Use roots/prefixes/suffixes to infer unfamiliar words, but verify meaning from context.', 'Prioritise high-frequency academic and exam vocabulary before rare words.'],
     examples: ['benefit → benefit from / beneficial / beneficiary', 'predict → prediction / predictable / unpredictable', 'cred → credible / incredible / credibility'],
     practice: ['Create 10 word families per week.', 'Write a sentence from memory after 24 hours.', 'Use spaced review at roughly 1, 3, 7 and 14 days.']
@@ -148,7 +148,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'cloze', title: 'Cloze Test: grammar + vocabulary + discourse', track: 'ssc', skill: 'reading', level: 'B1 → B2', time: '35 min', exam: 'CGL + CHSL',
     summary: 'Treat the passage as a connected argument. The correct answer is usually constrained by grammar, meaning and nearby context.',
-    summaryHi: "Cloze mein pehle passage ka overall meaning samjho, phir grammar, vocabulary, collocation aur context se option choose karo.",
+    summaryHi: "Context, grammar और collocation clues से cloze test solve करने की systematic method।",
     learn: ['Read the whole passage once before filling every blank.', 'Check part of speech, tense, article and preposition first.', 'Then compare semantic fit and collocation.', 'Track pronouns, connectors and repeated ideas across sentences.'],
     examples: ['However signals contrast; therefore signals result; although introduces concession.', 'A noun blank after an article may need a countable noun; a verb blank must match tense and subject.'],
     practice: ['Attempt once without options.', 'Attempt again with options and explain the elimination.', 'Record whether each miss was grammar, vocabulary or context.']
@@ -156,7 +156,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'reading-comprehension', title: 'Reading Comprehension: evidence-first reading', track: 'ssc', skill: 'reading', level: 'B1 → C1', time: '40 min', exam: 'CGL + CHSL + General English',
     summary: 'Read for structure, claims, evidence and inference — not word-by-word translation.',
-    summaryHi: "Passage ko word-by-word translate karne ke bajay main idea, evidence, structure, tone aur inference par focus karo.",
+    summaryHi: "Passage को structure, central idea, tone और evidence के आधार पर पढ़ें; guess नहीं, text evidence से answer करें।",
     learn: ['Identify topic, central idea, paragraph purpose and author attitude.', 'For factual questions, return to the text and locate evidence.', 'For inference, choose what is strongly supported rather than what is merely possible.', 'Build speed through regular reading of short editorials, explainers and exam passages.'],
     examples: ['Main idea ≠ first sentence automatically.', 'Inference = what logically follows from the passage, not outside knowledge.'],
     practice: ['Read 250–400 words and write the main idea in one sentence.', 'Answer questions with evidence locations.', 'Gradually reduce reading time while preserving accuracy.']
