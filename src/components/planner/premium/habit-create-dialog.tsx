@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import * as Icons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,22 @@ interface HabitDialogProps {
 }
 
 const ACCENTS = ['#8b5cf6', '#ec4899', '#6366f1', '#f59e0b', '#10b981', '#ef4444'];
-const ICONS = ['BookOpen', 'Droplet', 'Dumbbell', 'Moon', 'Brain', 'Sparkles'];
+const ICONS = ['BookOpen', 'Droplet', 'Dumbbell', 'Moon', 'Brain', 'Sparkles', 'Flame', 'ListTodo', 'Target', 'Heart', 'Timer', 'GraduationCap'];
+const ICON_LABELS: Record<string, string> = { BookOpen: 'Reading', Droplet: 'Water', Dumbbell: 'Exercise', Moon: 'Sleep', Brain: 'Study', Sparkles: 'Mindfulness', Flame: 'Workout', ListTodo: 'Tasks', Target: 'Goal', Heart: 'Health', Timer: 'Focus', GraduationCap: 'Study' };
+function suggestedIcon(title: string) {
+  const value = title.toLowerCase();
+  if (/water|drink|litre|liter|hydr/.test(value)) return 'Droplet';
+  if (/exercise|gym|workout|run|walk|push|squat|yoga/.test(value)) return 'Dumbbell';
+  if (/read|book|novel/.test(value)) return 'BookOpen';
+  if (/sleep|bed|wake|rest/.test(value)) return 'Moon';
+  if (/study|learn|revision|revise|class|ncert|exam|mock|practice|question|pyq/.test(value)) return 'GraduationCap';
+  if (/focus|pomodoro|deep work/.test(value)) return 'Timer';
+  if (/meditat|mindful|breath/.test(value)) return 'Brain';
+  if (/task|todo|work/.test(value)) return 'ListTodo';
+  if (/goal|target/.test(value)) return 'Target';
+  if (/health|heart/.test(value)) return 'Heart';
+  return 'Sparkles';
+}
 const FREQUENCIES: { id: HabitFrequency; label: string }[] = [
   { id: 'daily', label: 'Daily' },
   { id: 'weekly', label: 'Weekly' },
@@ -31,11 +47,13 @@ export function HabitDialog({ open, onClose, onSubmit, saving = false }: HabitDi
   const [customDays, setCustomDays] = useState<number[]>([]);
   const [timesPerPeriod, setTimesPerPeriod] = useState(3);
   const [customMode, setCustomMode] = useState<'weekdays' | 'count'>('weekdays');
+  const [iconTouched, setIconTouched] = useState(false);
 
   useEffect(() => {
     if (open) {
       setTitle('');
       setIcon(ICONS[0]);
+      setIconTouched(false);
       setColor(ACCENTS[0]);
       setFrequency('daily');
       setCustomDays([]);
@@ -70,7 +88,7 @@ export function HabitDialog({ open, onClose, onSubmit, saving = false }: HabitDi
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="habit-title">Title</Label>
-            <Input id="habit-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Drink water" autoFocus disabled={saving} />
+            <Input id="habit-title" value={title} onChange={(e) => { const next = e.target.value; setTitle(next); if (!iconTouched) setIcon(suggestedIcon(next)); }} placeholder="Drink water" autoFocus disabled={saving} />
           </div>
 
           <div className="space-y-2">
@@ -110,9 +128,10 @@ export function HabitDialog({ open, onClose, onSubmit, saving = false }: HabitDi
           <div className="space-y-2">
             <Label>Icon</Label>
             <div className="flex flex-wrap gap-2">
-              {ICONS.map((i) => (
-                <button key={i} type="button" onClick={() => setIcon(i)} disabled={saving} className={`rounded-lg border px-2.5 py-1.5 text-xs ${icon === i ? 'border-primary bg-primary/15 text-primary' : 'border-input text-muted-foreground'}`}>{i}</button>
-              ))}
+              {ICONS.map((i) => {
+                const Icon = (Icons as any)[i] ?? Icons.Sparkles;
+                return <button key={i} type="button" aria-label={ICON_LABELS[i] || i} onClick={() => { setIcon(i); setIconTouched(true); }} disabled={saving} className={`grid h-10 w-10 place-items-center rounded-xl border ${icon === i ? 'border-primary bg-primary/15 text-primary' : 'border-input text-muted-foreground'}`} title={ICON_LABELS[i] || i}><Icon className="h-4 w-4" /></button>;
+              })}
             </div>
           </div>
 

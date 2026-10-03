@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode, type ElementType } from 'react';
 import { toast } from 'sonner';
-import { Plus, CalendarDays, ListChecks, Target, Flame, BarChart3, Check, Circle, Clock3, BookOpen, ListTodo, Sparkles } from 'lucide-react';
+import { Plus, CalendarDays, ListChecks, Target, Flame, BarChart3, Check, Circle, Clock3, BookOpen, ListTodo, Sparkles, Droplet, Dumbbell, Moon, Brain } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared/glass-card';
@@ -30,6 +30,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { usePlannerStore } from '@/store/planner-store';
 import { usePomodoroStore } from '@/store/pomodoro-store';
 import { createTask, deleteTask, toggleTask, updateTask } from '@/lib/planner/task-service';
+import { toggleHabitLog } from '@/lib/habits/habit-service';
+import type { HabitProgress } from '@/hooks/use-habit-insights';
 import { awardXp } from '@/lib/gamification/xp-service';
 import { buildFocusAnalytics, buildSubjectStats, buildHeatmap } from '@/lib/planner/analytics';
 import { buildCoachReport } from '@/lib/planner/ai-coach';
@@ -78,7 +80,7 @@ export default function PlannerPage() {
       <nav className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-border dark:bg-card"><div className="grid grid-cols-5">
         {TABS.filter((item) => item.id !== 'coach').map((item) => { const Icon = tabIcons[item.id]; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={cn("relative flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[12px] font-bold", tab === item.id ? "text-[#2D1B69] dark:text-foreground" : "text-slate-500 dark:text-muted-foreground")}><Icon className="h-5 w-5" /><span>{item.label}</span>{tab === item.id && <span className="absolute bottom-0 left-2 right-2 h-1 rounded-full bg-[#8B5CF6]" />}</button>; })}
       </div></nav>
-      {tab === 'today' && <PlannerReferenceToday tasks={tasksToday} onToggle={handleToggle} />}
+      {tab === 'today' && <PlannerReferenceToday tasks={tasksToday} onToggle={handleToggle} habits={habitInsights.habitProgress} onToggleHabit={(habitId, completed) => { if (user) void toggleHabitLog(user.uid, habitId, todayIso, completed); }} />}
       {tab === 'tasks' && <TasksWorkspace tasks={tasks} tasksToday={tasksToday} grouped={grouped} loading={loading} weeklySlots={weeklySlots} weeklyLoading={weeklyLoading} onToggle={handleToggle} onEdit={(task) => { setEditing(task); setDialogOpen(true); }} onDelete={handleDelete} />}
       {tab === 'goals' && <GoalsTab />}{tab === 'habits' && <HabitsTab />}
       {tab === 'insights' && <div className="space-y-5"><section className="grid gap-5 lg:grid-cols-2"><FocusAnalytics data={focusAnalytics} /><StudyHeatmap days={heatmapDays} /></section><SubjectProgress subjects={subjectStats} /></div>}
@@ -88,7 +90,7 @@ export default function PlannerPage() {
   </div>;
 }
 
-function PlannerReferenceToday({ tasks, onToggle }: { tasks: Task[]; onToggle: (task: Task) => void }) {
+function PlannerReferenceToday({ tasks, onToggle, habits, onToggleHabit }: { tasks: Task[]; onToggle: (task: Task) => void; habits: HabitProgress[]; onToggleHabit: (habitId: string, completed: boolean) => void }) {
   const fallback = [
     { title: 'Complete UPSSSC PET mock', priority: 'High', time: '9:00 AM', tone: 'high' },
     { title: 'Review PYQ set', priority: 'Medium', time: '11:30 AM', tone: 'medium' },
@@ -114,10 +116,8 @@ function PlannerReferenceToday({ tasks, onToggle }: { tasks: Task[]; onToggle: (
       <GoalReferenceCard title="Goal 1 • Crack PET Prelims" value="60%" sub="Deadline • 30 days remaining • 12/20 task done" progress={60} icon={<Target className="h-5 w-5" />} />
       <GoalReferenceCard title="Goal 2 • Daily 2hr Focus" value="3/7 days" sub="Consistency • 3 days in a row" progress={40} icon={<Clock3 className="h-5 w-5" />} orange />
     </div></section>
-    <section><h2 className="text-[22px] font-black">Habits <Sparkles className="inline h-5 w-5" /></h2><div className="mt-2 rounded-2xl bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:bg-card"><div className="grid grid-cols-3 gap-2">
-      <HabitReferenceCard tone="orange" icon={<Flame className="h-6 w-6" />} title="Exercise" sub="streak 5 days" checked={[true,true,false,false,false,false,false]} />
-      <HabitReferenceCard tone="blue" icon={<BookOpen className="h-6 w-6" />} title="Reading" sub="12 days" checked={[false,false,true,true,true,false,false]} />
-      <HabitReferenceCard tone="green" icon={<ListTodo className="h-6 w-6" />} title="Mock Test" sub="3 days" checked={[false,false,false,false,false,false,false]} />
+    <section><div className="flex items-center justify-between"><h2 className="text-[22px] font-black">Habits <Sparkles className="inline h-5 w-5" /></h2><span className="text-[11px] font-semibold text-muted-foreground">{habits.length} active</span></div><div className="mt-2 rounded-2xl bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:bg-card"><div className="grid grid-cols-3 gap-2">
+      {habits.length === 0 ? <div className="col-span-3 py-6 text-center"><p className="text-sm font-semibold">No habits yet</p><p className="mt-1 text-[11px] text-muted-foreground">Habits tab se habit add karo — yahan real-time dikhegi.</p></div> : habits.slice(0, 3).map((item) => <LiveHabitReferenceCard key={item.habit.id} data={item} onToggle={() => onToggleHabit(item.habit.id, !item.completedToday)} />)}
     </div></div></section>
     <section className="flex items-center justify-between rounded-2xl bg-white px-5 py-4 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:bg-card"><div><h2 className="text-[19px] font-black">Your Day Command Center</h2><p className="mt-1 text-sm text-slate-500">Stats • Focus today</p></div><div className="text-center"><div className="grid h-16 w-16 place-items-center rounded-full border-[5px] border-slate-200 text-xl font-black">0%</div><p className="mt-1 text-[11px] text-slate-500">Overall progress</p></div></section>
   </div>;
@@ -126,6 +126,25 @@ function formatPlannerTime(value: string) { const [h, m] = value.split(':').map(
 function GoalReferenceCard({ title, value, sub, progress, icon, orange = false }: { title: string; value: string; sub: string; progress: number; icon: ReactNode; orange?: boolean }) {
   return <div className="rounded-xl bg-white px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:bg-card"><div className="flex items-center gap-3"><span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", orange ? "bg-orange-100 text-orange-500" : "bg-violet-100 text-violet-600")}>{icon}</span><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="truncate text-[15px] font-black">{title}</p><span className={cn("shrink-0 text-xl font-black", orange ? "text-slate-900 dark:text-foreground" : "text-violet-700")}>{value}</span></div><div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-200"><div className={cn("h-full rounded-full", orange ? "bg-orange-400" : "bg-gradient-to-r from-violet-600 to-fuchsia-500")} style={{ width: `${progress}%` }} /></div><p className="mt-1 text-[11px] text-slate-500">{sub}</p></div></div></div>;
 }
+function LiveHabitReferenceCard({ data, onToggle }: { data: HabitProgress; onToggle: () => void }) {
+  const { habit, streak, completedToday, last30Days } = data;
+  const Icon = habitIcon(habit.icon);
+  const tone = habit.color || '#8b5cf6';
+  const days = last30Days.slice(-7);
+  return <button type="button" onClick={onToggle} className="min-w-0 rounded-xl px-2 py-2.5 text-center transition-transform active:scale-[.97]" style={{ background: `${tone}22`, border: `1px solid ${tone}33` }}>
+    <span className="mx-auto grid h-10 w-10 place-items-center rounded-xl text-white shadow-sm" style={{ background: `linear-gradient(135deg, ${tone}, #ec4899)` }}><Icon className="h-5 w-5" /></span>
+    <p className="mt-1 truncate text-sm font-black">{habit.title}</p>
+    <p className="text-[10px] text-muted-foreground">{streak} day{streak === 1 ? '' : 's'} streak</p>
+    <div className="mt-2 grid grid-cols-7 gap-0.5">{days.map((day) => <span key={day.dateMs} className={cn("h-3.5 w-3.5 rounded-full", day.completed ? "text-white" : "bg-muted")} style={day.completed ? { backgroundColor: tone } : undefined}>{day.completed && <Check className="mx-auto h-3.5 w-3.5" />}</span>)}</div>
+    <div className={cn("mt-2 rounded-full px-2 py-1 text-[10px] font-bold", completedToday ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" : "bg-muted text-muted-foreground")}>{completedToday ? '✓ Done today' : 'Tap to complete'}</div>
+  </button>;
+}
+
+function habitIcon(name: string): ElementType {
+  const icons: Record<string, ElementType> = { BookOpen, Droplet, Dumbbell, Moon, Brain, Sparkles, Flame, ListTodo };
+  return icons[name] || Sparkles;
+}
+
 function HabitReferenceCard({ tone, icon, title, sub, checked }: { tone: 'orange' | 'blue' | 'green'; icon: ReactNode; title: string; sub: string; checked: boolean[] }) {
   const bg = tone === 'orange' ? 'bg-orange-200' : tone === 'blue' ? 'bg-blue-200' : 'bg-green-200';
   return <div className={cn("rounded-xl px-2 py-2.5 text-center", bg)}><div className="mx-auto grid w-fit place-items-center">{icon}</div><p className="mt-1 text-sm font-black">{title}</p><p className="text-[11px] text-slate-700">{sub}</p><div className="mt-2 grid grid-cols-7 gap-0.5">{checked.map((yes, i) => <span key={i} className="grid place-items-center"><span className={cn("grid h-4 w-4 place-items-center rounded-full", yes ? "bg-[#8B5CF6] text-white" : "border-2 border-slate-300 bg-white/70")}>{yes && <Check className="h-2.5 w-2.5" />}</span></span>)}</div><div className="mt-0.5 grid grid-cols-7 text-[8px] text-slate-700"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div></div>;
