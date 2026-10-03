@@ -53,6 +53,8 @@ service cloud.firestore {
       match /gamification/{docId} { allow read, write: if isOwner(uid); }
       match /mapProgress/{stateKey} { allow read, write: if isOwner(uid); }
       match /habits/{habitId} { allow read, write: if isOwner(uid); match /logs/{logId} { allow read, write: if isOwner(uid); } }
+      match /lifeGoals/{goalId} { allow read, write: if isOwner(uid); }
+      match /lifeMilestones/{milestoneId} { allow read, write: if isOwner(uid); }
     }
 
     match /mockTestResults/{docId} { allow read, update, delete: if isOwnerOfDoc(); allow create: if isCreatingOwnDoc(); }
