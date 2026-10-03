@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { Clock3, Play, Users, Radio, Square, LogOut, Send, Flag, UserPlus, UserMinus, ArrowLeft, MessageCircle, Video, MicOff, ShieldCheck, Coffee, ChevronRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -334,7 +335,7 @@ function RoomStat({ label, value }: { label: string; value: string }) {
   return <div className="py-3 text-center"><div className="text-[9px] font-medium uppercase tracking-widest text-white/25">{label}</div><div className="mt-0.5 text-[12px] font-semibold text-white/70">{value}</div></div>;
 }
 
-function Rule({ icon: Icon, title, hi }: { icon: typeof Video; title: string; hi: string }) {
+function Rule({ icon: Icon, title, hi }: { icon: LucideIcon; title: string; hi: string }) {
   return <div className="flex gap-3 rounded-2xl border border-white/[0.04] bg-white/[0.02] p-3"><div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/[0.06] bg-white/[0.05]"><Icon className="h-3.5 w-3.5 text-white/50" /></div><div><div className="text-[12px] font-medium leading-[1.4] text-white/75">{title}</div><div className="mt-0.5 text-[10px] text-white/30">{hi}</div></div></div>;
 }
 function profileFor(user: { uid: string; displayName?: string | null; photoURL?: string | null }) {
