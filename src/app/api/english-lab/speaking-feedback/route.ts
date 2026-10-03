@@ -26,6 +26,9 @@ export async function POST(req: NextRequest) {
     if (!audio || typeof audio !== 'string') {
       return NextResponse.json({ error: 'No audio received. Please record your answer first.' }, { status: 400 });
     }
+    if (audio.length > 3 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Recording chhoti karein — 3 MB se badi recording submit nahi ho sakti.' }, { status: 413 });
+    }
 
     const res = await fetch(`${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
