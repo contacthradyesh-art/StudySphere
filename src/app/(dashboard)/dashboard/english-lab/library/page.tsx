@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight, BookOpen, BrainCircuit, CheckCircle2, ChevronDown, Clock3,
@@ -11,6 +11,8 @@ import { GlassCard } from '@/components/shared/glass-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/use-auth';
+import { subscribeEnglishLessonProgress, markLessonComplete } from '@/lib/english-lab/english-lesson-progress-service';
 
 type Track = 'all' | 'foundation' | 'ssc' | 'fluency';
 type Skill = 'all' | 'grammar' | 'vocabulary' | 'reading' | 'writing' | 'speaking' | 'pronunciation';
@@ -24,6 +26,7 @@ type Lesson = {
   time: string;
   exam: string;
   summary: string;
+  summaryHi: string;
   learn: string[];
   examples: string[];
   practice: string[];
@@ -33,6 +36,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'sentence-core', title: 'Sentence Core: Subject, Verb, Object', track: 'foundation', skill: 'grammar', level: 'A1 → A2', time: '20 min', exam: 'All',
     summary: 'Learn how English sentences are built before memorising rules. This becomes the base for error spotting, sentence improvement and writing.',
+    summaryHi: "Sentence ka basic structure samjho: Subject kaun hai, Verb kya action/state hai aur Object kis par action ho raha hai.",
     learn: ['Subject = who/what performs or experiences the action.', 'Verb = action or state; every complete sentence needs a finite verb.', 'Object = receives the action; not every sentence needs one.', 'Learn the common patterns: S+V, S+V+O, S+V+C, S+V+O+O.'],
     examples: ['Birds fly. → S + V', 'She reads books. → S + V + O', 'He is honest. → S + V + Complement', 'They gave me a book. → S + V + O + O'],
     practice: ['Underline the subject and verb in 10 sentences.', 'Convert short Hindi thoughts into S+V+O English sentences.', 'In an SSC error question, first locate the main subject and finite verb.']
@@ -40,6 +44,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'parts-of-speech', title: 'Parts of Speech — the working system', track: 'foundation', skill: 'grammar', level: 'A1 → B1', time: '30 min', exam: 'CGL + CHSL',
     summary: 'Noun, pronoun, adjective, verb, adverb, preposition, conjunction, determiner/article and interjection — learn them by function, not definitions alone.',
+    summaryHi: "संज्ञा, सर्वनाम, क्रिया, विशेषण, क्रिया-विशेषण, preposition, conjunction और interjection को examples के साथ समझें।",
     learn: ['Nouns name people, places, things, ideas; pronouns replace nouns.', 'Adjectives modify nouns; adverbs commonly modify verbs, adjectives or other adverbs.', 'Prepositions show relationships such as time, place, direction and cause.', 'Conjunctions connect words, phrases or clauses; identify the relationship they create.'],
     examples: ['a quick runner → adjective + noun', 'runs quickly → verb + adverb', 'under the table → preposition + noun phrase', 'because he studied → conjunction + clause'],
     practice: ['Label every word in five short sentences.', 'Find the word whose grammatical role changes with context.', 'Build one sentence using each major part of speech.']
@@ -47,6 +52,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'articles', title: 'Articles & Determiners', track: 'ssc', skill: 'grammar', level: 'A2 → B1', time: '35 min', exam: 'CGL + CHSL',
     summary: 'Master a/an/the, zero article and high-frequency determiner traps used in fill-in-the-blanks, error spotting and sentence improvement.',
+    summaryHi: "Indefinite और definite articles का practical use, pronunciation-based traps और SSC error patterns।",
     learn: ['Use a/an for a singular countable noun when it is non-specific; choose by sound, not spelling.', 'Use the for a specific/identified noun and many unique or superlative references.', 'Do not automatically put an article before plural or uncountable nouns when speaking generally.', 'Watch fixed patterns: go to school, have breakfast, by bus — article choice depends on meaning.'],
     examples: ['an honest man — vowel sound', 'a university — /juː/ consonant sound', 'The sun rises in the east.', 'Books are useful. / The books on my desk are useful.'],
     practice: ['Make 20 a/an/the decisions and explain every choice.', 'Collect article errors from PYQs.', 'Rewrite general vs specific noun sentences.']
@@ -54,6 +60,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'tenses', title: 'Tenses: timeline before formula', track: 'ssc', skill: 'grammar', level: 'A2 → B2', time: '50 min', exam: 'CGL + CHSL',
     summary: 'Understand tense through time + aspect. Then use it for spotting errors, cloze passages and sentence completion.',
+    summaryHi: "Present, Past और Future के 12 tenses को signal words, formulas, Hindi clues और exam traps के साथ सीखें।",
     learn: ['Present simple: habits, facts, routines; present continuous: happening/temporary situations.', 'Past simple: completed past event; past continuous: action in progress at a past time.', 'Present perfect connects a past event to the present; avoid using it with a finished past-time marker like yesterday.', 'Past perfect marks the earlier of two past events when the sequence matters.', 'Future meaning can be expressed through will, be going to and present continuous depending on intention/evidence/arrangement.'],
     examples: ['She studies every day.', 'She is studying now.', 'She visited Delhi last year.', 'She has visited Delhi three times.', 'When I arrived, the train had left.'],
     practice: ['Draw a timeline for 15 sentences.', 'Correct mixed-tense error questions.', 'Write a six-sentence story using six different tense patterns.']
@@ -61,6 +68,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'subject-verb', title: 'Subject–Verb Agreement', track: 'ssc', skill: 'grammar', level: 'B1 → B2', time: '40 min', exam: 'CGL + CHSL',
     summary: 'One of the highest-value grammar systems for competitive exams: identify the real subject before choosing the verb.',
+    summaryHi: "SSC CGL/CHSL में बार-बार आने वाले subject–verb errors को rules और traps के साथ सीखें।",
     learn: ['Ignore interrupting phrases: The quality of the apples is good.', 'Each, every, everyone, everybody, either and neither normally take singular verbs.', 'With either/or and neither/nor, agreement follows the nearer subject in standard exam usage.', 'Amounts, distances and periods can take singular verbs when treated as one unit.', 'Collective nouns depend on intended meaning and exam convention; follow the sentence context.'],
     examples: ['The list of items is long.', 'Each of the boys is ready.', 'Neither the teacher nor the students are late.', 'Ten kilometres is a long distance to walk.'],
     practice: ['Circle the true subject before answering.', 'Solve 30 agreement questions without looking at options first.', 'Keep an error notebook of recurring traps.']
@@ -68,6 +76,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'modals', title: 'Modals: ability, duty, probability & permission', track: 'ssc', skill: 'grammar', level: 'B1 → B2', time: '35 min', exam: 'CGL + CHSL',
     summary: 'Can, could, may, might, must, should, ought to, need, dare and related structures — learn meaning and grammar together.',
+    summaryHi: "Can, could, may, might, must aur should jaise modals se ability, permission, duty, advice aur possibility express karna seekho.",
     learn: ['Modal + base verb: can go, should study, must finish.', 'Must can express strong obligation or strong deduction; context decides the meaning.', 'Could/might commonly express possibility; could also express past ability or polite requests.', 'Should/ought to express advice, expectation or duty depending on context.'],
     examples: ['You must wear a helmet.', 'He must be tired. He worked all night.', 'She could swim when she was five.', 'You should revise before the test.'],
     practice: ['Classify 20 modal sentences by meaning.', 'Find modal + verb form errors.', 'Rewrite direct advice using different modal strengths.']
@@ -75,6 +84,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'prepositions', title: 'Prepositions: time, place, movement & collocation', track: 'ssc', skill: 'grammar', level: 'A2 → B2', time: '40 min', exam: 'CGL + CHSL',
     summary: 'Stop translating prepositions word-for-word. Learn them through relationships and fixed combinations.',
+    summaryHi: "in/on/at, since/for, between/among, by/with और common preposition errors को examples से master करें।",
     learn: ['Time: at a clock time, on a day/date, in a month/year/period.', 'Place: at a point, on a surface, in an enclosed area/space — context matters.', 'Movement: to, into, onto, through, across and towards describe different paths.', 'Learn collocations: interested in, depend on, good at, afraid of, responsible for.'],
     examples: ['at 7 p.m. / on Monday / in July', 'She is good at mathematics.', 'He walked across the road.', 'The train went through the tunnel.'],
     practice: ['Create a personal preposition map.', 'Learn 10 exam-relevant adjective/verb + preposition pairs daily.', 'Solve fill-in-the-blank sets with explanation, not guessing.']
@@ -82,6 +92,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'voice', title: 'Active & Passive Voice', track: 'ssc', skill: 'grammar', level: 'B1 → B2', time: '45 min', exam: 'CGL + CHSL',
     summary: 'Convert meaning without losing tense, object, auxiliary or agreement.',
+    summaryHi: "Tense identify करें, object find करें और passive construction को rule-based तरीके से बनाएं।",
     learn: ['Passive normally uses be + past participle; the tense is carried by the auxiliary.', 'Only transitive verbs can normally form a passive because a passive needs an object-derived subject.', 'Keep the original tense: writes → is written; wrote → was written; has written → has been written.', 'Use by + agent only when the doer is relevant or useful.'],
     examples: ['The clerk checks the form. → The form is checked by the clerk.', 'They completed the work. → The work was completed.', 'She has written the letter. → The letter has been written.'],
     practice: ['Convert 5 sentences for each major tense.', 'Spot wrong auxiliaries in passive constructions.', 'Explain why an intransitive verb cannot be passivised in the usual way.']
@@ -89,6 +100,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'narration', title: 'Direct & Indirect Speech', track: 'ssc', skill: 'grammar', level: 'B1 → B2', time: '45 min', exam: 'CHSL + CGL',
     summary: 'Master reporting verbs, tense backshift, pronouns, time/place words and question/command structures.',
+    summaryHi: "Reporting verbs, tense backshift, pronoun changes और time-word changes को examples के साथ सीखें।",
     learn: ['Statements commonly use that; yes/no questions use if/whether; wh-questions keep the wh-word.', 'Commands/requests often use to + base verb after an appropriate reporting verb.', 'When the reporting verb is past, exam questions often require tense backshift unless the fact is timeless or the context prevents it.', 'Pronouns and time/place references change according to speaker, listener and situation.'],
     examples: ['He said, “I am busy.” → He said that he was busy.', 'She said, “Do you know him?” → She asked if I knew him.', 'The teacher said, “Work hard.” → The teacher advised us to work hard.'],
     practice: ['Convert 10 statements, 10 questions and 10 commands.', 'Make a table of common tense changes.', 'Watch for pronoun-reference errors.']
@@ -96,6 +108,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'error-spotting', title: 'Error Spotting: a repeatable 7-step method', track: 'ssc', skill: 'grammar', level: 'B1 → B2', time: '30 min', exam: 'CGL + CHSL',
     summary: 'Turn error spotting from intuition into a checklist.',
+    summaryHi: "Sentence correction को rule-by-rule approach से करें: subject, tense, article, preposition, pronoun और modifier checks।",
     learn: ['1) Find the main subject + verb.', '2) Check agreement.', '3) Check tense and auxiliary.', '4) Check article/determiner.', '5) Check preposition/collocation.', '6) Check pronoun/reference and modifier placement.', '7) Read the whole sentence for meaning and parallel structure.'],
     examples: ['The quality of these products are poor. → is poor.', 'He is senior than me. → senior to me.', 'She discussed about the issue. → discussed the issue.'],
     practice: ['Do 20 questions in 10 minutes.', 'For every wrong answer, name the rule category.', 'Re-test only the categories where accuracy is below 80%.']
@@ -103,6 +116,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'vocabulary-engine', title: 'Vocabulary Engine: roots, families, collocations', track: 'foundation', skill: 'vocabulary', level: 'A2 → C1', time: '45 min', exam: 'All',
     summary: 'Build usable vocabulary instead of collecting isolated word lists.',
+    summaryHi: "SSC और competitive English में repeatedly useful words को Hindi meaning, synonym, antonym और sentence के साथ सीखें।",
     learn: ['Learn a word with meaning, part of speech, pronunciation, one collocation and one sentence.', 'Use word families: decide, decision, decisive, decisively.', 'Use roots/prefixes/suffixes to infer unfamiliar words, but verify meaning from context.', 'Prioritise high-frequency academic and exam vocabulary before rare words.'],
     examples: ['benefit → benefit from / beneficial / beneficiary', 'predict → prediction / predictable / unpredictable', 'cred → credible / incredible / credibility'],
     practice: ['Create 10 word families per week.', 'Write a sentence from memory after 24 hours.', 'Use spaced review at roughly 1, 3, 7 and 14 days.']
@@ -110,6 +124,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'syn-ant', title: 'Synonyms, Antonyms & Context', track: 'ssc', skill: 'vocabulary', level: 'A2 → C1', time: '35 min', exam: 'CGL + CHSL',
     summary: 'Choose the closest meaning in context rather than the word that merely looks familiar.',
+    summaryHi: "Synonym ya antonym wahi sahi hai jo sentence ke context aur grammatical role mein fit ho.",
     learn: ['A synonym must fit the sentence, register and grammatical role.', 'Antonyms can be absolute, gradable or contextual; exam options often test the intended sense.', 'Part of speech matters: “object” as noun and verb have different meanings.', 'Learn common confusion pairs and false friends.'],
     examples: ['abandon ≈ leave/give up; opposite ≈ retain/keep', 'brief can mean short in duration or concise in expression.', 'novel can mean new or a book depending on context.'],
     practice: ['Solve context-based synonym questions.', 'Explain why each wrong option is wrong.', 'Keep a “confusing options” list.']
@@ -117,6 +132,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'idioms-oneword', title: 'Idioms, Phrases & One-word Substitution', track: 'ssc', skill: 'vocabulary', level: 'B1 → C1', time: '40 min', exam: 'CGL + CHSL',
     summary: 'Build a compact, revision-friendly bank of high-frequency expressions and one-word substitutions.',
+    summaryHi: "Idioms ko actual meaning aur example sentence ke saath yaad karo; one-word substitution mein definition ka core meaning pakdo.",
     learn: ['Learn the literal image + actual meaning + one natural sentence.', 'Group idioms by theme: secrecy, success, failure, anger, money, speed, difficulty.', 'For one-word substitution, identify the definition’s core noun/verb/adjective and eliminate near-matches.', 'Do not memorise thousands blindly; retain items that recur in exam practice or strengthen general English.'],
     examples: ['once in a blue moon → very rarely', 'a blessing in disguise → something that seems bad but proves beneficial', 'one who cannot read or write → illiterate'],
     practice: ['Review 15 expressions with active recall.', 'Use five idioms in your own sentences.', 'Take a mixed timed quiz every Sunday.']
@@ -124,6 +140,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'spellings', title: 'Spellings & Word Formation', track: 'ssc', skill: 'vocabulary', level: 'A2 → B2', time: '25 min', exam: 'CHSL + CGL',
     summary: 'Improve spelling through patterns, roots and active recall instead of copying words repeatedly.',
+    summaryHi: "Spelling ko pattern, roots aur apni mistake-list se improve karo; sirf word copy karna enough nahi hai.",
     learn: ['Notice common suffix patterns and doubled consonants.', 'Separate pronunciation from spelling; English spelling is not fully phonetic.', 'Keep a personal error list and revisit it with cover-write-check.', 'Learn commonly confused pairs: affect/effect, advice/advise, principal/principle.'],
     examples: ['accommodate — double c, double m', 'necessary — one c, double s', 'separate — remember the “par” sound/spelling'],
     practice: ['Cover the word, write it, reveal, correct.', 'Use error logs from mocks.', 'Spell words inside sentences, not as isolated lists.']
@@ -131,6 +148,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'cloze', title: 'Cloze Test: grammar + vocabulary + discourse', track: 'ssc', skill: 'reading', level: 'B1 → B2', time: '35 min', exam: 'CGL + CHSL',
     summary: 'Treat the passage as a connected argument. The correct answer is usually constrained by grammar, meaning and nearby context.',
+    summaryHi: "Context, grammar और collocation clues से cloze test solve करने की systematic method।",
     learn: ['Read the whole passage once before filling every blank.', 'Check part of speech, tense, article and preposition first.', 'Then compare semantic fit and collocation.', 'Track pronouns, connectors and repeated ideas across sentences.'],
     examples: ['However signals contrast; therefore signals result; although introduces concession.', 'A noun blank after an article may need a countable noun; a verb blank must match tense and subject.'],
     practice: ['Attempt once without options.', 'Attempt again with options and explain the elimination.', 'Record whether each miss was grammar, vocabulary or context.']
@@ -138,6 +156,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'reading-comprehension', title: 'Reading Comprehension: evidence-first reading', track: 'ssc', skill: 'reading', level: 'B1 → C1', time: '40 min', exam: 'CGL + CHSL + General English',
     summary: 'Read for structure, claims, evidence and inference — not word-by-word translation.',
+    summaryHi: "Passage को structure, central idea, tone और evidence के आधार पर पढ़ें; guess नहीं, text evidence से answer करें।",
     learn: ['Identify topic, central idea, paragraph purpose and author attitude.', 'For factual questions, return to the text and locate evidence.', 'For inference, choose what is strongly supported rather than what is merely possible.', 'Build speed through regular reading of short editorials, explainers and exam passages.'],
     examples: ['Main idea ≠ first sentence automatically.', 'Inference = what logically follows from the passage, not outside knowledge.'],
     practice: ['Read 250–400 words and write the main idea in one sentence.', 'Answer questions with evidence locations.', 'Gradually reduce reading time while preserving accuracy.']
@@ -145,6 +164,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'sentence-improvement', title: 'Sentence Improvement & Parallelism', track: 'ssc', skill: 'grammar', level: 'B1 → C1', time: '35 min', exam: 'CGL + CHSL',
     summary: 'Fix grammar, idiom, word choice, comparison and parallel structure while preserving the intended meaning.',
+    summaryHi: "Sentence improvement mein grammar ke saath idiom, comparison, word choice, modifier aur parallel structure bhi check karo.",
     learn: ['Parallel items should share compatible grammatical form.', 'Comparisons must compare like with like.', 'Modifiers should sit close to the word they modify.', 'Prefer the option that is grammatical, precise and natural — not merely shorter.'],
     examples: ['She likes reading, swimming and to cycle. → reading, swimming and cycling.', 'The population of Delhi is larger than Mumbai. → larger than that of Mumbai.'],
     practice: ['Identify the broken element before seeing options.', 'Compare all options for grammar + meaning.', 'Keep a list of recurring construction errors.']
@@ -152,6 +172,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'writing-core', title: 'Writing Core: sentence → paragraph → formal response', track: 'fluency', skill: 'writing', level: 'A2 → B2', time: '45 min', exam: 'General + exam',
     summary: 'Build clear writing that helps descriptive tasks, applications, emails and everyday communication.',
+    summaryHi: "Clear writing ke liye ek main idea, supporting detail, logical connectors aur proofreading ka simple process follow karo.",
     learn: ['A strong paragraph has one controlling idea, supporting detail and a logical close.', 'Use connectors intentionally: addition, contrast, cause, result and example.', 'Prefer clear sentences over unnecessary complexity.', 'Proofread in passes: grammar, punctuation, spelling, clarity.'],
     examples: ['Claim → reason → example → conclusion is a reliable paragraph structure.', 'Use “however” for contrast, “therefore” for result and “for example” for illustration.'],
     practice: ['Write 80 words on a familiar topic.', 'Rewrite it for clarity without changing the meaning.', 'Use a four-pass proofreading checklist.']
@@ -159,6 +180,7 @@ const LESSONS: Lesson[] = [
   {
     id: 'speaking-core', title: 'Speaking Core: fluency without fear', track: 'fluency', skill: 'speaking', level: 'A1 → B2', time: '20 min', exam: 'General',
     summary: 'Build usable spoken English through controlled repetition, not memorised speeches.',
+    summaryHi: "Speaking mein pehle short correct sentences bolo, phir detail add karo; regular recording se hesitation aur grammar improve karo.",
     learn: ['Start with short correct sentences, then add detail.', 'Use chunks: “In my opinion…”, “The main reason is…”, “For example…”.', 'Record yourself and track hesitation, pronunciation and grammar separately.', 'Shadow short audio: listen, pause, imitate rhythm and stress.'],
     examples: ['I think… because…', 'What I mean is…', 'Let me give an example…', 'On the other hand…'],
     practice: ['Speak for 60 seconds on one topic.', 'Repeat with fewer pauses.', 'Repeat again using two new vocabulary items.']
@@ -166,17 +188,11 @@ const LESSONS: Lesson[] = [
   {
     id: 'pronunciation', title: 'Pronunciation & Listening: sound before spelling', track: 'fluency', skill: 'pronunciation', level: 'A1 → B2', time: '25 min', exam: 'General',
     summary: 'Improve intelligibility and listening by learning stress, connected speech and difficult sound contrasts.',
+    summaryHi: "Pronunciation mein spelling guess karne ke bajay sound, stress aur connected speech ko listening aur repetition se train karo.",
     learn: ['English rhythm is stress-timed; stressed words carry much of the information.', 'Learn troublesome contrasts such as ship/sheep and live/leave.', 'Use a dictionary audio model and repeat rather than guessing pronunciation from spelling.', 'Train listening with short clips: listen once for gist, again for details, then shadow.'],
     examples: ['record (noun) vs record (verb) can differ in stress.', 'want to may sound reduced in connected speech; train recognition, not forced imitation.'],
     practice: ['Shadow 30 seconds daily.', 'Mark stressed words in a sentence.', 'Record and compare rhythm, not just individual sounds.']
   },
-  {
-    id: 'exam-mixed', title: 'SSC Mixed English Sprint', track: 'ssc', skill: 'grammar', level: 'B1 → B2', time: '25 min', exam: 'CGL + CHSL',
-    summary: 'A compact daily drill combining the exact families named in the SSC syllabus.',
-    learn: ['Error spotting', 'Fill in the blanks', 'Synonyms/homonyms and antonyms', 'Spellings / mis-spelt words', 'Idioms & phrases', 'One-word substitution', 'Sentence improvement', 'Active/passive voice', 'Direct/indirect narration', 'Sentence shuffling, cloze and comprehension'],
-    examples: ['Do not solve every question with the same method: grammar items need rules; vocabulary items need context; comprehension needs evidence.', 'Accuracy first, then speed.'],
-    practice: ['5 grammar + 5 vocabulary + 5 passage-based questions.', 'Review every wrong answer.', 'Repeat weak categories until accuracy stabilises.']
-  }
 ];
 
 const TRACKS: { id: Track; label: string; desc: string }[] = [
@@ -195,7 +211,7 @@ function Stat({ icon: Icon, label, value }: { icon: typeof BookOpen; label: stri
   return <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><Icon className="h-4 w-4 text-primary" /><p className="mt-3 text-lg font-black">{value}</p><p className="text-[11px] text-muted-foreground">{label}</p></div>;
 }
 
-function LessonCard({ lesson, open, onOpen }: { lesson: Lesson; open: boolean; onOpen: () => void }) {
+function LessonCard({ lesson, open, completed, onOpen, onToggleComplete }: { lesson: Lesson; open: boolean; completed: boolean; onOpen: () => void; onToggleComplete: () => void }) {
   return <GlassCard className="overflow-hidden p-0">
     <button type="button" onClick={onOpen} className="w-full p-5 text-left transition-colors hover:bg-white/[0.025]">
       <div className="flex items-start justify-between gap-4">
@@ -206,7 +222,7 @@ function LessonCard({ lesson, open, onOpen }: { lesson: Lesson; open: boolean; o
             <span className="rounded-full bg-white/5 px-2 py-1 text-muted-foreground">{lesson.exam}</span>
           </div>
           <h3 className="text-base font-bold">{lesson.title}</h3>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{lesson.summary}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{lesson.summary}</p><p className="mt-2 rounded-lg bg-primary/5 p-2 text-xs leading-5 text-foreground/80">हिंदी में: {lesson.summaryHi}</p>
         </div>
         <ChevronDown className={cn('h-5 w-5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180 text-primary')} />
       </div>
@@ -218,24 +234,41 @@ function LessonCard({ lesson, open, onOpen }: { lesson: Lesson; open: boolean; o
         <div><p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">Examples</p><div className="space-y-2">{lesson.examples.map((x) => <div key={x} className="rounded-xl border border-white/10 bg-black/10 p-3 text-sm">{x}</div>)}</div></div>
         <div><p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">Practice</p><ol className="space-y-2 text-sm leading-6 text-muted-foreground">{lesson.practice.map((x, i) => <li key={x} className="flex gap-2"><span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">{i + 1}</span>{x}</li>)}</ol></div>
       </div>
-      <div className="mt-5 flex flex-wrap gap-2"><Link href="/dashboard/english-lab"><Button size="sm" variant="gradient">Practice in English Lab <ArrowRight className="h-3.5 w-3.5" /></Button></Link><Link href="/dashboard/flashcards"><Button size="sm" variant="outline">Make flashcards</Button></Link></div>
+      <div className="mt-5 flex flex-wrap gap-2"><Link href="/dashboard/english-lab"><Button size="sm" variant="gradient">Practice in English Lab <ArrowRight className="h-3.5 w-3.5" /></Button></Link><Link href="/dashboard/flashcards"><Button size="sm" variant="outline">Make flashcards</Button></Link><Button size="sm" variant="outline" onClick={onToggleComplete}>{completed ? <><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Completed</> : 'Mark complete'}</Button></div>
     </div>}
   </GlassCard>;
 }
 
 export default function EnglishLibraryPage() {
+  const { user } = useAuth();
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [track, setTrack] = useState<Track>('all');
   const [skill, setSkill] = useState<Skill>('all');
   const [query, setQuery] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
   const [level, setLevel] = useState<'all' | 'beginner' | 'intermediate' | 'advanced'>('all');
 
+  useEffect(() => {
+    if (!user) return;
+    return subscribeEnglishLessonProgress(user.uid, (items) => setCompleted(new Set(items.map((item) => item.lessonId))));
+  }, [user]);
+
+  async function toggleComplete(lessonId: string) {
+    if (!user) return;
+    const nextCompleted = !completed.has(lessonId);
+    try {
+      await markLessonComplete(user.uid, lessonId, nextCompleted);
+    } catch {
+      // Keep Firestore as the source of truth; the subscription will restore state.
+    }
+  }
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return LESSONS.filter((x) => {
       const matchesTrack = track === 'all' || x.track === track;
       const matchesSkill = skill === 'all' || x.skill === skill;
-      const matchesQuery = !q || [x.title, x.summary, x.exam, x.skill, ...x.learn].join(' ').toLowerCase().includes(q);
+      const matchesQuery = !q || [x.title, x.summary, x.summaryHi, x.exam, x.skill, ...x.learn].join(' ').toLowerCase().includes(q);
       const matchesLevel = level === 'all' || (level === 'beginner' ? /A1|A2/.test(x.level) : level === 'intermediate' ? /B1|B2/.test(x.level) : /C1|C2/.test(x.level));
       return matchesTrack && matchesSkill && matchesQuery && matchesLevel;
     });
@@ -247,18 +280,20 @@ export default function EnglishLibraryPage() {
       <div className="relative grid gap-7 lg:grid-cols-[1.2fr_.8fr] lg:items-end">
         <div>
           <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary"><LibraryBig className="h-4 w-4" /> English Master Library <span className="rounded-full border border-primary/20 px-2 py-1">Advanced</span></div>
-          <h1 className="mt-3 max-w-3xl text-3xl font-black tracking-tight sm:text-5xl">One English system for exams, fluency and life.</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">A structured, self-contained path from basic sentence building to advanced exam English. SSC CGL and CHSL topics are mapped directly to practice so students do not need to jump between random notes and videos.</p>
+          <h1 className="mt-3 max-w-3xl text-3xl font-black tracking-tight sm:text-5xl">One English system for exams, fluency and life. · Exams + real-life English ek saath.</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Basic sentence se advanced exam English tak structured path — simple explanation, examples aur practice ke saath. SSC CGL and CHSL topics are mapped directly to practice so students do not need to jump between random notes and videos.</p>
           <div className="mt-5 flex flex-wrap gap-2"><span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs">CEFR A1 → C2</span><span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs">SSC CGL + CHSL</span><span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs">Grammar + Vocab + Reading</span><span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs">Speaking + Writing</span></div>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
           <Stat icon={BookOpen} label="Structured lessons" value={String(LESSONS.length)} />
-          <Stat icon={Target} label="SSC-focused modules" value={String(LESSONS.filter((x) => x.track === 'ssc').length)} />
-          <Stat icon={BrainCircuit} label="Skill coverage" value="6" />
-          <Stat icon={GraduationCap} label="Learning levels" value="A1–C2" />
+          <Stat icon={CheckCircle2} label="Completed" value={String(completed.size) + '/' + String(LESSONS.length)} />
+          <Stat icon={Target} label="Progress" value={String(Math.round((completed.size / LESSONS.length) * 100)) + '%'} />
+          <Stat icon={GraduationCap} label="Skills" value="6" />
         </div>
       </div>
     </section>
+
+    <GlassCard className="space-y-2 p-4"><div className="flex items-center justify-between gap-3"><p className="text-sm font-bold">Overall progress · {completed.size}/{LESSONS.length} complete</p><span className="text-xs font-semibold text-primary">{Math.round((completed.size / LESSONS.length) * 100)}%</span></div><div className="h-2.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-primary to-pink-500 transition-all" style={{ width: `${Math.round((completed.size / LESSONS.length) * 100)}%` }} /></div><p className="text-[11px] text-muted-foreground">Lesson complete karte hi progress real-time save hoti hai.</p></GlassCard>
 
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <GlassCard className="p-4"><div className="flex items-center gap-3"><Languages className="h-5 w-5 text-primary" /><div><p className="text-sm font-bold">Learn the rule</p><p className="text-xs text-muted-foreground">Simple explanation + examples</p></div></div></GlassCard>
@@ -277,7 +312,7 @@ export default function EnglishLibraryPage() {
 
     <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-bold">Your English curriculum</p><p className="text-xs text-muted-foreground">{filtered.length} modules matched • Start with Foundation if English is weak.</p></div><Link href="/dashboard/english-lab"><Button size="sm" variant="outline">Open Practice Lab <ArrowRight className="h-3.5 w-3.5" /></Button></Link></div>
 
-    <div className="grid gap-3">{filtered.map((lesson) => <LessonCard key={lesson.id} lesson={lesson} open={openId === lesson.id} onOpen={() => setOpenId(openId === lesson.id ? null : lesson.id)} />)}</div>
+    <div className="grid gap-3">{filtered.map((lesson) => <LessonCard key={lesson.id} lesson={lesson} open={openId === lesson.id} completed={completed.has(lesson.id)} onOpen={() => setOpenId(openId === lesson.id ? null : lesson.id)} onToggleComplete={() => void toggleComplete(lesson.id)} />)}</div>
 
     {filtered.length === 0 && <GlassCard className="py-12 text-center"><BookOpen className="mx-auto h-8 w-8 text-muted-foreground/50" /><p className="mt-3 font-bold">No module found</p><p className="mt-1 text-sm text-muted-foreground">Try “tenses”, “vocabulary”, “cloze” or “voice”.</p></GlassCard>}
 

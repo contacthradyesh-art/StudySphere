@@ -49,6 +49,7 @@ service cloud.firestore {
       match /ethicsCaseStudySessions/{sessionId} { allow read, write: if isOwner(uid); }
       match /englishWritingSessions/{sessionId} { allow read, write: if isOwner(uid); }
       match /englishSpeakingSessions/{sessionId} { allow read, write: if isOwner(uid); }
+      match /englishLessonProgress/{lessonId} { allow read, write: if isOwner(uid); }
       match /customMockTests/{testId} { allow read, write: if isOwner(uid); }
       match /gamification/{docId} { allow read, write: if isOwner(uid); }
       match /mapProgress/{stateKey} { allow read, write: if isOwner(uid); }

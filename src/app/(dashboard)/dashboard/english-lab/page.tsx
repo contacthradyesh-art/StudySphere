@@ -24,14 +24,13 @@ function OverviewTab({ writingSessions, speakingSessions, wordOfDay, onNavigate 
   const avgWriting = writingSessions.length ? Math.round(writingSessions.reduce((s, x) => s + x.feedback.score, 0) / writingSessions.length) : null;
   const avgSpeaking = speakingSessions.length ? Math.round(speakingSessions.reduce((s, x) => s + x.feedback.score, 0) / speakingSessions.length) : null;
   return <div className="space-y-5">
-    <GlassCard className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/[0.12] via-white/[0.03] to-transparent p-6 sm:p-8"><div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div className="max-w-3xl"><div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"><GraduationCap className="h-3.5 w-3.5" /> English Mastery OS</div><h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Learn English. Crack CGL/CHSL. Speak with confidence.</h2><p className="mt-3 text-sm leading-6 text-muted-foreground">Foundation से advanced तक structured learning: concept → examples → practice → feedback → revision.</p></div><Link href="/dashboard/english-lab/master-library"><Button variant="gradient">Open Master Library <ArrowRight className="h-4 w-4" /></Button></Link></div></GlassCard>
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><GlassCard className="p-4"><p className="text-xs text-muted-foreground">Writing sessions</p><p className="text-xl font-bold">{writingSessions.length}</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-muted-foreground">Speaking sessions</p><p className="text-xl font-bold">{speakingSessions.length}</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-muted-foreground">Avg. writing score</p><p className="text-xl font-bold">{avgWriting ?? '—'}</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-muted-foreground">Avg. speaking score</p><p className="text-xl font-bold">{avgSpeaking ?? '—'}</p></GlassCard></div>
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><GlassCard className="space-y-2 border-primary/15"><div className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-primary" /><p className="font-medium">Learn</p></div><p className="text-xs leading-5 text-muted-foreground">Grammar, vocabulary, reading, SSC exam patterns.</p><Button variant="outline" size="sm" onClick={() => window.location.assign('/dashboard/english-lab/master-library')}>Start learning</Button></GlassCard><GlassCard className="space-y-2"><div className="flex items-center gap-2"><SpellCheck2 className="h-4 w-4 text-primary" /><p className="font-medium">Practice</p></div><p className="text-xs leading-5 text-muted-foreground">AI grammar quiz, quick tools और topic-wise drills.</p><Button variant="outline" size="sm" onClick={() => onNavigate('grammar')}>Practice grammar</Button></GlassCard><GlassCard className="space-y-2"><div className="flex items-center gap-2"><Target className="h-4 w-4 text-primary" /><p className="font-medium">Improve</p></div><p className="text-xs leading-5 text-muted-foreground">Writing & speaking feedback से weak areas सुधारें।</p><Button variant="outline" size="sm" onClick={() => onNavigate('writing')}>Write now</Button></GlassCard></div>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><GlassCard className="space-y-2 border-primary/15"><div className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-primary" /><p className="font-medium">Learn</p></div><p className="text-xs leading-5 text-muted-foreground">Grammar, vocabulary, reading, SSC exam patterns.</p><Button variant="outline" size="sm" onClick={() => window.location.assign('/dashboard/english-lab/library')}>Start learning</Button></GlassCard><GlassCard className="space-y-2"><div className="flex items-center gap-2"><SpellCheck2 className="h-4 w-4 text-primary" /><p className="font-medium">Practice</p></div><p className="text-xs leading-5 text-muted-foreground">AI grammar quiz, quick tools और topic-wise drills.</p><Button variant="outline" size="sm" onClick={() => onNavigate('grammar')}>Practice grammar</Button></GlassCard><GlassCard className="space-y-2"><div className="flex items-center gap-2"><Target className="h-4 w-4 text-primary" /><p className="font-medium">Improve</p></div><p className="text-xs leading-5 text-muted-foreground">Writing & speaking feedback से weak areas सुधारें।</p><Button variant="outline" size="sm" onClick={() => onNavigate('writing')}>Write now</Button></GlassCard></div>
     {wordOfDay && <GlassCard className="space-y-2 border-primary/20 bg-primary/5"><p className="text-xs font-medium text-primary">📚 Word of the Day</p><p className="text-lg font-bold">{wordOfDay.word} <span className="text-sm font-normal text-muted-foreground">({wordOfDay.partOfSpeech})</span></p><p className="text-sm text-muted-foreground">{wordOfDay.meaning}</p><Button variant="ghost" size="sm" onClick={() => onNavigate('vocabulary')}>Practice vocabulary <ArrowRight className="h-3.5 w-3.5" /></Button></GlassCard>}
   </div>;
 }
 
-function VocabularyTab({ uid, words, wordOfDay }: { uid: string; words: VocabWord[]; wordOfDay: VocabWord | null }) { const [learned, setLearned] = useState<Set<string>>(new Set()); useEffect(() => { getLearnedWordIds(uid).then(setLearned).catch(() => undefined); }, [uid]); async function toggleLearned(word: VocabWord) { const isLearned = learned.has(word.id); const next = new Set(learned); if (isLearned) next.delete(word.id); else next.add(word.id); setLearned(next); try { await markWordLearned(uid, word.id, !isLearned); } catch { toast.error('Progress save नहीं हो पाया।'); } } return <div className="space-y-4"><div className="grid grid-cols-2 gap-3 sm:grid-cols-3"><GlassCard className="p-4"><p className="text-xs text-muted-foreground">Total words</p><p className="text-xl font-bold">{words.length}</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-muted-foreground">Learned</p><p className="text-xl font-bold">{learned.size}</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-muted-foreground">Remaining</p><p className="text-xl font-bold">{Math.max(0, words.length - learned.size)}</p></GlassCard></div>{wordOfDay && <GlassCard className="space-y-2 border-primary/20 bg-primary/5"><div className="flex items-center justify-between"><p className="text-xs font-medium text-primary">📚 Word of the Day</p><button onClick={() => toggleLearned(wordOfDay)} className="text-xs text-primary hover:underline">{learned.has(wordOfDay.id) ? '✓ Learned' : 'Mark as learned'}</button></div><p className="text-lg font-bold">{wordOfDay.word}</p><p className="text-sm">{wordOfDay.meaning}</p>{wordOfDay.hindiMeaning && <p className="text-sm text-muted-foreground">{wordOfDay.hindiMeaning}</p>}<p className="text-xs italic text-muted-foreground">“{wordOfDay.exampleSentence}”</p></GlassCard>}</div>; }
+function VocabularyTab({ uid, words, wordOfDay }: { uid: string; words: VocabWord[]; wordOfDay: VocabWord | null }) { const [learned, setLearned] = useState<Set<string>>(new Set()); useEffect(() => { getLearnedWordIds(uid).then(setLearned).catch(() => undefined); }, [uid]); async function toggleLearned(word: VocabWord) { const isLearned = learned.has(word.id); const next = new Set(learned); if (isLearned) next.delete(word.id); else next.add(word.id); setLearned(next); try { await markWordLearned(uid, word.id, !isLearned); } catch { toast.error('Progress save नहीं हो पाया।'); } } return <div className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-semibold">Vocabulary Lab</p><p className="text-xs text-muted-foreground">Detailed search, quiz aur flashcards ke liye full lab kholo.</p></div><Link href="/dashboard/english-lab/vocabulary-lab"><Button size="sm" variant="outline">Full Vocabulary Lab kholo <ArrowRight className="h-3.5 w-3.5" /></Button></Link></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3"><GlassCard className="p-4"><p className="text-xs text-muted-foreground">Total words</p><p className="text-xl font-bold">{words.length}</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-muted-foreground">Learned</p><p className="text-xl font-bold">{learned.size}</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-muted-foreground">Remaining</p><p className="text-xl font-bold">{Math.max(0, words.length - learned.size)}</p></GlassCard></div>{wordOfDay && <GlassCard className="space-y-2 border-primary/20 bg-primary/5"><div className="flex items-center justify-between"><p className="text-xs font-medium text-primary">📚 Word of the Day</p><button onClick={() => toggleLearned(wordOfDay)} className="text-xs text-primary hover:underline">{learned.has(wordOfDay.id) ? '✓ Learned' : 'Mark as learned'}</button></div><p className="text-lg font-bold">{wordOfDay.word}</p><p className="text-sm">{wordOfDay.meaning}</p>{wordOfDay.hindiMeaning && <p className="text-sm text-muted-foreground">{wordOfDay.hindiMeaning}</p>}<p className="text-xs italic text-muted-foreground">“{wordOfDay.exampleSentence}”</p></GlassCard>}</div>; }
 
 interface GrammarQuestion { question: string; options: string[]; correctIndex: number; explanation: string; }
 function GrammarTab() { const [topic, setTopic] = useState(''); const [loading, setLoading] = useState(false); const [questions, setQuestions] = useState<GrammarQuestion[] | null>(null); const [answers, setAnswers] = useState<Record<number, number>>({}); const [submitted, setSubmitted] = useState(false); async function generateQuiz() { setLoading(true); setQuestions(null); setAnswers({}); setSubmitted(false); try { const res = await authedFetch('/api/english-lab/grammar-quiz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic})}); const data=await res.json(); if(!res.ok) throw new Error(data.error); setQuestions(data.questions);} catch {toast.error('Quiz generate नहीं हो पाया।')} finally {setLoading(false);} } const score=questions?questions.reduce((s,q,i)=>s+(answers[i]===q.correctIndex?1:0),0):0; return <div className="space-y-4"><GlassCard className="space-y-3"><p className="text-sm font-medium">Grammar topic</p><div className="flex gap-2"><Input value={topic} onChange={(e)=>setTopic(e.target.value)} placeholder="Tenses, Prepositions, Subject-Verb Agreement..."/><Button variant="gradient" onClick={generateQuiz} disabled={loading}><Sparkles className="h-4 w-4"/>{loading?'Generating...':'Start Quiz'}</Button></div></GlassCard>{questions&&<div className="space-y-3">{questions.map((q,i)=><GlassCard key={i} className="space-y-2"><p className="font-medium">{i+1}. {q.question}</p><div className="grid gap-2 sm:grid-cols-2">{q.options.map((opt,oi)=>{const isSelected=answers[i]===oi; const isCorrect=submitted&&oi===q.correctIndex; const isWrong=submitted&&isSelected&&oi!==q.correctIndex; return <button key={oi} disabled={submitted} onClick={()=>setAnswers(a=>({...a,[i]:oi}))} className={cn('rounded-lg border px-3 py-2 text-left text-sm transition-colors',isCorrect&&'border-emerald-500/40 bg-emerald-500/10',isWrong&&'border-red-500/40 bg-red-500/10',!submitted&&isSelected&&'border-primary bg-primary/10',!submitted&&!isSelected&&'border-white/10 bg-white/5 hover:border-primary/30')}>{opt}</button>})}</div>{submitted&&<p className="text-xs text-muted-foreground">{q.explanation}</p>}</GlassCard>)}{!submitted?<Button variant="gradient" className="w-full" onClick={()=>setSubmitted(true)}>Submit answers</Button>:<GlassCard className="text-center"><p className="text-lg font-bold">You scored {score}/{questions.length}</p><Button variant="outline" size="sm" className="mt-2" onClick={generateQuiz}>Try another quiz</Button></GlassCard>}</div>}</div>; }
@@ -39,9 +38,197 @@ function GrammarTab() { const [topic, setTopic] = useState(''); const [loading, 
 const TOOLS: { id: QuickToolType; label: string; placeholder: string }[] = [{ id: 'synonym', label: 'Synonym Finder', placeholder: 'Enter a word...' }, { id: 'antonym', label: 'Antonym Finder', placeholder: 'Enter a word...' }, { id: 'one-word', label: 'One Word Substitution', placeholder: 'Enter a phrase...' }, { id: 'idiom', label: 'Idioms & Phrases', placeholder: 'Enter a word or topic...' }, { id: 'sentence-improve', label: 'Sentence Improvement', placeholder: 'Paste a sentence...' }, { id: 'paraphrase', label: 'Paraphrasing Tool', placeholder: 'Paste a sentence or paragraph...' }];
 function QuickToolsTab(){ const [active,setActive]=useState<QuickToolType>('synonym');const [input,setInput]=useState('');const [loading,setLoading]=useState(false);const [result,setResult]=useState<{results:string[];note?:string}|null>(null);async function run(){if(!input.trim()){toast.error('पहले कुछ लिखें।');return;}setLoading(true);setResult(null);try{const res=await authedFetch('/api/english-lab/quick-tool',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:active,input})});const data=await res.json();if(!res.ok)throw new Error(data.error);setResult(data)}catch{toast.error('Tool अभी उपलब्ध नहीं है।')}finally{setLoading(false)}}return <div className="space-y-4"><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{TOOLS.map(t=><button key={t.id} onClick={()=>{setActive(t.id);setResult(null);setInput('')}} className={cn('rounded-xl border px-3 py-2 text-xs font-medium transition-colors',active===t.id?'border-primary bg-primary/15 text-primary':'border-white/10 bg-white/5 text-muted-foreground')}>{t.label}</button>)}</div><GlassCard className="space-y-3"><Input value={input} onChange={e=>setInput(e.target.value)} placeholder={TOOLS.find(t=>t.id===active)?.placeholder}/><Button variant="gradient" onClick={run} disabled={loading}><Sparkles className="h-4 w-4"/>{loading?'Working...':'Run tool'}</Button>{result&&<div className="space-y-2"><div className="rounded-xl border border-primary/15 bg-primary/5 p-4">{result.results.map((r,i)=><p key={i} className="text-sm leading-6">{r}</p>)}</div>{result.note&&<p className="text-xs text-muted-foreground">{result.note}</p>}</div>}</GlassCard></div> }
 
-function WritingPractice({ uid, sessions }: { uid: string; sessions: WritingSession[] }) { const [prompt,setPrompt]=useState(randomPrompt(WRITING_PROMPTS)); const [answer,setAnswer]=useState(''); const [feedback,setFeedback]=useState<WritingFeedback|null>(null); const [loading,setLoading]=useState(false); async function submit(){if(!answer.trim()){toast.error('पहले answer लिखें।');return;}setLoading(true);try{const res=await authedFetch('/api/english-lab/writing-feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,answer})});const data=await res.json();if(!res.ok)throw new Error(data.error);setFeedback(data.feedback);await saveWritingSession(uid,prompt,answer,data.feedback);}catch{toast.error('Feedback नहीं मिल पाया।')}finally{setLoading(false)}} return <div className="space-y-4"><GlassCard className="space-y-3"><div className="flex items-center justify-between"><p className="text-sm font-medium text-muted-foreground">आज का writing prompt</p><Button variant="ghost" size="sm" onClick={()=>setPrompt(randomPrompt(WRITING_PROMPTS,prompt))}><Shuffle className="h-3.5 w-3.5"/> New prompt</Button></div><p className="font-semibold">{prompt}</p><textarea value={answer} onChange={e=>setAnswer(e.target.value)} className="min-h-48 w-full resize-y rounded-xl border border-white/10 bg-white/5 p-4 text-sm outline-none focus:border-primary/40" placeholder="Write your answer in English..."/><Button variant="gradient" onClick={submit} disabled={loading}><Sparkles className="h-4 w-4"/>{loading?'Evaluating...':'Get AI Feedback'}</Button></GlassCard>{feedback&&<GlassCard className="space-y-4"><div className="flex items-center justify-between"><p className="font-semibold">Writing feedback</p><ScoreBadge score={feedback.score}/></div><p className="text-sm leading-6">{feedback.correctedText}</p><div><p className="text-sm font-medium">Strengths</p><ul className="mt-1 list-disc pl-5 text-sm text-muted-foreground">{feedback.strengths.map((x,i)=><li key={i}>{x}</li>)}</ul></div><div><p className="text-sm font-medium">Improvements</p><ul className="mt-1 list-disc pl-5 text-sm text-muted-foreground">{feedback.improvements.map((x,i)=><li key={i}>{x}</li>)}</ul></div></GlassCard>}</div>; }
+function WritingPractice({ uid, sessions }: { uid: string; sessions: WritingSession[] }) {
+  const [prompt, setPrompt] = useState(randomPrompt(WRITING_PROMPTS));
+  const [answer, setAnswer] = useState('');
+  const [feedback, setFeedback] = useState<WritingFeedback | null>(null);
+  const [loading, setLoading] = useState(false);
 
-function SpeakingPractice({ uid }: { uid: string }) { const [prompt,setPrompt]=useState(randomPrompt(SPEAKING_PROMPTS)); const [recording,setRecording]=useState(false); const [seconds,setSeconds]=useState(0); const [hasRecording,setHasRecording]=useState(false); const [loading,setLoading]=useState(false); const [feedback,setFeedback]=useState<SpeakingFeedback|null>(null); const mediaRecorderRef=useRef<MediaRecorder|null>(null); const audioBlobRef=useRef<Blob|null>(null); const timerRef=useRef<ReturnType<typeof setInterval>|null>(null); async function startRecording(){try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});const recorder=new MediaRecorder(stream);const chunks:BlobPart[]=[];recorder.ondataavailable=e=>chunks.push(e.data);recorder.onstop=()=>{const blob=new Blob(chunks,{type:recorder.mimeType});audioBlobRef.current=blob;setHasRecording(true);stream.getTracks().forEach(t=>t.stop())};recorder.start();mediaRecorderRef.current=recorder;setRecording(true);setSeconds(0);setFeedback(null);timerRef.current=setInterval(()=>setSeconds(s=>s+1),1000);}catch{toast.error('Microphone access needed.')}} function stopRecording(){mediaRecorderRef.current?.stop();setRecording(false);if(timerRef.current)clearInterval(timerRef.current);} async function handleSubmit(){if(!audioBlobRef.current)return;setLoading(true);try{const blob=audioBlobRef.current;const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve((reader.result as string).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob)});const res=await authedFetch('/api/english-lab/speaking-feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,audio:base64,mimeType:blob.type})});const data=await res.json();if(!res.ok)throw new Error(data.error||'Failed');setFeedback(data.feedback);await saveSpeakingSession(uid,prompt,data.feedback);toast.success('Feedback ready');}catch{toast.error('Recording analysis failed.')}finally{setLoading(false)}} return <div className="space-y-4"><GlassCard className="space-y-3"><div className="flex items-start justify-between gap-2"><p className="text-sm font-medium text-muted-foreground">Today's prompt</p><Button variant="ghost" size="sm" onClick={()=>setPrompt(randomPrompt(SPEAKING_PROMPTS,prompt))} disabled={recording}><Shuffle className="h-3.5 w-3.5"/> New prompt</Button></div><p className="font-semibold">{prompt}</p><div className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-white/5 py-8">{recording?<><div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20"><div className="h-4 w-4 animate-pulse rounded-full bg-red-500"/></div><p className="text-sm text-muted-foreground">{String(Math.floor(seconds/60)).padStart(2,'0')}:{String(seconds%60).padStart(2,'0')}</p><Button variant="destructive" size="sm" onClick={stopRecording}><Square className="h-4 w-4"/> Stop</Button></>:<><button onClick={startRecording} className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-brand text-white shadow-lg transition-transform hover:scale-105"><Mic className="h-6 w-6"/></button><p className="text-xs text-muted-foreground">{hasRecording?'Recorded — tap to re-record':'Tap to start speaking'}</p></>}</div>{hasRecording&&!recording&&<Button variant="gradient" className="w-full" onClick={handleSubmit} disabled={loading}><Sparkles className="h-4 w-4"/>{loading?'Analyzing...':'Get AI Feedback'}</Button>}</GlassCard>{feedback&&<GlassCard className="space-y-3 border-primary/20 bg-primary/5"><div className="flex items-center justify-between"><p className="font-semibold">Feedback</p><ScoreBadge score={feedback.score}/></div><p className="rounded-lg bg-white/5 p-3 text-sm italic text-muted-foreground">“{feedback.transcript}”</p><div className="grid gap-2 sm:grid-cols-3"><div><p className="text-xs font-medium text-primary">Fluency</p><p className="text-xs text-muted-foreground">{feedback.fluencyNotes}</p></div><div><p className="text-xs font-medium text-primary">Grammar</p><p className="text-xs text-muted-foreground">{feedback.grammarNotes}</p></div><div><p className="text-xs font-medium text-primary">Vocabulary</p><p className="text-xs text-muted-foreground">{feedback.vocabularyNotes}</p></div></div><div><p className="mb-1 text-xs font-medium text-amber-400">Next steps</p><ul className="space-y-1 text-sm text-muted-foreground">{feedback.suggestions.map((s,i)=><li key={i} className="flex gap-1.5"><TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400"/>{s}</li>)}</ul></div></GlassCard>}</div> }
+  async function submit() {
+    if (!answer.trim()) { toast.error('पहले answer लिखें।'); return; }
+    setLoading(true);
+    try {
+      const res = await authedFetch('/api/english-lab/writing-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, text: answer })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setFeedback(data.feedback);
+      await saveWritingSession(uid, prompt, answer, data.feedback);
+      toast.success('Feedback save ho gaya');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Feedback नहीं मिल पाया।');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return <div className="space-y-4">
+    <GlassCard className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-muted-foreground">आज का writing prompt</p>
+        <Button variant="ghost" size="sm" onClick={() => setPrompt(randomPrompt(WRITING_PROMPTS, prompt))}>
+          <Shuffle className="h-3.5 w-3.5" /> New prompt
+        </Button>
+      </div>
+      <p className="font-semibold">{prompt}</p>
+      <textarea value={answer} onChange={e => setAnswer(e.target.value)} className="min-h-48 w-full resize-y rounded-xl border border-white/10 bg-white/5 p-4 text-sm outline-none focus:border-primary/40" placeholder="Write your answer in English..." />
+      <Button variant="gradient" onClick={submit} disabled={loading}>
+        <Sparkles className="h-4 w-4" />{loading ? 'Evaluating...' : 'Get AI Feedback'}
+      </Button>
+    </GlassCard>
+
+    {feedback && <WritingFeedbackCard feedback={feedback} />}
+
+    <SessionHistory
+      title="Writing History · पिछली 5"
+      sessions={sessions.slice(0, 5).map(session => ({ id: session.id, createdAt: session.createdAt, prompt: session.prompt, score: session.feedback.score, onOpen: () => setFeedback(session.feedback) }))}
+    />
+  </div>;
+}
+
+function WritingFeedbackCard({ feedback }: { feedback: WritingFeedback }) {
+  return <GlassCard className="space-y-4">
+    <div className="flex items-center justify-between"><p className="font-semibold">Writing feedback</p><ScoreBadge score={feedback.score} /></div>
+    <div><p className="text-xs font-medium text-primary">Corrected answer</p><p className="mt-1 text-sm leading-6">{feedback.correctedText}</p></div>
+    <div><p className="text-sm font-medium">Strengths</p><ul className="mt-1 list-disc pl-5 text-sm text-muted-foreground">{feedback.strengths.map((x,i)=><li key={i}>{x}</li>)}</ul></div>
+    <div><p className="text-sm font-medium">Improvements</p><ul className="mt-1 list-disc pl-5 text-sm text-muted-foreground">{feedback.improvements.map((x,i)=><li key={i}>{x}</li>)}</ul></div>
+    {feedback.vocabularySuggestions?.length > 0 && <div><p className="text-sm font-medium">Vocabulary Suggestions · बेहतर words</p><ul className="mt-1 space-y-1 text-sm text-muted-foreground">{feedback.vocabularySuggestions.map((x,i)=><li key={i}>• {x}</li>)}</ul></div>}
+  </GlassCard>;
+}
+
+function SessionHistory({ title, sessions }: { title: string; sessions: { id: string; createdAt: number; prompt: string; score: number; onOpen: () => void }[] }) {
+  if (!sessions.length) return <GlassCard><p className="text-sm text-muted-foreground">Abhi koi session history nahi hai.</p></GlassCard>;
+  return <GlassCard className="space-y-3">
+    <div><p className="font-semibold">{title}</p><p className="text-xs text-muted-foreground">Kisi bhi session par tap karke purana feedback kholo.</p></div>
+    <div className="space-y-2">{sessions.map(session => <button key={session.id} type="button" onClick={session.onOpen} className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-left hover:border-primary/30">
+      <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{session.prompt}</p><p className="mt-1 text-[11px] text-muted-foreground">{new Date(session.createdAt).toLocaleDateString('en-IN')}</p></div>
+      <ScoreBadge score={session.score} />
+      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+    </button>)}</div>
+  </GlassCard>;
+}
+
+function SpeakingPractice({ uid, sessions }: { uid: string; sessions: SpeakingSession[] }) {
+  const [prompt, setPrompt] = useState(randomPrompt(SPEAKING_PROMPTS));
+  const [recording, setRecording] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+  const [hasRecording, setHasRecording] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState<SpeakingFeedback | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioBlobRef = useRef<Blob | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop();
+    mediaRecorderRef.current = null;
+    setRecording(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+        audioBlobRef.current = blob;
+        setHasRecording(true);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setRecording(true);
+      setSeconds(0);
+      setHasRecording(false);
+      setFeedback(null);
+      timerRef.current = setInterval(() => {
+        setSeconds(previous => {
+          const next = previous + 1;
+          if (next >= 90) {
+            window.setTimeout(() => {
+              if (mediaRecorderRef.current) stopRecording();
+              toast.info('90 seconds complete — recording auto-stop ho gayi.');
+            }, 0);
+            return 90;
+          }
+          return next;
+        });
+      }, 1000);
+    } catch {
+      toast.error('Microphone access needed.');
+    }
+  }
+
+  async function handleSubmit() {
+    const blob = audioBlobRef.current;
+    if (!blob) return;
+    setLoading(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(',')[1] || '');
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      if (base64.length > 3 * 1024 * 1024) {
+        toast.error('Recording chhoti karein — 3 MB se badi recording submit nahi ho sakti.');
+        return;
+      }
+      const res = await authedFetch('/api/english-lab/speaking-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, audio: base64, mimeType: blob.type })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setFeedback(data.feedback);
+      await saveSpeakingSession(uid, prompt, data.feedback);
+      toast.success('Feedback ready');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Recording analysis failed.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return <div className="space-y-4">
+    <GlassCard className="space-y-3">
+      <div className="flex items-start justify-between gap-2"><p className="text-sm font-medium text-muted-foreground">Today's prompt · आज का topic</p><Button variant="ghost" size="sm" onClick={() => setPrompt(randomPrompt(SPEAKING_PROMPTS, prompt))} disabled={recording}><Shuffle className="h-3.5 w-3.5" /> New prompt</Button></div>
+      <p className="font-semibold">{prompt}</p>
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-white/5 py-8">
+        {recording ? <>
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20"><div className="h-4 w-4 animate-pulse rounded-full bg-red-500" /></div>
+          <p className="text-sm font-mono text-muted-foreground">{String(Math.floor(seconds / 60)).padStart(2, '0')}:{String(seconds % 60).padStart(2, '0')} / 01:30</p>
+          <p className="text-[11px] text-muted-foreground">Maximum 90 seconds</p>
+          <Button variant="destructive" size="sm" onClick={stopRecording}><Square className="h-4 w-4" /> Stop</Button>
+        </> : <>
+          <button onClick={startRecording} className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-brand text-white shadow-lg transition-transform hover:scale-105"><Mic className="h-6 w-6" /></button>
+          <p className="text-xs text-muted-foreground">{hasRecording ? 'Recorded — tap to re-record' : 'Tap to start speaking · 90 sec max'}</p>
+        </>}
+      </div>
+      {hasRecording && !recording && <Button variant="gradient" className="w-full" onClick={handleSubmit} disabled={loading}><Sparkles className="h-4 w-4" />{loading ? 'Analyzing...' : 'Get AI Feedback'}</Button>}
+    </GlassCard>
+
+    {feedback && <GlassCard className="space-y-3 border-primary/20 bg-primary/5">
+      <div className="flex items-center justify-between"><p className="font-semibold">Speaking feedback</p><ScoreBadge score={feedback.score} /></div>
+      <p className="rounded-lg bg-white/5 p-3 text-sm italic text-muted-foreground">“{feedback.transcript}”</p>
+      <div className="grid gap-2 sm:grid-cols-3"><div><p className="text-xs font-medium text-primary">Fluency</p><p className="text-xs text-muted-foreground">{feedback.fluencyNotes}</p></div><div><p className="text-xs font-medium text-primary">Grammar</p><p className="text-xs text-muted-foreground">{feedback.grammarNotes}</p></div><div><p className="text-xs font-medium text-primary">Vocabulary</p><p className="text-xs text-muted-foreground">{feedback.vocabularyNotes}</p></div></div>
+      <div><p className="mb-1 text-xs font-medium text-amber-400">Next steps</p><ul className="space-y-1 text-sm text-muted-foreground">{feedback.suggestions.map((s,i)=><li key={i} className="flex gap-1.5"><TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />{s}</li>)}</ul></div>
+    </GlassCard>}
+
+    <SessionHistory
+      title="Speaking History · पिछली 5"
+      sessions={sessions.slice(0, 5).map(session => ({ id: session.id, createdAt: session.createdAt, prompt: session.prompt, score: session.feedback.score, onOpen: () => setFeedback(session.feedback) }))}
+    />
+  </div>;
+}
 
 const TABS: { id: Tab; label: string; icon: typeof Languages }[] = [{id:'overview',label:'Home',icon:LayoutGrid},{id:'vocabulary',label:'Vocabulary',icon:BookOpen},{id:'grammar',label:'Grammar',icon:SpellCheck2},{id:'writing',label:'Writing',icon:PenTool},{id:'speaking',label:'Speaking',icon:Mic},{id:'tools',label:'Tools',icon:Wand2}];
-export default function EnglishLabPage(){const {user}=useAuth();const[tab,setTab]=useState<Tab>('overview');const[writingSessions,setWritingSessions]=useState<WritingSession[]>([]);const[speakingSessions,setSpeakingSessions]=useState<SpeakingSession[]>([]);const[words,setWords]=useState<VocabWord[]>([]);useEffect(()=>{if(!user)return;const a=subscribeWritingSessions(user.uid,setWritingSessions);const b=subscribeSpeakingSessions(user.uid,setSpeakingSessions);const c=subscribeVocabulary(setWords);return()=>{a();b();c();};},[user]);const wordOfDay=useMemo(()=>words.length?words[Math.floor(Date.now()/(1000*60*60*24))%words.length]:null,[words]);if(!user)return <GlassCard><p className="text-sm text-muted-foreground">Please sign in to use the English Lab.</p></GlassCard>;return <div className="space-y-5 animate-fade-in"><div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">StudySphere · SSC + General English</p><h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight"><Languages className="h-6 w-6 text-primary"/> English Lab</h1><p className="text-sm text-muted-foreground">एक जगह सीखें, practice करें, बोलें और improve करें।</p></div><Link href="/dashboard/english-lab/master-library"><Button variant="gradient"><GraduationCap className="h-4 w-4"/> Master Library</Button></Link></div><div className="overflow-x-auto pb-1 scrollbar-hide"><div className="flex w-fit gap-1.5">{TABS.map(t=>{const Icon=t.icon;return <button key={t.id} onClick={()=>setTab(t.id)} className={cn('flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',tab===t.id?'border-primary bg-primary/15 text-primary':'border-white/10 text-muted-foreground')}><Icon className="h-4 w-4"/>{t.label}</button>})}</div></div>{tab==='overview'&&<OverviewTab writingSessions={writingSessions} speakingSessions={speakingSessions} wordOfDay={wordOfDay} onNavigate={setTab}/>} {tab==='vocabulary'&&<VocabularyTab uid={user.uid} words={words} wordOfDay={wordOfDay}/>} {tab==='grammar'&&<GrammarTab/>} {tab==='writing'&&<WritingPractice uid={user.uid} sessions={writingSessions}/>} {tab==='speaking'&&<SpeakingPractice uid={user.uid}/>} {tab==='tools'&&<QuickToolsTab/>}</div>;}
+export default function EnglishLabPage(){const {user}=useAuth();const[tab,setTab]=useState<Tab>('overview');const[writingSessions,setWritingSessions]=useState<WritingSession[]>([]);const[speakingSessions,setSpeakingSessions]=useState<SpeakingSession[]>([]);const[words,setWords]=useState<VocabWord[]>([]);useEffect(()=>{if(!user)return;const a=subscribeWritingSessions(user.uid,setWritingSessions);const b=subscribeSpeakingSessions(user.uid,setSpeakingSessions);const c=subscribeVocabulary(setWords);return()=>{a();b();c();};},[user]);const wordOfDay=useMemo(()=>words.length?words[Math.floor(Date.now()/(1000*60*60*24))%words.length]:null,[words]);if(!user)return <GlassCard><p className="text-sm text-muted-foreground">Please sign in to use the English Lab.</p></GlassCard>;return <div className="space-y-5 animate-fade-in"><div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">StudySphere · SSC + General English</p><h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight"><Languages className="h-6 w-6 text-primary"/> English Lab</h1><p className="text-sm text-muted-foreground">एक जगह सीखें, practice करें, बोलें और improve करें।</p></div><Link href="/dashboard/english-lab/library"><Button variant="gradient"><GraduationCap className="h-4 w-4"/> Library</Button></Link></div><div className="overflow-x-auto pb-1 scrollbar-hide"><div className="flex w-fit gap-1.5">{TABS.map(t=>{const Icon=t.icon;return <button key={t.id} onClick={()=>setTab(t.id)} className={cn('flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',tab===t.id?'border-primary bg-primary/15 text-primary':'border-white/10 text-muted-foreground')}><Icon className="h-4 w-4"/>{t.label}</button>})}</div></div>{tab==='overview'&&<OverviewTab writingSessions={writingSessions} speakingSessions={speakingSessions} wordOfDay={wordOfDay} onNavigate={setTab}/>} {tab==='vocabulary'&&<VocabularyTab uid={user.uid} words={words} wordOfDay={wordOfDay}/>} {tab==='grammar'&&<GrammarTab/>} {tab==='writing'&&<WritingPractice uid={user.uid} sessions={writingSessions}/>} {tab==='speaking'&&<SpeakingPractice uid={user.uid} sessions={speakingSessions}/>} {tab==='tools'&&<QuickToolsTab/>}</div>;}

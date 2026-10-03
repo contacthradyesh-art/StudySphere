@@ -22,7 +22,7 @@ export interface SpeakingFeedback {
   transcript: string;
   fluencyNotes: string;
   grammarNotes: string;
-  vocabularyNotes: string[];
+  vocabularyNotes: string;
   suggestions: string[];
 }
 

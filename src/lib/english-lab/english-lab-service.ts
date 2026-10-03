@@ -1,4 +1,4 @@
-import { addDoc, collection, onSnapshot, orderBy, query, limit } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { COLLECTIONS } from '@/lib/firestore/schema';
 import { awardXp } from '@/lib/gamification/xp-service';
@@ -15,14 +15,14 @@ function speakingCol(uid: string) {
 }
 
 export function subscribeWritingSessions(uid: string, cb: (sessions: WritingSession[]) => void) {
-  const q = query(writingCol(uid), orderBy('createdAt', 'desc'), limit(20));
+  const q = query(writingCol(uid), orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snap) => {
     cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WritingSession));
   });
 }
 
 export function subscribeSpeakingSessions(uid: string, cb: (sessions: SpeakingSession[]) => void) {
-  const q = query(speakingCol(uid), orderBy('createdAt', 'desc'), limit(20));
+  const q = query(speakingCol(uid), orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snap) => {
     cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SpeakingSession));
   });
