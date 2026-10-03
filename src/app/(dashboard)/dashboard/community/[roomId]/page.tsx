@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { useParams } from 'next/navigation';
-import { Clock3, Play, Users, Radio, Square, LogOut, Send, Flag, UserPlus, UserMinus, ArrowLeft, MessageCircle, Video, MicOff, ShieldCheck, Coffee, ChevronRight, Sparkles } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { Clock3, Play, Users, Radio, Square, Send, Flag, UserPlus, UserMinus, ArrowLeft, MessageCircle, Video, MicOff, ShieldCheck, Coffee, ChevronRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared/glass-card';
@@ -31,6 +31,7 @@ const STALE_MS = 90_000;
 
 export default function StudyRoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
+  const router = useRouter();
   const { user } = useAuth();
   const [room, setRoom] = useState<StudyRoom | null>(null);
   const [roomLoading, setRoomLoading] = useState(true);
@@ -44,6 +45,11 @@ export default function StudyRoomPage() {
   const [remaining, setRemaining] = useState(0);
   const [following, setFollowing] = useState<Record<string, boolean>>({});
   const [roomReady, setRoomReady] = useState(false);
+
+  function goBack() {
+    if (window.history.length > 1) router.back();
+    else router.replace('/dashboard/community');
+  }
 
   const observedSessionRef = useRef<{ id: string; startedAt: number; endedAt: number } | null>(null);
   const recordedSessionIdsRef = useRef<Set<string>>(new Set());
@@ -213,7 +219,7 @@ export default function StudyRoomPage() {
   }
 
   if (roomError || !room) {
-    return <GlassCard className="mx-auto mt-8 max-w-2xl text-center"><p className="text-lg font-bold">Room not found / रूम नहीं मिला</p><p className="mt-2 text-sm text-muted-foreground">This study room may have been deleted or is unavailable.</p><Button className="mt-5" variant="outline" onClick={() => window.location.href = '/dashboard/community'}><ArrowLeft className="h-4 w-4" /> Back / वापस</Button></GlassCard>;
+    return <GlassCard className="mx-auto mt-8 max-w-2xl text-center"><p className="text-lg font-bold">Room not found / रूम नहीं मिला</p><p className="mt-2 text-sm text-muted-foreground">This study room may have been deleted or is unavailable.</p><Button className="mt-5" variant="outline" onClick={goBack}><ArrowLeft className="h-4 w-4" /> Back / वापस</Button></GlassCard>;
   }
 
   if (!room.active) {
@@ -230,60 +236,60 @@ export default function StudyRoomPage() {
   const participantCount = visibleMembers.length || room.participantCount || 0;
 
   return (
-    <div className="min-h-full bg-[#0A0A0F] text-white animate-fade-in">
+    <div className="min-h-full bg-background text-foreground animate-fade-in">
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute left-[18%] top-10 h-80 w-80 rounded-full bg-[#8B5CF6]/10 blur-[120px]" />
-        <div className="absolute right-[-12%] top-[35%] h-96 w-96 rounded-full bg-[#EC4899]/8 blur-[130px]" />
+        <div className="absolute left-[18%] top-10 h-80 w-80 rounded-full bg-primary/10 blur-[120px]" />
+        <div className="absolute right-[-12%] top-[35%] h-96 w-96 rounded-full bg-pink-500/10 blur-[130px]" />
       </div>
 
       <main className="mx-auto w-full max-w-[980px] px-4 pb-28 pt-3 sm:px-6 lg:px-8">
-        <header className="sticky top-0 z-20 -mx-4 mb-5 border-b border-white/[0.05] bg-[#0A0A0F]/85 px-4 pb-4 pt-2 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <header className="sticky top-0 z-20 -mx-4 mb-5 border-b border-border/60 bg-background/90 px-4 pb-4 pt-2 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-white/35">
-              <span>Community</span><ChevronRight className="h-3 w-3 text-white/20" /><span className="text-white/60">Study Together</span>
+            <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
+              <span>Community</span><ChevronRight className="h-3 w-3 text-muted-foreground/50" /><span className="text-foreground/70">Study Together</span>
             </div>
-            <button type="button" onClick={() => window.location.href='/dashboard/community'} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/65 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white">
-              <LogOut className="h-3.5 w-3.5" /> बाहर निकलें
+            <button type="button" onClick={goBack} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:border-primary/30 hover:bg-muted hover:text-foreground">
+              <ArrowLeft className="h-3.5 w-3.5" /> वापस
             </button>
           </div>
           <div className="mt-3 space-y-1">
-            <h1 className="text-[27px] font-black leading-[1.05] tracking-[-0.03em]">Live Study Room<span className="mt-1 block text-[14px] font-medium tracking-normal text-white/40">लाइव स्टडी रूम</span></h1>
+            <h1 className="text-[27px] font-black leading-[1.05] tracking-[-0.03em]">Live Study Room<span className="mt-1 block text-[14px] font-medium tracking-normal text-muted-foreground">लाइव स्टडी रूम</span></h1>
             <div className="flex items-center gap-2.5 pt-1.5">
-              <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#8B5CF6] to-[#EC4899] p-[1.5px]"><div className="grid h-full w-full place-items-center rounded-full bg-[#1A1A20] text-[10px] font-bold">{hostName.slice(0,1).toUpperCase()}</div></div>
-              <span className="truncate text-[13px] font-medium text-white/80">{roomTitle}</span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-[#8B5CF6]/20 bg-[#8B5CF6]/15 px-2 py-0.5 text-[9px] font-bold tracking-wide text-[#A78BFA]"><ShieldCheck className="h-2.5 w-2.5" /> HOSTED</span>
+              <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-pink-500 p-[1.5px]"><div className="grid h-full w-full place-items-center rounded-full bg-card text-[10px] font-bold">{hostName.slice(0,1).toUpperCase()}</div></div>
+              <span className="truncate text-[13px] font-medium text-foreground/80">{roomTitle}</span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[9px] font-bold tracking-wide text-primary"><ShieldCheck className="h-2.5 w-2.5" /> HOSTED</span>
             </div>
           </div>
         </header>
 
         <div className="space-y-4">
-          <section className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-gradient-to-b from-white/[0.08] to-white/[0.025] shadow-[0_20px_80px_rgba(0,0,0,0.45),0_0_70px_rgba(139,92,246,0.10)] backdrop-blur-2xl">
+          <section className="relative overflow-hidden rounded-[28px] border border-border bg-gradient-to-b from-card to-background shadow-[0_20px_80px_rgba(0,0,0,0.14),0_0_70px_rgba(139,92,246,0.10)] dark:shadow-[0_20px_80px_rgba(0,0,0,0.45),0_0_70px_rgba(139,92,246,0.10)] backdrop-blur-2xl">
             <div className="h-px w-full bg-gradient-to-r from-transparent via-white/15 to-transparent" />
             <div className="p-5 sm:p-7">
               <div className="mb-5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/[0.05]"><Clock3 className="h-4 w-4 text-white/70" /></div>
-                  <div><div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">Shared Pomodoro</div><div className="text-[11px] text-white/30">साझा पोमोडोरो</div></div>
+                  <div className="grid h-8 w-8 place-items-center rounded-full border border-border bg-muted/70"><Clock3 className="h-4 w-4 text-muted-foreground" /></div>
+                  <div><div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Shared Pomodoro</div><div className="text-[11px] text-muted-foreground/75">साझा पोमोडोरो</div></div>
                 </div>
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-[#10B981]/15 bg-[#10B981]/10 px-2.5 py-1"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#10B981]" /><span className="text-[10px] font-bold tracking-wide text-[#6EE7B7]">LIVE</span></div>
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /><span className="text-[10px] font-bold tracking-wide text-emerald-600 dark:text-emerald-300">LIVE</span></div>
               </div>
 
               <div className="relative flex flex-col items-center py-1">
                 <div className="absolute left-1/2 top-1/2 h-28 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-[#8B5CF6]/35 to-[#EC4899]/25 blur-[45px]" />
                 <div className="relative text-center">
-                  <div className="text-[68px] font-black leading-none tracking-[-0.05em] tabular-nums text-white sm:text-[78px]" style={{ textShadow:'0 0 40px rgba(139,92,246,0.35)' }}>{active ? formatMs(remaining) : '25:00'}</div>
-                  <div className="mt-3 flex items-center justify-center gap-2 text-[12px] font-medium tracking-wide text-white/45"><Sparkles className="h-3 w-3 text-[#A78BFA]" />{active ? 'Everyone is focusing together • सभी साथ में फोकस कर रहे हैं' : 'Start a 25-min room session • शुरू करें'}</div>
+                  <div className="text-[68px] font-black leading-none tracking-[-0.05em] tabular-nums text-foreground sm:text-[78px]" style={{ textShadow:'0 0 40px rgba(139,92,246,0.28)' }}>{active ? formatMs(remaining) : '25:00'}</div>
+                  <div className="mt-3 flex items-center justify-center gap-2 text-[12px] font-medium tracking-wide text-muted-foreground"><Sparkles className="h-3 w-3 text-primary" />{active ? 'Everyone is focusing together • सभी साथ में फोकस कर रहे हैं' : 'Start a 25-min room session • शुरू करें'}</div>
                 </div>
               </div>
 
               <div className="my-5 flex justify-center gap-1.5">{[0,1,2,3].map((n) => <div key={n} className={`h-1 rounded-full transition-all ${n===0 ? 'w-6 bg-white' : 'w-1 bg-white/15'}`} />)}</div>
 
               <div className="grid grid-cols-[1.4fr_0.9fr] gap-2.5">
-                <button type="button" onClick={beginFocus} disabled={!joined || active} className="flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-[13px] font-bold text-white shadow-[0_0_24px_rgba(139,92,246,0.35)] transition hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] disabled:cursor-not-allowed disabled:opacity-45"><span className="grid h-6 w-6 place-items-center rounded-full bg-white/20"><Play className="ml-0.5 h-3 w-3 fill-white" /></span>शुरू करें • Start 25 min</button>
-                <button type="button" onClick={breakNow} disabled={!joined} className="flex h-12 items-center justify-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] text-[12px] font-medium text-white/65 transition hover:bg-white/[0.09] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"><Coffee className="h-3.5 w-3.5" /> 5m break</button>
+                <button type="button" onClick={beginFocus} disabled={!joined || active} className="flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-primary to-pink-500 text-[13px] font-bold text-foreground shadow-[0_0_24px_rgba(139,92,246,0.25)] dark:shadow-[0_0_24px_rgba(139,92,246,0.35)] transition hover:shadow-[0_0_30px_rgba(139,92,246,0.45)] disabled:cursor-not-allowed disabled:opacity-45"><span className="grid h-6 w-6 place-items-center rounded-full bg-white/20"><Play className="ml-0.5 h-3 w-3 fill-white" /></span>शुरू करें • Start 25 min</button>
+                <button type="button" onClick={breakNow} disabled={!joined} className="flex h-12 items-center justify-center gap-1.5 rounded-full border border-border bg-muted/70 text-[12px] font-medium text-foreground/65 transition hover:bg-white/[0.09] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"><Coffee className="h-3.5 w-3.5" /> 5m break</button>
               </div>
             </div>
-            <div className="grid grid-cols-3 divide-x divide-white/[0.06] border-t border-white/[0.06] bg-black/20">
+            <div className="grid grid-cols-3 divide-x divide-border/70 border-t border-border/70 bg-background/35">
               <RoomStat label="Focus" value={active ? '1 active' : 'Ready'} />
               <RoomStat label="Streak" value="12 days" />
               <RoomStat label="Students" value={String(participantCount)} />
@@ -292,40 +298,40 @@ export default function StudyRoomPage() {
 
           <section className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <div className="flex items-center gap-2"><Users className="h-4 w-4 text-white/40" /><span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-white/45">Students Here</span><span className="text-[11px] text-white/25">• यहाँ छात्र</span></div>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#10B981]/15 bg-[#10B981]/10 px-2.5 py-1 text-[10px] font-semibold text-[#6EE7B7]"><span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" /> {participantCount} online</span>
+              <div className="flex items-center gap-2"><Users className="h-4 w-4 text-muted-foreground" /><span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Students Here</span><span className="text-[11px] text-muted-foreground/60">• यहाँ छात्र</span></div>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-300"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {participantCount} online</span>
             </div>
-            <div className="rounded-[20px] border border-white/[0.06] bg-white/[0.03] p-3.5 backdrop-blur-xl">
-              {visibleMembers.length === 0 ? <div className="py-5 text-center text-sm text-white/35">You are the first student here • आप पहले छात्र हैं</div> : <div className="space-y-2">{visibleMembers.map((m) => <div key={m.uid} className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.05] bg-white/[0.025] p-3">
-                <div className="flex min-w-0 items-center gap-3"><div className="relative"><div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-[#8B5CF6] to-[#EC4899] text-xs font-bold ring-1 ring-white/10">{(m.displayName?.[0] || 'S').toUpperCase()}</div><span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#14141A] bg-[#10B981]" /></div><div className="min-w-0"><div className="flex items-center gap-1.5"><p className="truncate text-[14px] font-semibold text-white">{m.displayName}</p>{m.uid === room.hostUid && <span className="rounded-full bg-[#8B5CF6]/15 px-1.5 py-0.5 text-[9px] font-bold text-[#A78BFA]">HOST</span>}</div><p className="mt-0.5 text-[11px] text-white/35"><span className="text-[#6EE7B7]">{m.status === 'studying' ? '● Focusing' : '● Online'}</span> • {m.status === 'studying' ? 'पढ़ रहा है' : 'available'}</p></div></div>
-                <div className="flex shrink-0 items-center gap-1">{user && m.uid !== user.uid && <><button type="button" title={following[m.uid] ? 'Disconnect' : 'Connect'} onClick={() => { const next = !following[m.uid]; setFollowing((state) => ({ ...state, [m.uid]: next })); void (next ? followStudent(user.uid, m.uid) : unfollowStudent(user.uid, m.uid)); }} className="grid h-8 w-8 place-items-center rounded-full text-white/45 transition hover:bg-white/[0.07] hover:text-white">{following[m.uid] ? <UserMinus className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}</button><button type="button" title="Report" onClick={() => void report(m.uid)} className="grid h-8 w-8 place-items-center rounded-full text-white/30 transition hover:bg-red-500/10 hover:text-red-300"><Flag className="h-3.5 w-3.5" /></button></>}</div>
+            <div className="rounded-[20px] border border-white/[0.06] bg-muted/45 p-3.5 backdrop-blur-xl">
+              {visibleMembers.length === 0 ? <div className="py-5 text-center text-sm text-muted-foreground/70">You are the first student here • आप पहले छात्र हैं</div> : <div className="space-y-2">{visibleMembers.map((m) => <div key={m.uid} className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/40 p-3">
+                <div className="flex min-w-0 items-center gap-3"><div className="relative"><div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-primary to-pink-500 text-xs font-bold ring-1 ring-border">{(m.displayName?.[0] || 'S').toUpperCase()}</div><span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-emerald-500" /></div><div className="min-w-0"><div className="flex items-center gap-1.5"><p className="truncate text-[14px] font-semibold text-foreground">{m.displayName}</p>{m.uid === room.hostUid && <span className="rounded-full bg-[#8B5CF6]/15 px-1.5 py-0.5 text-[9px] font-bold text-primary">HOST</span>}</div><p className="mt-0.5 text-[11px] text-muted-foreground/70"><span className="text-emerald-600 dark:text-emerald-300">{m.status === 'studying' ? '● Focusing' : '● Online'}</span> • {m.status === 'studying' ? 'पढ़ रहा है' : 'available'}</p></div></div>
+                <div className="flex shrink-0 items-center gap-1">{user && m.uid !== user.uid && <><button type="button" title={following[m.uid] ? 'Disconnect' : 'Connect'} onClick={() => { const next = !following[m.uid]; setFollowing((state) => ({ ...state, [m.uid]: next })); void (next ? followStudent(user.uid, m.uid) : unfollowStudent(user.uid, m.uid)); }} className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition hover:bg-white/[0.07] hover:text-foreground">{following[m.uid] ? <UserMinus className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}</button><button type="button" title="Report" onClick={() => void report(m.uid)} className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground/75 transition hover:bg-red-500/10 hover:text-red-500"><Flag className="h-3.5 w-3.5" /></button></>}</div>
               </div>)}</div>}
-              <div className="mt-3 flex items-center justify-between border-t border-white/[0.05] pt-3 text-[11px] text-white/30"><span><b className="text-white/60">{studying.length}</b> students focusing right now</span><span>{participantCount} online</span></div>
+              <div className="mt-3 flex items-center justify-between border-t border-border/70 pt-3 text-[11px] text-muted-foreground/75"><span><b className="text-foreground/70">{studying.length}</b> students focusing right now</span><span>{participantCount} online</span></div>
             </div>
           </section>
 
           <section className="space-y-3">
-            <div className="flex items-center gap-2 px-1"><MessageCircle className="h-4 w-4 text-white/40" /><span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-white/45">Room Chat</span><span className="text-[11px] text-white/25">• बातचीत</span></div>
-            <div className="overflow-hidden rounded-[20px] border border-white/[0.06] bg-white/[0.03] backdrop-blur-xl">
+            <div className="flex items-center gap-2 px-1"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Room Chat</span><span className="text-[11px] text-muted-foreground/60">• बातचीत</span></div>
+            <div className="overflow-hidden rounded-[20px] border border-white/[0.06] bg-muted/45 backdrop-blur-xl">
               <div className="min-h-[150px] space-y-3 p-4">
-                {messages.length === 0 ? <div className="grid min-h-[120px] place-items-center text-center text-sm text-white/35"><div><MessageCircle className="mx-auto mb-2 h-5 w-5 text-white/20" /><p>Welcome to the room! Say hello and start studying 🌿</p><p className="mt-1 text-[11px] text-white/25">नमस्ते कहें और पढ़ना शुरू करें</p></div></div> : messages.map((m) => <div key={m.id} className={m.uid === user?.uid ? 'ml-auto max-w-[88%]' : 'max-w-[88%]'}><div className={m.uid === user?.uid ? 'rounded-2xl rounded-tr-sm bg-[#8B5CF6]/15 px-3.5 py-2.5' : 'rounded-2xl rounded-tl-sm border border-white/[0.05] bg-white/[0.06] px-3.5 py-2.5'}><p className="text-[11px] font-semibold text-[#A78BFA]">{m.displayName}</p><p className="mt-1 break-words text-[13px] leading-[1.45] text-white/80">{m.text}</p></div><p className="mt-1 px-1 text-[9px] text-white/25">{m.uid === user?.uid ? 'You' : 'Student'}</p></div>)}
+                {messages.length === 0 ? <div className="grid min-h-[120px] place-items-center text-center text-sm text-muted-foreground/70"><div><MessageCircle className="mx-auto mb-2 h-5 w-5 text-muted-foreground/50" /><p>Welcome to the room! Say hello and start studying 🌿</p><p className="mt-1 text-[11px] text-muted-foreground/60">नमस्ते कहें और पढ़ना शुरू करें</p></div></div> : messages.map((m) => <div key={m.id} className={m.uid === user?.uid ? 'ml-auto max-w-[88%]' : 'max-w-[88%]'}><div className={m.uid === user?.uid ? 'rounded-2xl rounded-tr-sm bg-[#8B5CF6]/15 px-3.5 py-2.5' : 'rounded-2xl rounded-tl-sm border border-border/70 bg-muted px-3.5 py-2.5'}><p className="text-[11px] font-semibold text-primary">{m.displayName}</p><p className="mt-1 break-words text-[13px] leading-[1.45] text-foreground/80">{m.text}</p></div><p className="mt-1 px-1 text-[9px] text-muted-foreground/60">{m.uid === user?.uid ? 'You' : 'Student'}</p></div>)}
               </div>
-              <form onSubmit={(e) => { e.preventDefault(); void sendMessage(); }} className="border-t border-white/[0.06] bg-black/20 p-2.5">
-                <div className="flex items-center gap-2"><input value={message} maxLength={500} onChange={(e) => setMessage(e.target.value)} placeholder="Say hello and start studying..." className="h-[42px] min-w-0 flex-1 rounded-full border border-white/[0.08] bg-white/[0.06] px-4 text-[13px] text-white outline-none placeholder:text-white/25 focus:border-[#8B5CF6]/40 focus:bg-white/[0.08]" /><button type="submit" disabled={!message.trim()} className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#8B5CF6] to-[#EC4899] text-white shadow-[0_0_16px_rgba(139,92,246,0.35)] disabled:opacity-40"><Send className="h-4 w-4" /></button></div>
+              <form onSubmit={(e) => { e.preventDefault(); void sendMessage(); }} className="border-t border-border/70 bg-background/35 p-2.5">
+                <div className="flex items-center gap-2"><input value={message} maxLength={500} onChange={(e) => setMessage(e.target.value)} placeholder="Say hello and start studying..." className="h-[42px] min-w-0 flex-1 rounded-full border border-white/[0.08] bg-muted px-4 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-[#8B5CF6]/40 focus:bg-white/[0.08]" /><button type="submit" disabled={!message.trim()} className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-pink-500 text-foreground shadow-[0_0_16px_rgba(139,92,246,0.25)] dark:shadow-[0_0_16px_rgba(139,92,246,0.35)] disabled:opacity-40"><Send className="h-4 w-4" /></button></div>
               </form>
             </div>
           </section>
 
           <section className="space-y-3">
-            <div className="flex items-center gap-2 px-1"><ShieldCheck className="h-4 w-4 text-white/40" /><span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-white/45">Study Rules</span><span className="text-[11px] text-white/25">• नियम</span></div>
-            <div className="grid gap-2.5 rounded-[20px] border border-white/[0.05] bg-white/[0.02] p-4 sm:grid-cols-3">
+            <div className="flex items-center gap-2 px-1"><ShieldCheck className="h-4 w-4 text-muted-foreground" /><span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Study Rules</span><span className="text-[11px] text-muted-foreground/60">• नियम</span></div>
+            <div className="grid gap-2.5 rounded-[20px] border border-border/70 bg-muted/30 p-4 sm:grid-cols-3">
               <Rule icon={Video} title="Keep your camera on while studying" hi="पढ़ते समय कैमरा ऑन रखें" />
               <Rule icon={MicOff} title="Mute mic unless asking" hi="पूछने तक माइक म्यूट रखें" />
               <Rule icon={Clock3} title="Respect Pomodoro breaks" hi="ब्रेक का सम्मान करें" />
             </div>
           </section>
 
-          <div className="flex items-center justify-center gap-2 py-2 text-[10px] text-white/20"><Radio className="h-3 w-3" /> StudySphere • focused learning room</div>
+          <div className="flex items-center justify-center gap-2 py-2 text-[10px] text-muted-foreground/50"><Radio className="h-3 w-3" /> StudySphere • focused learning room</div>
         </div>
       </main>
     </div>
@@ -333,11 +339,11 @@ export default function StudyRoomPage() {
 }
 
 function RoomStat({ label, value }: { label: string; value: string }) {
-  return <div className="py-3 text-center"><div className="text-[9px] font-medium uppercase tracking-widest text-white/25">{label}</div><div className="mt-0.5 text-[12px] font-semibold text-white/70">{value}</div></div>;
+  return <div className="py-3 text-center"><div className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground/60">{label}</div><div className="mt-0.5 text-[12px] font-semibold text-muted-foreground">{value}</div></div>;
 }
 
 function Rule({ icon: Icon, title, hi }: { icon: LucideIcon; title: string; hi: string }) {
-  return <div className="flex gap-3 rounded-2xl border border-white/[0.04] bg-white/[0.02] p-3"><div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/[0.06] bg-white/[0.05]"><Icon className="h-3.5 w-3.5 text-white/50" /></div><div><div className="text-[12px] font-medium leading-[1.4] text-white/75">{title}</div><div className="mt-0.5 text-[10px] text-white/30">{hi}</div></div></div>;
+  return <div className="flex gap-3 rounded-2xl border border-border/60 bg-muted/30 p-3"><div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/[0.06] bg-muted/70"><Icon className="h-3.5 w-3.5 text-foreground/50" /></div><div><div className="text-[12px] font-medium leading-[1.4] text-foreground/75">{title}</div><div className="mt-0.5 text-[10px] text-muted-foreground/75">{hi}</div></div></div>;
 }
 function profileFor(user: { uid: string; displayName?: string | null; photoURL?: string | null }) {
   return { uid: user.uid, displayName: user.displayName || 'Student', photoURL: user.photoURL || null, state: null, exam: null, subjects: [], isOnline: true, lastSeenAt: null };
