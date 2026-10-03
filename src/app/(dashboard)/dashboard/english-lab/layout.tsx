@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Flame, Sparkles, Mic2, PenTool, BarChart3 } from 'lucide-react';
 import { collection, onSnapshot } from 'firebase/firestore';
