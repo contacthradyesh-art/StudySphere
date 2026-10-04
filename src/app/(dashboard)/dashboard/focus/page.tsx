@@ -225,17 +225,19 @@ export default function FocusShieldPage() {
       ? packagesForSettings({ ...settings, youtubeMode: 'block' })
       : packages;
 
-    if (blockList.length === 0 && (!bridge || effectivePackages.length === 0)) {
+    const youtubeStudyOnly = settings.youtubeMode === 'study' && Boolean(bridge) && !legacyStudyFallback;
+    if (blockList.length === 0 && effectivePackages.length === 0 && !youtubeStudyOnly) {
       toast.error('Select at least one app or site to block / कम से कम एक ऐप या साइट चुनें');
       return;
     }
 
     const end = Date.now() + settings.focusDurationMinutes * 60 * 1000;
-    if (bridge && effectivePackages.length > 0 && !startNativeShield(end, settings)) {
+    if (bridge && (effectivePackages.length > 0 || youtubeStudyOnly) && !startNativeShield(end, settings)) {
       toast.error('Android shield could not start / Android shield शुरू नहीं हो पाया');
       return;
     }
-    startSession(settings.focusDurationMinutes, blockList.length + effectivePackages.length);
+    const protectedCount = blockList.length + effectivePackages.length + (youtubeStudyOnly ? 1 : 0);
+    startSession(settings.focusDurationMinutes, protectedCount);
     broadcastFocusStart(blockList, end, settings.disableNotifications);
     toast.success('Focus Shield activated / फोकस शील्ड चालू');
   }

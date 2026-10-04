@@ -169,14 +169,16 @@ public class MainActivity extends BridgeActivity {
 
             try {
                 JSONObject youtube = new JSONObject(cleanYoutube);
+                boolean youtubeStudy = "study".equals(youtube.optString("mode", "block"));
+                boolean sessionHasProtection = clean.length() > 0 || youtubeStudy;
                 getSharedPreferences(PREFS, MODE_PRIVATE).edit()
-                    .putBoolean("active", clean.length() > 0)
+                    .putBoolean("active", sessionHasProtection)
                     .putLong("endsAt", Math.min(endsAtMillis, maxEnd))
                     .putString("packages", clean.toString())
                     .putString(KEY_YOUTUBE_MODE, youtube.optString("mode", "block"))
                     .putString(KEY_YOUTUBE_CHANNELS, youtube.optJSONArray("channels").toString())
                     .apply();
-                return clean.length() > 0;
+                return sessionHasProtection;
             } catch (Exception ignored) {
                 return false;
             }
