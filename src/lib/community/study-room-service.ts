@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   writeBatch,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -193,6 +194,21 @@ export async function sendRoomMessage(roomId: string, profile: CommunityProfile,
     createdAt: serverTimestamp(),
   });
   await setDoc(roomDoc(roomId), { updatedAt: serverTimestamp() }, { merge: true });
+}
+
+export async function deleteRoomMessage(roomId: string, messageId: string) {
+  await deleteDoc(doc(db, ROOT, roomId, 'messages', messageId));
+}
+
+export async function clearRoomChat(roomId: string) {
+  while (true) {
+    const snap = await getDocs(query(messagesCol(roomId), limit(400)));
+    if (snap.empty) return;
+    const batch = writeBatch(db);
+    snap.docs.forEach((messageDoc) => batch.delete(messageDoc.ref));
+    await batch.commit();
+    if (snap.size < 400) return;
+  }
 }
 
 export async function reportRoomUser(roomId: string, reporterUid: string, reportedUid: string, reason: string) {
