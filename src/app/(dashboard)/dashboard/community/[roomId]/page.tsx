@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import { Clock3, Play, Users, Radio, Square, Send, Flag, UserPlus, UserMinus, ArrowLeft, MessageCircle, Video, MicOff, ShieldCheck, Coffee, ChevronRight, Sparkles } from 'lucide-react';
+import { Clock3, Play, Users, Radio, Send, Flag, UserPlus, UserMinus, ArrowLeft, MessageCircle, Video, MicOff, ShieldCheck, Coffee, ChevronRight, Sparkles, MoreHorizontal, Trash2, Smile } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared/glass-card';
@@ -19,6 +19,7 @@ import {
   stopSharedFocus,
   subscribeRoomMessages,
   sendRoomMessage,
+  deleteRoomMessage,
   reportRoomUser,
   followStudent,
   unfollowStudent,
@@ -45,6 +46,7 @@ export default function StudyRoomPage() {
   const [remaining, setRemaining] = useState(0);
   const [following, setFollowing] = useState<Record<string, boolean>>({});
   const [roomReady, setRoomReady] = useState(false);
+  const [openMessageMenu, setOpenMessageMenu] = useState<string | null>(null);
 
   function goBack() {
     if (window.history.length > 1) router.back();
@@ -90,6 +92,17 @@ export default function StudyRoomPage() {
     if (!roomId || !joined || removed) return;
     return subscribeRoomMessages(roomId, setMessages);
   }, [roomId, joined, removed]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const cutoff = Date.now() - 30 * 60 * 1000;
+      setMessages((current) => {
+        const next = current.filter((item) => !item.createdAt || timestampMs(item.createdAt) > cutoff);
+        return next.length === current.length ? current : next;
+      });
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!activeEnds) { setRemaining(0); return; }
@@ -199,6 +212,18 @@ export default function StudyRoomPage() {
     try { await sendRoomMessage(roomId, profileFor(user), message); setMessage(''); }
     catch { toast.error('Message could not be sent / संदेश नहीं भेजा जा सका'); }
   }
+
+  async function removeMessage(messageId: string) {
+    if (!user || !roomId) return;
+    try {
+      await deleteRoomMessage(roomId, messageId);
+      setOpenMessageMenu(null);
+      toast.success('Message deleted • हट गया');
+    } catch {
+      toast.error('Message delete nahi ho paya');
+    }
+  }
+
 
   async function report(targetUid: string) {
     if (!user || targetUid === user.uid) return;
@@ -311,13 +336,66 @@ export default function StudyRoomPage() {
           </section>
 
           <section className="space-y-3">
-            <div className="flex items-center gap-2 px-1"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Room Chat</span><span className="text-[11px] text-muted-foreground/60">• बातचीत</span></div>
-            <div className="overflow-hidden rounded-[20px] border border-border bg-muted/45 backdrop-blur-xl">
-              <div className="min-h-[150px] space-y-3 p-4">
-                {messages.length === 0 ? <div className="grid min-h-[120px] place-items-center text-center text-sm text-muted-foreground/70"><div><MessageCircle className="mx-auto mb-2 h-5 w-5 text-muted-foreground/50" /><p>Welcome to the room! Say hello and start studying 🌿</p><p className="mt-1 text-[11px] text-muted-foreground/60">नमस्ते कहें और पढ़ना शुरू करें</p></div></div> : messages.map((m) => <div key={m.id} className={m.uid === user?.uid ? 'ml-auto max-w-[88%]' : 'max-w-[88%]'}><div className={m.uid === user?.uid ? 'rounded-2xl rounded-tr-sm bg-primary/10 px-3.5 py-2.5' : 'rounded-2xl rounded-tl-sm border border-border/70 bg-muted px-3.5 py-2.5'}><p className="text-[11px] font-semibold text-primary">{m.displayName}</p><p className="mt-1 break-words text-[13px] leading-[1.45] text-foreground/80">{m.text}</p></div><p className="mt-1 px-1 text-[9px] text-muted-foreground/60">{m.uid === user?.uid ? 'You' : 'Student'}</p></div>)}
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Room Chat</span><span className="text-[11px] text-muted-foreground/60">• बातचीत</span></div>
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" /> Live</div>
+            </div>
+            <div className="flex h-[520px] flex-col overflow-hidden rounded-[24px] border border-white/[0.06] bg-[#14141b]/95 shadow-[0_18px_45px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+              <div className="flex shrink-0 items-center justify-between border-b border-white/[0.05] px-4 py-3">
+                <div className="flex items-center gap-2 text-[11px] text-white/40"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />Realtime • live messages</div>
+                <span className="text-[10px] text-white/25">30m disappearing chat</span>
               </div>
-              <form onSubmit={(e) => { e.preventDefault(); void sendMessage(); }} className="border-t border-border/70 bg-background/35 p-2.5">
-                <div className="flex items-center gap-2"><input value={message} maxLength={500} onChange={(e) => setMessage(e.target.value)} placeholder="Say hello and start studying..." className="h-[42px] min-w-0 flex-1 rounded-full border border-border bg-muted px-4 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/40 focus:bg-muted/80" /><button type="submit" disabled={!message.trim()} className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-pink-500 text-foreground shadow-[0_0_16px_rgba(139,92,246,0.25)] dark:shadow-[0_0_16px_rgba(139,92,246,0.35)] disabled:opacity-40"><Send className="h-4 w-4" /></button></div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3.5 py-3.5 [scrollbar-width:thin]">
+                {messages.length === 0 ? (
+                  <div className="grid h-full min-h-[250px] place-items-center px-5 text-center text-sm text-white/30">
+                    <div>
+                      <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full border border-white/[0.06] bg-white/[0.03]"><MessageCircle className="h-5 w-5 text-white/25" /></div>
+                      <p className="text-[13px] text-white/45">No messages yet</p>
+                      <p className="mt-1 text-[11px] text-white/25">Be the first to say hello • सबसे पहले नमस्ते करो</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {messages.map((m) => {
+                      const mine = m.uid === user?.uid;
+                      const stamp = m.createdAt && typeof m.createdAt.toDate === 'function' ? m.createdAt.toDate() : null;
+                      const time = stamp ? stamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'now';
+                      return (
+                        <div key={m.id} className={mine ? 'group relative ml-auto flex max-w-[88%] justify-end' : 'group relative flex max-w-[88%]'}>
+                          <div className={mine ? 'w-fit min-w-[92px] rounded-[18px] rounded-br-[6px] border border-primary/20 bg-primary/10 px-3 py-2.5 shadow-[0_8px_24px_rgba(139,92,246,0.10)]' : 'w-fit min-w-[92px] rounded-[18px] rounded-bl-[6px] border border-white/[0.05] bg-white/[0.04] px-3 py-2.5'}>
+                            {!mine && <div className="mb-1 text-[10px] font-semibold text-primary/80">{m.displayName}</div>}
+                            <p className="break-words text-[13px] leading-[1.45] text-white/85">{m.text}</p>
+                            <div className="mt-1.5 flex items-center justify-end gap-1.5">
+                              <span className="text-[9px] text-white/25">{time}</span>
+                              {mine && <span className="text-[8px] font-semibold text-emerald-400/70">✓ LIVE</span>}
+                            </div>
+                          </div>
+                          {(mine || user?.uid === room.hostUid) && (
+                            <button type="button" onClick={() => setOpenMessageMenu((current) => current === m.id ? null : m.id)} className="absolute -right-1 -top-1 inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/[0.06] bg-[#1c1c24] text-white/25 opacity-0 transition group-hover:opacity-100 focus:opacity-100" aria-label="Message options"><MoreHorizontal className="h-3.5 w-3.5" /></button>
+                          )}
+                          {openMessageMenu === m.id && (
+                            <div className={mine ? 'absolute right-0 top-7 z-30 w-36 rounded-[14px] border border-white/[0.08] bg-[#1d1d25] p-1.5 shadow-[0_15px_40px_rgba(0,0,0,0.45)]' : 'absolute left-0 top-7 z-30 w-36 rounded-[14px] border border-white/[0.08] bg-[#1d1d25] p-1.5 shadow-[0_15px_40px_rgba(0,0,0,0.45)]'}>
+                              <button type="button" onClick={() => void removeMessage(m.id)} className="flex h-9 w-full items-center gap-2 rounded-[10px] px-2.5 text-left text-[11px] font-medium text-red-300 hover:bg-red-500/10"><Trash2 className="h-3.5 w-3.5" /> Delete • हटाएँ</button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={(e) => { e.preventDefault(); void sendMessage(); }} className="shrink-0 border-t border-white/[0.05] bg-black/10 p-2.5">
+                <div className="flex items-end gap-2 rounded-[22px] border border-white/[0.06] bg-white/[0.04] p-1.5 pl-3">
+                  <button type="button" onClick={() => setMessage((value) => value ? value + ' ✨' : '✨')} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white/30 hover:bg-white/[0.06] hover:text-white/60" aria-label="Add reaction"><Smile className="h-4 w-4" /></button>
+                  <textarea value={message} maxLength={500} rows={1} onChange={(e) => { setMessage(e.target.value); e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 96) + 'px'; }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} placeholder="Message the room… / रूम में लिखें" className="max-h-24 min-h-[38px] flex-1 resize-none bg-transparent py-2 text-[13px] leading-5 text-white outline-none placeholder:text-white/25" />
+                  <div className="flex shrink-0 flex-col items-end justify-end gap-1 pb-0.5">
+                    <span className="text-[9px] tabular-nums text-white/20">{message.length}/500</span>
+                    <button type="submit" disabled={!message.trim()} className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-primary to-pink-500 text-white shadow-[0_0_16px_rgba(139,92,246,0.30)] disabled:opacity-35"><Send className="h-3.5 w-3.5" /></button>
+                  </div>
+                </div>
+                <div className="mt-1.5 flex items-center justify-center gap-1.5 text-[9px] text-white/15"><Clock3 className="h-3 w-3" /> Older messages disappear after 30 minutes.</div>
               </form>
             </div>
           </section>
