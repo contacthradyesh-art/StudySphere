@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import { Clock3, Play, Users, Radio, Square, Send, Flag, UserPlus, UserMinus, ArrowLeft, MessageCircle, Video, MicOff, ShieldCheck, Coffee, ChevronRight, Sparkles } from 'lucide-react';
+import { Clock3, Play, Users, Radio, Square, Send, Flag, UserPlus, UserMinus, ArrowLeft, MessageCircle, Video, MicOff, ShieldCheck, Coffee, ChevronRight, Sparkles, MoreVertical, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared/glass-card';
@@ -19,6 +19,8 @@ import {
   stopSharedFocus,
   subscribeRoomMessages,
   sendRoomMessage,
+  deleteRoomMessage,
+  clearRoomChat,
   reportRoomUser,
   followStudent,
   unfollowStudent,
@@ -45,6 +47,14 @@ export default function StudyRoomPage() {
   const [remaining, setRemaining] = useState(0);
   const [following, setFollowing] = useState<Record<string, boolean>>({});
   const [roomReady, setRoomReady] = useState(false);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const [clearingChat, setClearingChat] = useState(false);
+  const [newMessageCount, setNewMessageCount] = useState(0);
+
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const chatNearBottomRef = useRef(true);
+  const previousMessageCountRef = useRef(0);
+  const forceChatScrollRef = useRef(false);
 
   function goBack() {
     if (window.history.length > 1) router.back();
@@ -194,10 +204,78 @@ export default function StudyRoomPage() {
     }
   }
 
+  function scrollChatToBottom(smooth = true) {
+    const element = chatScrollRef.current;
+    if (!element) return;
+    element.scrollTo({ top: element.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+    chatNearBottomRef.current = true;
+    setNewMessageCount(0);
+  }
+
+  function handleChatScroll() {
+    const element = chatScrollRef.current;
+    if (!element) return;
+    const nearBottom = element.scrollHeight - element.scrollTop - element.clientHeight <= 80;
+    chatNearBottomRef.current = nearBottom;
+    if (nearBottom) setNewMessageCount(0);
+  }
+
+  useEffect(() => {
+    const count = messages.length;
+    const previous = previousMessageCountRef.current;
+    const added = count - previous;
+    if (added > 0) {
+      const shouldScroll = previous === 0 || chatNearBottomRef.current || forceChatScrollRef.current;
+      if (shouldScroll) {
+        requestAnimationFrame(() => scrollChatToBottom(true));
+      } else {
+        setNewMessageCount((current) => current + added);
+      }
+    }
+    previousMessageCountRef.current = count;
+    forceChatScrollRef.current = false;
+  }, [messages]);
+
   async function sendMessage() {
     if (!user || !roomId || !message.trim() || removed) return;
-    try { await sendRoomMessage(roomId, profileFor(user), message); setMessage(''); }
-    catch { toast.error('Message could not be sent / संदेश नहीं भेजा जा सका'); }
+    forceChatScrollRef.current = true;
+    try {
+      await sendRoomMessage(roomId, profileFor(user), message);
+      setMessage('');
+    } catch {
+      forceChatScrollRef.current = false;
+      toast.error('Message send nahi ho paya / संदेश नहीं भेजा जा सका');
+    }
+  }
+
+  async function removeMessage(messageId: string) {
+    if (!roomId || deletingMessageId || clearingChat) return;
+    const confirmed = window.confirm('Ye message delete karein? / मैसेज हटाएं?');
+    if (!confirmed) return;
+    setDeletingMessageId(messageId);
+    try {
+      await deleteRoomMessage(roomId, messageId);
+      toast.success('Message delete ho gaya • मैसेज हट गया');
+    } catch {
+      toast.error('Message delete nahi ho paya • मैसेज नहीं हट सका');
+    } finally {
+      setDeletingMessageId(null);
+    }
+  }
+
+  async function handleClearChat() {
+    if (!roomId || clearingChat || deletingMessageId) return;
+    const confirmed = window.confirm('Poori chat saaf karein? / क्या पूरी चैट साफ करें?');
+    if (!confirmed) return;
+    setClearingChat(true);
+    try {
+      await clearRoomChat(roomId);
+      toast.success('Poori chat saaf ho gayi • चैट साफ हो गई');
+    } catch {
+      toast.error('Chat clear nahi ho payi • चैट साफ नहीं हो सकी');
+    } finally {
+      setClearingChat(false);
+    }
   }
 
   async function report(targetUid: string) {
@@ -311,13 +389,34 @@ export default function StudyRoomPage() {
           </section>
 
           <section className="space-y-3">
-            <div className="flex items-center gap-2 px-1"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Room Chat</span><span className="text-[11px] text-muted-foreground/60">• बातचीत</span></div>
+            <div className="flex items-center justify-between gap-3 px-1">
+              <div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Room Chat</span><span className="text-[11px] text-muted-foreground/60">• बातचीत</span></div>
+              {user?.uid === room.hostUid && <button type="button" onClick={() => void handleClearChat()} disabled={clearingChat || Boolean(deletingMessageId)} className="inline-flex items-center gap-1.5 rounded-full border border-destructive/20 bg-destructive/5 px-2.5 py-1.5 text-[10px] font-semibold text-destructive transition hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-45">{clearingChat ? 'साफ हो रहा है…' : 'पूरी चैट साफ करें'}</button>}
+            </div>
             <div className="overflow-hidden rounded-[20px] border border-border bg-muted/45 backdrop-blur-xl">
-              <div className="min-h-[150px] space-y-3 p-4">
-                {messages.length === 0 ? <div className="grid min-h-[120px] place-items-center text-center text-sm text-muted-foreground/70"><div><MessageCircle className="mx-auto mb-2 h-5 w-5 text-muted-foreground/50" /><p>Welcome to the room! Say hello and start studying 🌿</p><p className="mt-1 text-[11px] text-muted-foreground/60">नमस्ते कहें और पढ़ना शुरू करें</p></div></div> : messages.map((m) => <div key={m.id} className={m.uid === user?.uid ? 'ml-auto max-w-[88%]' : 'max-w-[88%]'}><div className={m.uid === user?.uid ? 'rounded-2xl rounded-tr-sm bg-primary/10 px-3.5 py-2.5' : 'rounded-2xl rounded-tl-sm border border-border/70 bg-muted px-3.5 py-2.5'}><p className="text-[11px] font-semibold text-primary">{m.displayName}</p><p className="mt-1 break-words text-[13px] leading-[1.45] text-foreground/80">{m.text}</p></div><p className="mt-1 px-1 text-[9px] text-muted-foreground/60">{m.uid === user?.uid ? 'You' : 'Student'}</p></div>)}
+              <div className="border-b border-border/70 bg-background/35 px-4 py-2.5 text-[10px] text-muted-foreground/70">Realtime • live messages • संदेश real-time में</div>
+              <div ref={chatScrollRef} onScroll={handleChatScroll} className="h-[55vh] max-h-[460px] min-h-[260px] overflow-y-auto overscroll-contain px-3.5 py-3.5 [scrollbar-width:thin]">
+                {messages.length === 0 ? <div className="grid h-full min-h-[120px] place-items-center text-center text-sm text-muted-foreground/70"><div><MessageCircle className="mx-auto mb-2 h-5 w-5 text-muted-foreground/50" /><p>Welcome to the room! Say hello and start studying 🌿</p><p className="mt-1 text-[11px] text-muted-foreground/60">नमस्ते कहें और पढ़ना शुरू करें</p></div></div> : <div className="space-y-3">
+                  {messages.map((m) => {
+                    const mine = m.uid === user?.uid;
+                    const time = formatMessageTime(m.createdAt);
+                    const canDelete = mine || user?.uid === room.hostUid;
+                    return <div key={m.id} className={mine ? 'group relative ml-auto max-w-[88%]' : 'group relative max-w-[88%]'}>
+                      <div className={mine ? 'rounded-2xl rounded-tr-sm bg-primary/10 px-3.5 py-2.5' : 'rounded-2xl rounded-tl-sm border border-border/70 bg-muted px-3.5 py-2.5'}>
+                        {!mine && <p className="text-[11px] font-semibold text-primary">{m.displayName}</p>}
+                        <p className={mine ? 'break-words text-[13px] leading-[1.45] text-foreground/85' : 'mt-1 break-words text-[13px] leading-[1.45] text-foreground/85'}>{m.text}</p>
+                        <div className="mt-1 flex items-center justify-end gap-1.5">
+                          <span className="text-[9px] text-muted-foreground/70">{time}</span>
+                          {canDelete && <button type="button" onClick={() => void removeMessage(m.id)} disabled={clearingChat || deletingMessageId === m.id} aria-label="Delete message" title="Delete message / मैसेज हटाएं" className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/55 transition hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"><MoreVertical className="h-3.5 w-3.5" /></button>}
+                        </div>
+                      </div>
+                    </div>;
+                  })}
+                </div>}
+                {newMessageCount > 0 && <button type="button" onClick={() => scrollChatToBottom(true)} className="sticky bottom-2 left-1/2 z-10 mx-auto mt-2 flex -translate-x-0 items-center gap-1.5 rounded-full border border-primary/20 bg-background/95 px-3 py-1.5 text-[10px] font-semibold text-primary shadow-lg backdrop-blur">↓ {newMessageCount} Naya message • नए संदेश</button>}
               </div>
               <form onSubmit={(e) => { e.preventDefault(); void sendMessage(); }} className="border-t border-border/70 bg-background/35 p-2.5">
-                <div className="flex items-center gap-2"><input value={message} maxLength={500} onChange={(e) => setMessage(e.target.value)} placeholder="Say hello and start studying..." className="h-[42px] min-w-0 flex-1 rounded-full border border-border bg-muted px-4 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/40 focus:bg-muted/80" /><button type="submit" disabled={!message.trim()} className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-pink-500 text-foreground shadow-[0_0_16px_rgba(139,92,246,0.25)] dark:shadow-[0_0_16px_rgba(139,92,246,0.35)] disabled:opacity-40"><Send className="h-4 w-4" /></button></div>
+                <div className="flex items-center gap-2"><input value={message} maxLength={500} onChange={(e) => setMessage(e.target.value)} placeholder="Say hello and start studying... / लिखना शुरू करें" className="h-[42px] min-w-0 flex-1 rounded-full border border-border bg-muted px-4 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/40 focus:bg-muted/80" /><button type="submit" disabled={!message.trim() || clearingChat || Boolean(deletingMessageId)} className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-pink-500 text-foreground shadow-[0_0_16px_rgba(139,92,246,0.25)] dark:shadow-[0_0_16px_rgba(139,92,246,0.35)] disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-4 w-4" /></button></div>
               </form>
             </div>
           </section>
@@ -355,3 +454,8 @@ function timestampMs(value: any) {
   return Number.isFinite(ms) ? ms : 0;
 }
 function formatMs(ms: number) { const total = Math.floor(Math.max(0, ms) / 1000); return `${String(Math.floor(total / 60)).padStart(2,'0')}:${String(total % 60).padStart(2,'0')}`; }
+
+function formatMessageTime(value: RoomMessage['createdAt']) {
+  if (!value || typeof value.toDate !== 'function') return '';
+  return value.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
