@@ -11,7 +11,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-/** Native interstitial shown when a distraction app is opened during a shield session. */
+/** Native interstitial shown when a distraction app or YouTube study rule is blocked. */
 public class FocusBlockedActivity extends Activity {
     private TextView message;
 
@@ -56,6 +56,16 @@ public class FocusBlockedActivity extends Activity {
     }
 
     private void refreshMessage() {
+        String reason = getIntent() == null ? "" : getIntent().getStringExtra("reason");
+        if ("shorts".equals(reason)) {
+            message.setText("Shorts are blocked in Study YouTube mode.\nशॉर्ट्स बंद हैं — पढ़ाई वाले वीडियो पर लौटें।");
+            return;
+        }
+        if ("channel".equals(reason)) {
+            message.setText("Ye channel study list mein nahi hai.\nयह चैनल स्टडी लिस्ट में नहीं है।");
+            return;
+        }
+
         SharedPreferences prefs = getSharedPreferences(FocusShieldAccessibilityService.PREFS, MODE_PRIVATE);
         long endsAt = prefs.getLong(FocusShieldAccessibilityService.KEY_ENDS_AT, 0);
         long minutes = Math.max(1, (endsAt - System.currentTimeMillis() + 59_999) / 60_000);
