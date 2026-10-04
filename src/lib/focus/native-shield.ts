@@ -44,7 +44,8 @@ interface ShieldBridge {
   openPermissionSettings?: () => void;
   setShieldActive?: (active: boolean) => void;
   getBridgeVersion?: () => number;
-  setShieldSession?: (endsAtMillis: number, packagesJson: string, youtubeJson: string) => boolean;
+  setShieldSession?: (endsAtMillis: number, packagesJson: string) => boolean;
+  setShieldSessionV3?: (endsAtMillis: number, packagesJson: string, youtubeJson: string) => boolean;
   getYoutubeDebug?: () => string;
 }
 
@@ -60,12 +61,11 @@ type ShieldSettings = Pick<FocusSettings, 'blockShorts' | 'blockReels' | 'blockF
 /** True only when the new 3-argument Android bridge is present. */
 export function supportsYoutubeStudyMode(): boolean {
   const bridge = getShieldBridge();
-  if (typeof bridge?.setShieldSession !== 'function') return false;
+  if (typeof bridge?.setShieldSessionV3 === 'function') return true;
   try {
-    const version = typeof bridge.getBridgeVersion === 'function' ? Number(bridge.getBridgeVersion()) : 0;
-    return version >= 3 || bridge.setShieldSession.length >= 3;
+    return typeof bridge?.getBridgeVersion === 'function' && Number(bridge.getBridgeVersion()) >= 3;
   } catch {
-    return bridge.setShieldSession.length >= 3;
+    return false;
   }
 }
 
@@ -98,25 +98,47 @@ function youtubeJsonForSettings(settings: ShieldSettings): string {
 }
 
 /** Start (or refresh) the native shield. Returns true when the Android side accepted it. */
-export function startNativeShield(endsAt: number, settings: ShieldSettings): boolean {
+export function startNativeShield(
+  endsAt: number,
+  settings: ShieldSettings,
+  onStudyFallback?: () => void
+): boolean {
   const bridge = getShieldBridge();
   if (!bridge) return false;
+
+  const legacySettings =
+    settings.youtubeMode === 'study'
+      ? { ...settings, youtubeMode: 'block' as const }
+      : settings;
+  const legacyPackages = JSON.stringify(packagesForSettings(legacySettings));
+
   try {
+    // New APK: use the explicitly named V3 bridge. If it throws, immediately
+    // fall back to the legacy 2-argument call so Focus Shield still starts.
     if (settings.youtubeMode === 'study' && supportsYoutubeStudyMode()) {
-      return Boolean(
-        bridge.setShieldSession?.(
-          endsAt,
-          JSON.stringify(packagesForSettings(settings)),
-          youtubeJsonForSettings(settings)
-        )
-      );
+      try {
+        const v3 = bridge.setShieldSessionV3;
+        if (!v3) throw new Error('V3 bridge unavailable');
+        return Boolean(
+          v3(
+            endsAt,
+            JSON.stringify(packagesForSettings(settings)),
+            youtubeJsonForSettings(settings)
+          )
+        );
+      } catch {
+        onStudyFallback?.();
+        try {
+          return Boolean(bridge.setShieldSession?.(endsAt, legacyPackages));
+        } catch {
+          return false;
+        }
+      }
     }
 
+    // Legacy APK (or block mode): ALWAYS call the old bridge with exactly 2 args.
     if (bridge.setShieldSession) {
-      // Old APKs only understand the 2-argument session API. In Study mode,
-      // deliberately send YouTube back into the full-block list.
-      const legacySettings = settings.youtubeMode === 'study' ? { ...settings, youtubeMode: 'block' as const } : settings;
-      return Boolean(bridge.setShieldSession(endsAt, JSON.stringify(packagesForSettings(legacySettings)), youtubeJsonForSettings(legacySettings)));
+      return Boolean(bridge.setShieldSession(endsAt, legacyPackages));
     }
 
     // Older APK: only the legacy on/off switch exists.
