@@ -50,6 +50,10 @@ export interface FocusSettings {
   blockShorts: boolean;
   blockReels: boolean;
   blockFacebookReels: boolean;
+  /** YouTube behavior during an Android Focus Shield session. */
+  youtubeMode: 'block' | 'study';
+  /** YouTube channel allowlist used only in study mode. Max 30 entries, 60 chars each. */
+  studyChannels: string[];
   customBlockList: string[];
   /** Android app ids (see FOCUS_APPS) blocked during a session, on top of the presets. */
   blockedApps?: string[];
@@ -63,6 +67,8 @@ export const DEFAULT_FOCUS_SETTINGS: Omit<FocusSettings, 'updatedAt'> = {
   blockShorts: true,
   blockReels: true,
   blockFacebookReels: true,
+  youtubeMode: 'block',
+  studyChannels: [],
   customBlockList: [],
   blockedApps: [],
   disableNotifications: true,

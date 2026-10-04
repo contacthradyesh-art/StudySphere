@@ -24,6 +24,9 @@ import org.json.JSONObject;
 public class MainActivity extends BridgeActivity {
     private static final String PREFS = "focus_shield";
     private static final String REMINDERS = "study_reminders";
+    private static final String KEY_YOUTUBE_MODE = "youtubeMode";
+    private static final String KEY_YOUTUBE_CHANNELS = "youtubeChannels";
+    private static final String KEY_YOUTUBE_DEBUG = "youtubeDebug";
     private static final int NOTIFICATION_PERMISSION_REQUEST = 7301;
 
     @Override
@@ -76,6 +79,23 @@ public class MainActivity extends BridgeActivity {
         alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending);
     }
 
+    private static String sanitizeYoutubeJson(String raw) throws Exception {
+        JSONObject input = new JSONObject(raw == null ? "{}" : raw);
+        String mode = "study".equals(input.optString("mode")) ? "study" : "block";
+        JSONArray cleanChannels = new JSONArray();
+        JSONArray channels = input.optJSONArray("channels");
+        if (channels != null) {
+            for (int i = 0; i < channels.length() && cleanChannels.length() < 30; i++) {
+                String channel = channels.optString(i, "").trim();
+                if (!channel.isEmpty()) cleanChannels.put(channel.substring(0, Math.min(60, channel.length())));
+            }
+        }
+        JSONObject clean = new JSONObject();
+        clean.put("mode", mode);
+        clean.put("channels", cleanChannels);
+        return clean.toString();
+    }
+
     private final class FocusShieldBridge {
         @JavascriptInterface
         public boolean isPermissionGranted() {
@@ -88,10 +108,10 @@ public class MainActivity extends BridgeActivity {
             startActivity(intent);
         }
 
-        /** Bridge version, so the web app can feature-detect the newer session API. */
+        /** Bridge version 3 adds YouTube study mode while keeping legacy methods. */
         @JavascriptInterface
         public int getBridgeVersion() {
-            return 2;
+            return 3;
         }
 
         /** Legacy call (old web builds). Capped so the shield can never stay on forever. */
@@ -100,18 +120,35 @@ public class MainActivity extends BridgeActivity {
             android.content.SharedPreferences.Editor edit = getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("active", active);
             if (active) edit.putLong("endsAt", System.currentTimeMillis() + 2L * 60 * 60 * 1000);
             else edit.putLong("endsAt", 0);
+            edit.putString(KEY_YOUTUBE_MODE, "block").putString(KEY_YOUTUBE_CHANNELS, "[]");
             edit.apply();
         }
 
-        /** Starts a timed shield for exactly the selected apps; it expires on its own at endsAtMillis. */
+        /** Legacy timed session API: YouTube is always full-blocked. */
         @JavascriptInterface
         public boolean setShieldSession(long endsAtMillis, String packagesJson) {
+            return setShieldSessionInternal(endsAtMillis, packagesJson, "{\"mode\":\"block\",\"channels\":[]}");
+        }
+
+        /** New timed session API with YouTube study configuration. */
+        @JavascriptInterface
+        public boolean setShieldSession(long endsAtMillis, String packagesJson, String youtubeJson) {
+            return setShieldSessionInternal(endsAtMillis, packagesJson, youtubeJson);
+        }
+
+        private boolean setShieldSessionInternal(long endsAtMillis, String packagesJson, String youtubeJson) {
             long now = System.currentTimeMillis();
             long maxEnd = now + 6L * 60 * 60 * 1000;
             if (endsAtMillis <= now) {
-                getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("active", false).putLong("endsAt", 0).apply();
+                getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                    .putBoolean("active", false)
+                    .putLong("endsAt", 0)
+                    .putString(KEY_YOUTUBE_MODE, "block")
+                    .putString(KEY_YOUTUBE_CHANNELS, "[]")
+                    .apply();
                 return false;
             }
+
             JSONArray clean = new JSONArray();
             try {
                 JSONArray input = new JSONArray(packagesJson == null ? "[]" : packagesJson);
@@ -122,12 +159,27 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception ignored) {
                 return false;
             }
-            getSharedPreferences(PREFS, MODE_PRIVATE).edit()
-                .putBoolean("active", clean.length() > 0)
-                .putLong("endsAt", Math.min(endsAtMillis, maxEnd))
-                .putString("packages", clean.toString())
-                .apply();
-            return clean.length() > 0;
+
+            final String cleanYoutube;
+            try {
+                cleanYoutube = sanitizeYoutubeJson(youtubeJson);
+            } catch (Exception ignored) {
+                return false;
+            }
+
+            try {
+                JSONObject youtube = new JSONObject(cleanYoutube);
+                getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                    .putBoolean("active", clean.length() > 0)
+                    .putLong("endsAt", Math.min(endsAtMillis, maxEnd))
+                    .putString("packages", clean.toString())
+                    .putString(KEY_YOUTUBE_MODE, youtube.optString("mode", "block"))
+                    .putString(KEY_YOUTUBE_CHANNELS, youtube.optJSONArray("channels").toString())
+                    .apply();
+                return clean.length() > 0;
+            } catch (Exception ignored) {
+                return false;
+            }
         }
 
         @JavascriptInterface
@@ -136,6 +188,16 @@ public class MainActivity extends BridgeActivity {
             long endsAt = prefs.getLong("endsAt", 0);
             boolean active = prefs.getBoolean("active", false) && endsAt > System.currentTimeMillis();
             return "{\"active\":" + active + ",\"endsAt\":" + endsAt + "}";
+        }
+
+        @JavascriptInterface
+        public String getYoutubeDebug() {
+            String raw = getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_YOUTUBE_DEBUG, "[]");
+            try {
+                return new JSONArray(raw).toString();
+            } catch (Exception ignored) {
+                return "[]";
+            }
         }
 
         @JavascriptInterface
