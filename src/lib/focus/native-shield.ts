@@ -113,10 +113,17 @@ export function startNativeShield(endsAt: number, settings: ShieldSettings): boo
     }
 
     if (bridge.setShieldSession) {
-      // Old APKs only understand the 2-argument session API. In Study mode,
-      // deliberately send YouTube back into the full-block list.
+      // Legacy APKs expose the old 2-argument method. Extra JS arguments are
+      // ignored by old WebView bridges, so Study mode deliberately sends the
+      // legacy/full-block package list on that path.
       const legacySettings = settings.youtubeMode === 'study' ? { ...settings, youtubeMode: 'block' as const } : settings;
-      return Boolean(bridge.setShieldSession(endsAt, JSON.stringify(packagesForSettings(legacySettings)), youtubeJsonForSettings(legacySettings)));
+      return Boolean(
+        bridge.setShieldSession(
+          endsAt,
+          JSON.stringify(packagesForSettings(legacySettings)),
+          youtubeJsonForSettings(legacySettings)
+        )
+      );
     }
 
     // Older APK: only the legacy on/off switch exists.
