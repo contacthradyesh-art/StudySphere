@@ -43,6 +43,7 @@ interface ShieldBridge {
   isPermissionGranted?: () => boolean;
   openPermissionSettings?: () => void;
   setShieldActive?: (active: boolean) => void;
+  getBridgeVersion?: () => number;
   setShieldSession?: (endsAtMillis: number, packagesJson: string, youtubeJson: string) => boolean;
   getYoutubeDebug?: () => string;
 }
@@ -59,7 +60,13 @@ type ShieldSettings = Pick<FocusSettings, 'blockShorts' | 'blockReels' | 'blockF
 /** True only when the new 3-argument Android bridge is present. */
 export function supportsYoutubeStudyMode(): boolean {
   const bridge = getShieldBridge();
-  return typeof bridge?.setShieldSession === 'function' && bridge.setShieldSession.length >= 3;
+  if (typeof bridge?.setShieldSession !== 'function') return false;
+  try {
+    const version = typeof bridge.getBridgeVersion === 'function' ? Number(bridge.getBridgeVersion()) : 0;
+    return version >= 3 || bridge.setShieldSession.length >= 3;
+  } catch {
+    return bridge.setShieldSession.length >= 3;
+  }
 }
 
 /** Android package names to block for these settings (presets + chosen apps). */
