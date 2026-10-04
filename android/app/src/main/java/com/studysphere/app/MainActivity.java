@@ -130,9 +130,11 @@ public class MainActivity extends BridgeActivity {
             return setShieldSessionInternal(endsAtMillis, packagesJson, "{\"mode\":\"block\",\"channels\":[]}");
         }
 
-        /** New timed session API with YouTube study configuration. */
+        /** New timed session API with YouTube study configuration. Kept under a
+         * distinct name because WebView JavascriptInterface does not safely support
+         * overloaded methods. */
         @JavascriptInterface
-        public boolean setShieldSession(long endsAtMillis, String packagesJson, String youtubeJson) {
+        public boolean setShieldSessionV3(long endsAtMillis, String packagesJson, String youtubeJson) {
             return setShieldSessionInternal(endsAtMillis, packagesJson, youtubeJson);
         }
 

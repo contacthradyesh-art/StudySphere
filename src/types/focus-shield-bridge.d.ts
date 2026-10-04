@@ -6,9 +6,10 @@ declare global {
     openPermissionSettings?: () => void;
     setShieldActive?: (active: boolean) => void;
     getBridgeVersion?: () => number;
-    /** New Android bridge: timed shield + YouTube study configuration. */
-    setShieldSession?: (endsAtMillis: number, packagesJson: string, youtubeJson: string) => boolean;
-    /** Legacy Android bridge remains supported by native-shield.ts. */
+    /** Legacy Android bridge: timed shield with package list only. */
+    setShieldSession?: (endsAtMillis: number, packagesJson: string) => boolean;
+    /** Android V3 bridge: timed shield + YouTube study configuration. */
+    setShieldSessionV3?: (endsAtMillis: number, packagesJson: string, youtubeJson: string) => boolean;
     getYoutubeDebug?: () => string;
   }
 
