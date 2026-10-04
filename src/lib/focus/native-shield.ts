@@ -43,7 +43,8 @@ interface ShieldBridge {
   isPermissionGranted?: () => boolean;
   openPermissionSettings?: () => void;
   setShieldActive?: (active: boolean) => void;
-  setShieldSession?: (endsAtMillis: number, packagesJson: string) => boolean;
+  setShieldSession?: (endsAtMillis: number, packagesJson: string, youtubeJson: string) => boolean;
+  getYoutubeDebug?: () => string;
 }
 
 export function getShieldBridge(): ShieldBridge | undefined {
@@ -51,7 +52,15 @@ export function getShieldBridge(): ShieldBridge | undefined {
   return (window as unknown as { StudySphereFocusShield?: ShieldBridge }).StudySphereFocusShield;
 }
 
-type ShieldSettings = Pick<FocusSettings, 'blockShorts' | 'blockReels' | 'blockFacebookReels'> & { blockedApps?: string[] };
+type ShieldSettings = Pick<FocusSettings, 'blockShorts' | 'blockReels' | 'blockFacebookReels' | 'youtubeMode' | 'studyChannels'> & {
+  blockedApps?: string[];
+};
+
+/** True only when the new 3-argument Android bridge is present. */
+export function supportsYoutubeStudyMode(): boolean {
+  const bridge = getShieldBridge();
+  return typeof bridge?.setShieldSession === 'function' && bridge.setShieldSession.length >= 3;
+}
 
 /** Android package names to block for these settings (presets + chosen apps). */
 export function packagesForSettings(settings: ShieldSettings): string[] {
@@ -59,7 +68,26 @@ export function packagesForSettings(settings: ShieldSettings): string[] {
   (Object.keys(PRESET_APP_IDS) as Array<keyof typeof PRESET_APP_IDS>).forEach((key) => {
     if (settings[key]) ids.add(PRESET_APP_IDS[key]);
   });
+
+  // In Study mode YouTube is handled by the Accessibility tree checker, not full-app blocking.
+  if (settings.youtubeMode === 'study') ids.delete('youtube');
+
   return FOCUS_APPS.filter((app) => ids.has(app.id)).map((app) => app.packageName);
+}
+
+function youtubeJsonForSettings(settings: ShieldSettings): string {
+  const channels = Array.from(
+    new Set(
+      (settings.studyChannels ?? [])
+        .map((channel) => channel.trim().slice(0, 60))
+        .filter(Boolean)
+    )
+  ).slice(0, 30);
+
+  return JSON.stringify({
+    mode: settings.youtubeMode === 'study' ? 'study' : 'block',
+    channels
+  });
 }
 
 /** Start (or refresh) the native shield. Returns true when the Android side accepted it. */
@@ -67,9 +95,23 @@ export function startNativeShield(endsAt: number, settings: ShieldSettings): boo
   const bridge = getShieldBridge();
   if (!bridge) return false;
   try {
-    if (bridge.setShieldSession) {
-      return Boolean(bridge.setShieldSession(endsAt, JSON.stringify(packagesForSettings(settings))));
+    if (settings.youtubeMode === 'study' && supportsYoutubeStudyMode()) {
+      return Boolean(
+        bridge.setShieldSession?.(
+          endsAt,
+          JSON.stringify(packagesForSettings(settings)),
+          youtubeJsonForSettings(settings)
+        )
+      );
     }
+
+    if (bridge.setShieldSession) {
+      // Old APKs only understand the 2-argument session API. In Study mode,
+      // deliberately send YouTube back into the full-block list.
+      const legacySettings = settings.youtubeMode === 'study' ? { ...settings, youtubeMode: 'block' as const } : settings;
+      return Boolean(bridge.setShieldSession(endsAt, JSON.stringify(packagesForSettings(legacySettings)), youtubeJsonForSettings(legacySettings)));
+    }
+
     // Older APK: only the legacy on/off switch exists.
     bridge.setShieldActive?.(true);
     return Boolean(bridge.setShieldActive);
