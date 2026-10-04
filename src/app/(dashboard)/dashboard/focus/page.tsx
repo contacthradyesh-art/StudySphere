@@ -232,7 +232,11 @@ export default function FocusShieldPage() {
     }
 
     const end = Date.now() + settings.focusDurationMinutes * 60 * 1000;
-    if (bridge && (effectivePackages.length > 0 || youtubeStudyOnly) && !startNativeShield(end, settings)) {
+    if (bridge && (effectivePackages.length > 0 || youtubeStudyOnly) && !startNativeShield(
+      end,
+      settings,
+      () => toast.warning('Study mode ke liye APK update karein')
+    )) {
       toast.error('Android shield could not start / Android shield शुरू नहीं हो पाया');
       return;
     }
