@@ -124,13 +124,8 @@ public class MainActivity extends BridgeActivity {
             edit.apply();
         }
 
-        /** Legacy timed session API: YouTube is always full-blocked. */
-        @JavascriptInterface
-        public boolean setShieldSession(long endsAtMillis, String packagesJson) {
-            return setShieldSessionInternal(endsAtMillis, packagesJson, "{\"mode\":\"block\",\"channels\":[]}");
-        }
-
-        /** New timed session API with YouTube study configuration. */
+        /** Timed session API. New APKs expose the 3-argument version so WebView
+         * does not have to resolve overloaded JavascriptInterface methods. */
         @JavascriptInterface
         public boolean setShieldSession(long endsAtMillis, String packagesJson, String youtubeJson) {
             return setShieldSessionInternal(endsAtMillis, packagesJson, youtubeJson);
