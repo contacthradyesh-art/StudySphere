@@ -15,7 +15,6 @@ export interface FocusApp {
   packageName: string;
 }
 
-/** Distraction apps a student can block on Android. */
 export const FOCUS_APPS: FocusApp[] = [
   { id: 'youtube', label: 'YouTube', labelHi: 'यूट्यूब', packageName: 'com.google.android.youtube' },
   { id: 'instagram', label: 'Instagram', labelHi: 'इंस्टाग्राम', packageName: 'com.instagram.android' },
@@ -32,7 +31,6 @@ export const FOCUS_APPS: FocusApp[] = [
   { id: 'moj', label: 'Moj', labelHi: 'मोज', packageName: 'in.mohalla.video' },
 ];
 
-/** The existing preset toggles keep working: on Android they block the whole app. */
 const PRESET_APP_IDS = {
   blockShorts: 'youtube',
   blockReels: 'instagram',
@@ -46,6 +44,7 @@ interface ShieldBridge {
   getBridgeVersion?: () => number;
   setShieldSession?: (endsAtMillis: number, packagesJson: string) => boolean;
   setShieldSessionV3?: (endsAtMillis: number, packagesJson: string, youtubeJson: string) => boolean;
+  setShieldSessionV4?: (payloadJson: string) => boolean;
   getYoutubeDebug?: () => string;
 }
 
@@ -58,18 +57,15 @@ type ShieldSettings = Pick<FocusSettings, 'blockShorts' | 'blockReels' | 'blockF
   blockedApps?: string[];
 };
 
-/** True only when the new 3-argument Android bridge is present. */
+/** True only when the APK actually exposes a study-capable bridge method. */
 export function supportsYoutubeStudyMode(): boolean {
   const bridge = getShieldBridge();
-  if (typeof bridge?.setShieldSessionV3 === 'function') return true;
-  try {
-    return typeof bridge?.getBridgeVersion === 'function' && Number(bridge.getBridgeVersion()) >= 3;
-  } catch {
-    return false;
-  }
+  return (
+    typeof bridge?.setShieldSessionV4 === 'function' ||
+    typeof bridge?.setShieldSessionV3 === 'function'
+  );
 }
 
-/** Android package names to block for these settings (presets + chosen apps). */
 export function packagesForSettings(settings: ShieldSettings): string[] {
   const ids = new Set<string>(settings.blockedApps ?? []);
   (Object.keys(PRESET_APP_IDS) as Array<keyof typeof PRESET_APP_IDS>).forEach((key) => {
@@ -97,7 +93,7 @@ function youtubeJsonForSettings(settings: ShieldSettings): string {
   });
 }
 
-/** Start (or refresh) the native shield. Returns true when the Android side accepted it. */
+/** Start (or refresh) the native shield. */
 export function startNativeShield(
   endsAt: number,
   settings: ShieldSettings,
@@ -106,44 +102,52 @@ export function startNativeShield(
   const bridge = getShieldBridge();
   if (!bridge) return false;
 
-  const legacySettings =
-    settings.youtubeMode === 'study'
-      ? { ...settings, youtubeMode: 'block' as const }
-      : settings;
-  const legacyPackages = JSON.stringify(packagesForSettings(legacySettings));
+  // Never manufacture a legacy "block YouTube" package list for Study mode.
+  // If an older APK cannot enforce Study mode, it should fail open for YouTube
+  // rather than silently turning Study mode into a full YouTube block.
+  const packagesJson = JSON.stringify(packagesForSettings(settings));
+  const youtubeJson = youtubeJsonForSettings(settings);
 
   try {
-    // New APK: use the explicitly named V3 bridge. If it throws, immediately
-    // fall back to the legacy 2-argument call so Focus Shield still starts.
-    if (settings.youtubeMode === 'study' && supportsYoutubeStudyMode()) {
-      try {
-        const v3 = bridge.setShieldSessionV3;
-        if (!v3) throw new Error('V3 bridge unavailable');
-        return Boolean(
-          v3(
-            endsAt,
-            JSON.stringify(packagesForSettings(settings)),
-            youtubeJsonForSettings(settings)
-          )
-        );
-      } catch {
-        onStudyFallback?.();
+    if (settings.youtubeMode === 'study') {
+      if (typeof bridge.setShieldSessionV4 === 'function') {
         try {
-          return Boolean(bridge.setShieldSession?.(endsAt, legacyPackages));
+          return Boolean(
+            bridge.setShieldSessionV4(
+              JSON.stringify({
+                endsAt,
+                packages: packagesForSettings(settings),
+                youtube: JSON.parse(youtubeJson),
+              })
+            )
+          );
         } catch {
-          return false;
+          // Try V3 below if the APK exposes it.
         }
+      }
+
+      if (typeof bridge.setShieldSessionV3 === 'function') {
+        try {
+          return Boolean(bridge.setShieldSessionV3(endsAt, packagesJson, youtubeJson));
+        } catch {
+          // Older/buggy V3 bridge: continue to the safe legacy fallback.
+        }
+      }
+
+      onStudyFallback?.();
+      try {
+        return Boolean(bridge.setShieldSession?.(endsAt, packagesJson));
+      } catch {
+        return false;
       }
     }
 
-    // Legacy APK (or block mode): ALWAYS call the old bridge with exactly 2 args.
-    if (bridge.setShieldSession) {
-      return Boolean(bridge.setShieldSession(endsAt, legacyPackages));
+    if (typeof bridge.setShieldSession === 'function') {
+      return Boolean(bridge.setShieldSession(endsAt, packagesJson));
     }
 
-    // Older APK: only the legacy on/off switch exists.
     bridge.setShieldActive?.(true);
-    return Boolean(bridge.setShieldActive);
+    return typeof bridge.setShieldActive === 'function';
   } catch {
     return false;
   }
