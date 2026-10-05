@@ -96,6 +96,8 @@ public class MainActivity extends BridgeActivity {
         return clean.toString();
     }
 
+    private static final String YOUTUBE_PACKAGE = "com.google.android.youtube";
+
     private final class FocusShieldBridge {
         @JavascriptInterface
         public boolean isPermissionGranted() {
@@ -172,6 +174,11 @@ public class MainActivity extends BridgeActivity {
             try {
                 JSONObject youtube = new JSONObject(cleanYoutube);
                 boolean youtubeStudy = "study".equals(youtube.optString("mode", "block"));
+                if (youtubeStudy) {
+                    for (int i = clean.length() - 1; i >= 0; i--) {
+                        if (YOUTUBE_PACKAGE.equals(clean.optString(i, ""))) clean.remove(i);
+                    }
+                }
                 boolean sessionHasProtection = clean.length() > 0 || youtubeStudy;
                 getSharedPreferences(PREFS, MODE_PRIVATE).edit()
                     .putBoolean("active", sessionHasProtection)
