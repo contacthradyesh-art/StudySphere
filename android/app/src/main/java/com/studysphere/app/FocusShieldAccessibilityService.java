@@ -173,22 +173,30 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
             return;
         }
 
+        // A "channel" resource id can exist on YouTube Home/Subscriptions too.
+        // Do not treat every such node as the current video's channel, otherwise
+        // Study mode falsely blocks the whole YouTube app. First establish that
+        // this is a watch/player screen, then accept only strong channel signals.
+        if (lowerId.contains("watch") || lowerId.contains("player") || lowerDescription.contains("video player")) {
+            result.watchPage = true;
+        }
+
         if (lowerDescription.contains("go to channel")) {
             String candidate = text.trim();
             if (candidate.isEmpty()) candidate = extractChannelFromDescription(description);
             if (!candidate.isEmpty() && candidate.length() <= 120) {
                 result.channelName = candidate;
-                result.watchPage = true;
+                result.explicitChannelSignal = true;
             }
         }
 
-        if (lowerId.contains("channel") && !text.trim().isEmpty() && text.trim().length() <= 120) {
-            result.channelName = text.trim();
-            result.watchPage = true;
-        }
-
-        if (lowerId.contains("watch") || lowerId.contains("player") || lowerDescription.contains("video player")) {
-            result.watchPage = true;
+        if (isLikelyChannelNode(node, lowerId, text)) {
+            String candidate = text.trim();
+            if (!candidate.isEmpty() && candidate.length() <= 120) {
+                if (result.channelName == null || !result.explicitChannelSignal) {
+                    result.channelName = candidate;
+                }
+            }
         }
 
         try {
@@ -209,6 +217,28 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
             }
         } catch (Throwable ignored) {
             // Individual tree branches can become stale while YouTube redraws.
+        }
+    }
+
+    private boolean isLikelyChannelNode(AccessibilityNodeInfo node, String lowerId, String text) {
+        if (text == null || text.trim().isEmpty()) return false;
+        if (!lowerId.contains("channel")) return false;
+
+        // Strong IDs are safe even when the node is not clickable. Generic
+        // "channel" containers are accepted only when they expose a clickable
+        // accessibility target; this avoids matching navigation labels.
+        if (lowerId.contains("channel_name")
+                || lowerId.contains("channelname")
+                || lowerId.contains("channel-title")
+                || lowerId.contains("channeltitle")
+                || lowerId.contains("channel_title")) {
+            return true;
+        }
+
+        try {
+            return node.isClickable();
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 
@@ -311,6 +341,7 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
     private static final class YoutubeScanResult {
         boolean shortsDetected;
         boolean watchPage;
+        boolean explicitChannelSignal;
         String channelName;
     }
 
