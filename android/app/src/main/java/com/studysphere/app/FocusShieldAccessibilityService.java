@@ -98,6 +98,15 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
             YoutubeScanResult result = new YoutubeScanResult();
             scanTree(root, 0, result);
 
+            // Only use a channel candidate after the full tree confirms that this
+            // is a watch/player screen. Home/Subscriptions can contain channel
+            // nodes too, but they must never trigger a block.
+            if (result.explicitChannelName != null && !result.explicitChannelName.trim().isEmpty()) {
+                result.channelName = result.explicitChannelName;
+            } else if (result.watchPage && result.channelCandidate != null && !result.channelCandidate.trim().isEmpty()) {
+                result.channelName = result.channelCandidate;
+            }
+
             if (result.shortsDetected) {
                 youtubeWatchStartedAt = 0;
                 if (now - lastYoutubeBlockAt >= YOUTUBE_BLOCK_COOLDOWN_MS) {
@@ -173,22 +182,29 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
             return;
         }
 
+        // A "channel" resource id can exist on YouTube Home/Subscriptions too.
+        // Do not treat every such node as the current video's channel, otherwise
+        // Study mode falsely blocks the whole YouTube app. First establish that
+        // this is a watch/player screen, then accept only strong channel signals.
+        if (lowerId.contains("watch") || lowerId.contains("player") || lowerDescription.contains("video player")) {
+            result.watchPage = true;
+        }
+
         if (lowerDescription.contains("go to channel")) {
             String candidate = text.trim();
             if (candidate.isEmpty()) candidate = extractChannelFromDescription(description);
             if (!candidate.isEmpty() && candidate.length() <= 120) {
-                result.channelName = candidate;
-                result.watchPage = true;
+                result.explicitChannelName = candidate;
             }
         }
 
-        if (lowerId.contains("channel") && !text.trim().isEmpty() && text.trim().length() <= 120) {
-            result.channelName = text.trim();
-            result.watchPage = true;
-        }
-
-        if (lowerId.contains("watch") || lowerId.contains("player") || lowerDescription.contains("video player")) {
-            result.watchPage = true;
+        if (isLikelyChannelNode(node, lowerId, text)) {
+            String candidate = text.trim();
+            if (!candidate.isEmpty() && candidate.length() <= 120) {
+                if (result.channelCandidate == null) {
+                    result.channelCandidate = candidate;
+                }
+            }
         }
 
         try {
@@ -209,6 +225,28 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
             }
         } catch (Throwable ignored) {
             // Individual tree branches can become stale while YouTube redraws.
+        }
+    }
+
+    private boolean isLikelyChannelNode(AccessibilityNodeInfo node, String lowerId, String text) {
+        if (text == null || text.trim().isEmpty()) return false;
+        if (!lowerId.contains("channel")) return false;
+
+        // Strong IDs are safe even when the node is not clickable. Generic
+        // "channel" containers are accepted only when they expose a clickable
+        // accessibility target; this avoids matching navigation labels.
+        if (lowerId.contains("channel_name")
+                || lowerId.contains("channelname")
+                || lowerId.contains("channel-title")
+                || lowerId.contains("channeltitle")
+                || lowerId.contains("channel_title")) {
+            return true;
+        }
+
+        try {
+            return node.isClickable();
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 
@@ -312,6 +350,8 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
         boolean shortsDetected;
         boolean watchPage;
         String channelName;
+        String explicitChannelName;
+        String channelCandidate;
     }
 
     @Override
