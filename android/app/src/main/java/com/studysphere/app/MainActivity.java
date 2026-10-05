@@ -140,6 +140,24 @@ public class MainActivity extends BridgeActivity {
             return setShieldSessionInternal(endsAtMillis, packagesJson, youtubeJson);
         }
 
+        /** Single-string study-session bridge. Using one JSON argument avoids any WebView bridge ambiguity around multi-argument methods. */
+        @JavascriptInterface
+        public boolean setShieldSessionV4(String payloadJson) {
+            try {
+                JSONObject payload = new JSONObject(payloadJson == null ? "{}" : payloadJson);
+                long endsAtMillis = payload.optLong("endsAt", 0);
+                JSONArray packages = payload.optJSONArray("packages");
+                JSONObject youtube = payload.optJSONObject("youtube");
+                return setShieldSessionInternal(
+                    endsAtMillis,
+                    packages == null ? "[]" : packages.toString(),
+                    youtube == null ? "{\\"mode\\":\\"block\\",\\"channels\\":[]}" : youtube.toString()
+                );
+            } catch (Exception ignored) {
+                return false;
+            }
+        }
+
         private boolean setShieldSessionInternal(long endsAtMillis, String packagesJson, String youtubeJson) {
             long now = System.currentTimeMillis();
             long maxEnd = now + 6L * 60 * 60 * 1000;
