@@ -107,7 +107,7 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
                 result.channelName = result.channelCandidate;
             }
 
-            if (result.shortsDetected) {
+            if (result.shortsDetected && result.watchPage) {
                 youtubeWatchStartedAt = 0;
                 if (now - lastYoutubeBlockAt >= YOUTUBE_BLOCK_COOLDOWN_MS) {
                     lastYoutubeBlockAt = now;
@@ -172,24 +172,33 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
         String lowerText = text.toLowerCase(Locale.ROOT).trim();
         String lowerDescription = description.toLowerCase(Locale.ROOT).trim();
 
-        if (lowerId.contains("reel") || lowerId.contains("shorts")) {
+        // Shorts markers are only meaningful on an actual watch/player surface.
+        // YouTube Home/Search can contain Shorts shelves and navigation labels;
+        // those must never blank the whole app.
+        if (lowerId.contains("watch") || lowerId.contains("player")
+                || lowerId.contains("reel_watch") || lowerId.contains("shorts_watch")
+                || lowerDescription.contains("video player")) {
+            result.watchPage = true;
+        }
+
+        if (result.watchPage && (lowerId.contains("reel_watch") || lowerId.contains("shorts_watch"))) {
             result.shortsDetected = true;
             return;
         }
 
-        if ("shorts".equals(lowerText) && safeSelected(node)) {
+        if (result.watchPage && "shorts".equals(lowerText) && safeSelected(node)) {
+            result.shortsDetected = true;
+            return;
+        }
+
+        if (result.watchPage && lowerDescription.contains("shorts")) {
             result.shortsDetected = true;
             return;
         }
 
         // A "channel" resource id can exist on YouTube Home/Subscriptions too.
-        // Do not treat every such node as the current video's channel, otherwise
-        // Study mode falsely blocks the whole YouTube app. First establish that
-        // this is a watch/player screen, then accept only strong channel signals.
-        if (lowerId.contains("watch") || lowerId.contains("player") || lowerDescription.contains("video player")) {
-            result.watchPage = true;
-        }
-
+        // Only strong channel signals are accepted after the watch/player surface
+        // has been established above.
         if (lowerDescription.contains("go to channel")) {
             String candidate = text.trim();
             if (candidate.isEmpty()) candidate = extractChannelFromDescription(description);
@@ -336,9 +345,12 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
             JSONArray array = new JSONArray(raw);
             Set<String> out = new HashSet<>();
             for (int i = 0; i < array.length(); i++) out.add(array.getString(i));
+            if (isYoutubeStudyMode(prefs)) out.remove(YOUTUBE_PACKAGE);
             return out;
         } catch (Exception e) {
-            return DEFAULT_PACKAGES;
+            Set<String> fallback = new HashSet<>(DEFAULT_PACKAGES);
+            if (isYoutubeStudyMode(prefs)) fallback.remove(YOUTUBE_PACKAGE);
+            return fallback;
         }
     }
 
