@@ -110,10 +110,10 @@ public class MainActivity extends BridgeActivity {
             startActivity(intent);
         }
 
-        /** Bridge version 3 adds YouTube study mode while keeping legacy methods. */
+        /** Bridge version 4 adds a single-payload YouTube study API while keeping legacy methods. */
         @JavascriptInterface
         public int getBridgeVersion() {
-            return 3;
+            return 4;
         }
 
         /** Legacy call (old web builds). Capped so the shield can never stay on forever. */
