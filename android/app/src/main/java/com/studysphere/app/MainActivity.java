@@ -151,7 +151,7 @@ public class MainActivity extends BridgeActivity {
                 return setShieldSessionInternal(
                     endsAtMillis,
                     packages == null ? "[]" : packages.toString(),
-                    youtube == null ? "{\\"mode\\":\\"block\\",\\"channels\\":[]}" : youtube.toString()
+                    youtube == null ? "{\"mode\":\"block\",\"channels\":[]}" : youtube.toString()
                 );
             } catch (Exception ignored) {
                 return false;
