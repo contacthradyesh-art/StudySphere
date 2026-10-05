@@ -98,6 +98,15 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
             YoutubeScanResult result = new YoutubeScanResult();
             scanTree(root, 0, result);
 
+            // Only use a channel candidate after the full tree confirms that this
+            // is a watch/player screen. Home/Subscriptions can contain channel
+            // nodes too, but they must never trigger a block.
+            if (result.explicitChannelName != null && !result.explicitChannelName.trim().isEmpty()) {
+                result.channelName = result.explicitChannelName;
+            } else if (result.watchPage && result.channelCandidate != null && !result.channelCandidate.trim().isEmpty()) {
+                result.channelName = result.channelCandidate;
+            }
+
             if (result.shortsDetected) {
                 youtubeWatchStartedAt = 0;
                 if (now - lastYoutubeBlockAt >= YOUTUBE_BLOCK_COOLDOWN_MS) {
@@ -185,16 +194,15 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
             String candidate = text.trim();
             if (candidate.isEmpty()) candidate = extractChannelFromDescription(description);
             if (!candidate.isEmpty() && candidate.length() <= 120) {
-                result.channelName = candidate;
-                result.explicitChannelSignal = true;
+                result.explicitChannelName = candidate;
             }
         }
 
         if (isLikelyChannelNode(node, lowerId, text)) {
             String candidate = text.trim();
             if (!candidate.isEmpty() && candidate.length() <= 120) {
-                if (result.channelName == null || !result.explicitChannelSignal) {
-                    result.channelName = candidate;
+                if (result.channelCandidate == null) {
+                    result.channelCandidate = candidate;
                 }
             }
         }
@@ -341,8 +349,9 @@ public class FocusShieldAccessibilityService extends AccessibilityService {
     private static final class YoutubeScanResult {
         boolean shortsDetected;
         boolean watchPage;
-        boolean explicitChannelSignal;
         String channelName;
+        String explicitChannelName;
+        String channelCandidate;
     }
 
     @Override
