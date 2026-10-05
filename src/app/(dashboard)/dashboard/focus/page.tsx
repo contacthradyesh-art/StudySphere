@@ -76,6 +76,7 @@ export default function FocusShieldPage() {
   const [extensionConnected, setExtensionConnected] = useState(false);
   const [nativePermission, setNativePermission] = useState<boolean | null>(null);
   const [isAndroidApp, setIsAndroidApp] = useState(false);
+  const [bridgeVersion, setBridgeVersion] = useState<number | null>(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [studyDisclosureOpen, setStudyDisclosureOpen] = useState(false);
   const [channelInput, setChannelInput] = useState('');
@@ -101,7 +102,18 @@ export default function FocusShieldPage() {
   }, [user]);
 
   useEffect(() => {
-    setIsAndroidApp(Boolean(getNativeBridge()));
+    const bridge = getNativeBridge();
+    setIsAndroidApp(Boolean(bridge));
+    if (!bridge?.getBridgeVersion) {
+      setBridgeVersion(null);
+      return;
+    }
+    try {
+      const version = Number(bridge.getBridgeVersion());
+      setBridgeVersion(Number.isFinite(version) ? version : null);
+    } catch {
+      setBridgeVersion(null);
+    }
   }, []);
 
   useEffect(() => {
@@ -256,7 +268,24 @@ export default function FocusShieldPage() {
   return (
     <div className={cn('space-y-6 animate-fade-in', active && settings.distractionFreeMode && 'mx-auto max-w-2xl')}>
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Focus Shield</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight">Focus Shield</h1>
+          <span className={cn(
+            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium',
+            bridgeVersion !== null && bridgeVersion >= 4
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500'
+              : 'border-amber-500/30 bg-amber-500/10 text-amber-500'
+          )}>
+            {bridgeVersion === null ? (
+              'APK update chahiye'
+            ) : (
+              <>
+                APK bridge v{bridgeVersion}
+                {bridgeVersion >= 4 && <span aria-label="Study mode ready">✓ Study mode ready</span>}
+              </>
+            )}
+          </span>
+        </div>
         <p className="text-sm text-muted-foreground">Distractions block करें और focus session protect करें. / पढ़ाई के दौरान ध्यान बनाए रखें।</p>
       </div>
 
