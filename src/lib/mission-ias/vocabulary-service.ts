@@ -1,5 +1,5 @@
 import {
-  collection, doc, onSnapshot, orderBy, query, limit as fbLimit, setDoc, deleteDoc, getDocs
+  collection, doc, onSnapshot, orderBy, query, limit as fbLimit, setDoc, deleteDoc, getDocs, getDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { COLLECTIONS } from '@/lib/firestore/schema';
@@ -44,9 +44,8 @@ export async function markWordSaved(uid: string, wordId: string, saved: boolean)
   if (saved) {
     await setDoc(ref, { wordId, savedAt: Date.now() }, { merge: true });
   } else {
-    const snap = await getDocs(query(progressCol(uid), orderBy('savedAt', 'desc')));
-    const current = snap.docs.find((d) => d.id === wordId);
-    if (!current) return;
+    const current = await getDoc(ref);
+    if (!current.exists()) return;
     const data = current.data();
     if (data.learnedAt) {
       await setDoc(ref, { wordId, learnedAt: data.learnedAt }, { merge: false });
