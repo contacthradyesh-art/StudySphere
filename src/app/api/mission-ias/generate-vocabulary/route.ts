@@ -8,13 +8,13 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemi
 const BATCH_SIZE = 12;
 
 const UPSC_SYSTEM_PROMPT = `You are building a daily vocabulary list for UPSC (Indian civil services) aspirants — the kind of advanced English words that appear in The Hindu / Indian Express editorials.
-Generate exactly \${BATCH_SIZE} DIFFERENT words, none of which are in the "already used" list you'll be given.
+Generate exactly ${BATCH_SIZE} DIFFERENT words, none of which are in the "already used" list you'll be given.
 For each word provide: the word itself, part of speech, a clear one-sentence meaning, an accurate Hindi meaning (Devanagari script), 3 synonyms, 2 antonyms (empty array if genuinely none), one natural example sentence, one sentence describing how it's typically used in Indian editorial/political writing, and a difficulty (easy/medium/hard).
 Return ONLY valid JSON, no markdown, matching exactly:
 {"words":[{"word":"...","partOfSpeech":"...","meaning":"...","hindiMeaning":"...","synonyms":["...","...","..."],"antonyms":["...","..."],"exampleSentence":"...","editorialUsage":"...","difficulty":"easy|medium|hard"}]}`;
 
 const SSC_SYSTEM_PROMPT = `You are building a vocabulary list for SSC CGL/CHSL exam preparation.
-Generate exactly \${BATCH_SIZE} DIFFERENT common exam vocabulary words, none of which are in the "already used" list you'll be given.
+Generate exactly ${BATCH_SIZE} DIFFERENT common exam vocabulary words, none of which are in the "already used" list you'll be given.
 Prefer practical SSC-level words commonly tested in synonyms, antonyms, fill-in-the-blanks and reading comprehension. Keep the English meaning simple and clear, and provide an accurate Hindi meaning in Devanagari script. Give 3 synonyms, 2 antonyms (empty array if genuinely none), one natural example sentence, one short editorial/general usage sentence, and a difficulty (easy/medium/hard).
 Return ONLY valid JSON, no markdown, matching exactly:
 {"words":[{"word":"...","partOfSpeech":"...","meaning":"...","hindiMeaning":"...","synonyms":["...","...","..."],"antonyms":["...","..."],"exampleSentence":"...","editorialUsage":"...","difficulty":"easy|medium|hard"}]}`;

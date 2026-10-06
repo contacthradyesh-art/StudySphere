@@ -37,7 +37,6 @@ service cloud.firestore {
           && request.resource.data.fromUid == request.auth.uid;
       }
       match /notes/{noteId} { allow read, write: if isOwner(uid); match /versions/{versionId} { allow read, write: if isOwner(uid); } }
-      match /subjects/{subjectId} { allow read, write: if isOwner(uid); }
       match /journalEntries/{entryId} { allow read, write: if isOwner(uid); }
       match /flashcardDecks/{deckId} { allow read, write: if isOwner(uid); }
       match /flashcards/{cardId} { allow read, write: if isOwner(uid); }
@@ -47,9 +46,7 @@ service cloud.firestore {
       match /libraryFolders/{folderId} { allow read, write: if isOwner(uid); }
       match /vocabProgress/{wordId} { allow read, write: if isOwner(uid); }
       match /ethicsCaseStudySessions/{sessionId} { allow read, write: if isOwner(uid); }
-      match /englishWritingSessions/{sessionId} { allow read, write: if isOwner(uid); }
       match /englishSpeakingSessions/{sessionId} { allow read, write: if isOwner(uid); }
-      match /englishLessonProgress/{lessonId} { allow read, write: if isOwner(uid); }
       match /customMockTests/{testId} { allow read, write: if isOwner(uid); }
       match /gamification/{docId} { allow read, write: if isOwner(uid); }
       match /mapProgress/{stateKey} { allow read, write: if isOwner(uid); }
