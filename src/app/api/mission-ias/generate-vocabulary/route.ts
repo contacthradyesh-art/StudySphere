@@ -23,6 +23,21 @@ function getSystemPrompt(level: VocabLevel) {
   return level === 'ssc' ? SSC_SYSTEM_PROMPT : UPSC_SYSTEM_PROMPT;
 }
 
+const SSC_FALLBACK_WORDS = [
+  ['Abundant', 'adjective', 'More than enough; plentiful.', 'प्रचुर; बहुत अधिक', ['Plentiful', 'Ample', 'Copious'], ['Scarce', 'Limited'], 'The region has abundant water resources.', 'Abundant rainfall helps farmers.', 'easy'],
+  ['Benevolent', 'adjective', 'Kind and willing to help others.', 'दयालु; परोपकारी', ['Kind', 'Generous', 'Charitable'], ['Cruel', 'Selfish'], 'The benevolent man helped the poor.', 'A benevolent leader works for public welfare.', 'medium'],
+  ['Candid', 'adjective', 'Honest and direct in speech.', 'स्पष्टवादी; ईमानदार', ['Frank', 'Honest', 'Open'], ['Deceitful', 'Dishonest'], 'She gave a candid answer.', 'The minister gave a candid response.', 'medium'],
+  ['Diligent', 'adjective', 'Working carefully and regularly.', 'मेहनती; परिश्रमी', ['Hardworking', 'Industrious', 'Active'], ['Lazy', 'Negligent'], 'A diligent student revises every day.', 'Diligent preparation improves exam performance.', 'easy'],
+  ['Eloquent', 'adjective', 'Able to express ideas clearly and effectively.', 'वाक्पटु; प्रभावशाली', ['Expressive', 'Fluent', 'Articulate'], ['Inarticulate', 'Tongue-tied'], 'He gave an eloquent speech.', 'Her eloquent argument impressed the audience.', 'medium'],
+  ['Frugal', 'adjective', 'Careful about spending money.', 'मितव्ययी; कम खर्च करने वाला', ['Economical', 'Thrifty', 'Sparing'], ['Extravagant', 'Wasteful'], 'He lives a frugal life.', 'Frugal spending helps families save money.', 'easy'],
+  ['Hostile', 'adjective', 'Unfriendly or opposed.', 'शत्रुतापूर्ण; विरोधी', ['Unfriendly', 'Antagonistic', 'Adverse'], ['Friendly', 'Cooperative'], 'The two groups had a hostile relationship.', 'Hostile conditions can affect negotiations.', 'easy'],
+  ['Impartial', 'adjective', 'Fair and not favoring either side.', 'निष्पक्ष; पक्षपातरहित', ['Fair', 'Neutral', 'Unbiased'], ['Biased', 'Partial'], 'A judge must remain impartial.', 'An impartial decision builds public trust.', 'medium'],
+  ['Lucid', 'adjective', 'Clear and easy to understand.', 'स्पष्ट; सुबोध', ['Clear', 'Plain', 'Intelligible'], ['Confusing', 'Obscure'], 'The teacher gave a lucid explanation.', 'The report presents a lucid analysis.', 'medium'],
+  ['Meticulous', 'adjective', 'Very careful about small details.', 'सूक्ष्मदर्शी; बहुत सावधान', ['Careful', 'Precise', 'Thorough'], ['Careless', 'Negligent'], 'She is meticulous about her notes.', 'Meticulous preparation reduces errors.', 'hard'],
+  ['Obsolete', 'adjective', 'No longer useful or in use.', 'अप्रचलित; पुराना', ['Outdated', 'Old-fashioned', 'Antiquated'], ['Modern', 'Current'], 'The old machine is obsolete.', 'Obsolete rules should be reviewed.', 'medium'],
+  ['Vigilant', 'adjective', 'Carefully watching for danger or problems.', 'सतर्क; चौकस', ['Alert', 'Watchful', 'Attentive'], ['Careless', 'Negligent'], 'Security guards remained vigilant.', 'Citizens should remain vigilant against fraud.', 'medium']
+] as const;
+
 /**
  * Core generation logic, shared by both the cron-triggered GET (daily,
  * automatic) and the session-authenticated POST (manual "Generate More"
@@ -53,26 +68,35 @@ async function generateVocabularyBatch(level: VocabLevel = 'upsc'): Promise<{ ok
     })
   });
 
+  let parsed: { words: any[] };
+
   if (!res.ok) {
     const errBody = await res.text();
     console.error('generate-vocabulary: Gemini API error', res.status, errBody.slice(0, 500));
-    return { ok: false, error: `AI request failed (${res.status})` };
-  }
+    if (res.status === 429 && level === 'ssc') {
+      parsed = {
+        words: SSC_FALLBACK_WORDS.map(([word, partOfSpeech, meaning, hindiMeaning, synonyms, antonyms, exampleSentence, editorialUsage, difficulty]) => ({
+          word, partOfSpeech, meaning, hindiMeaning, synonyms, antonyms, exampleSentence, editorialUsage, difficulty
+        }))
+      };
+    } else {
+      return { ok: false, error: res.status === 429 ? 'AI limit abhi khatam hai. SSC ke liye built-in starter words available hain.' : `AI request failed (${res.status})` };
+    }
+  } else {
+    const data = await res.json();
+    const candidate = data.candidates?.[0];
+    const text = candidate?.content?.parts?.[0]?.text;
+    if (!text) {
+      console.error('generate-vocabulary: no content in response', JSON.stringify(data).slice(0, 500));
+      return { ok: false, error: `AI did not return content (finishReason: ${candidate?.finishReason || 'unknown'})` };
+    }
 
-  const data = await res.json();
-  const candidate = data.candidates?.[0];
-  const text = candidate?.content?.parts?.[0]?.text;
-  if (!text) {
-    console.error('generate-vocabulary: no content in response', JSON.stringify(data).slice(0, 500));
-    return { ok: false, error: `AI did not return content (finishReason: ${candidate?.finishReason || 'unknown'})` };
-  }
-
-  let parsed: { words: any[] };
-  try {
-    parsed = JSON.parse(text);
-  } catch (e) {
-    console.error('generate-vocabulary: JSON parse failed', String(e), 'raw text (last 300 chars):', text.slice(-300));
-    return { ok: false, error: 'AI returned invalid JSON (likely truncated — try again)' };
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      console.error('generate-vocabulary: JSON parse failed', String(e), 'raw text (last 300 chars):', text.slice(-300));
+      return { ok: false, error: 'AI returned invalid JSON (likely truncated — try again)' };
+    }
   }
 
   const validDifficulties: WordDifficulty[] = ['easy', 'medium', 'hard'];
