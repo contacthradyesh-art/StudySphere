@@ -57,6 +57,16 @@ export async function markWordSaved(uid: string, wordId: string, saved: boolean)
 
 export async function markWordLearned(uid: string, wordId: string, learned: boolean) {
   const ref = doc(progressCol(uid), wordId);
-  if (learned) await setDoc(ref, { wordId, learnedAt: Date.now() });
-  else await deleteDoc(ref);
+  if (learned) {
+    await setDoc(ref, { wordId, learnedAt: Date.now() }, { merge: true });
+    return;
+  }
+  const current = await getDoc(ref);
+  if (!current.exists()) return;
+  const data = current.data();
+  if (data.savedAt) {
+    await setDoc(ref, { wordId, savedAt: data.savedAt }, { merge: false });
+  } else {
+    await deleteDoc(ref);
+  }
 }
