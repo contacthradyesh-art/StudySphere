@@ -1,6 +1,7 @@
 export const VOCABULARY_COLLECTION = 'vocabulary';
 
 export type WordDifficulty = 'easy' | 'medium' | 'hard';
+export type VocabLevel = 'ssc' | 'upsc';
 
 export interface VocabWord {
   id: string;
@@ -13,5 +14,6 @@ export interface VocabWord {
   exampleSentence: string;
   editorialUsage: string;
   difficulty: WordDifficulty;
+  level?: VocabLevel;
   createdAt: number;
 }
