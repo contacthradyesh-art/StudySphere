@@ -1,17 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase/admin';
-import { VOCABULARY_COLLECTION, type WordDifficulty } from '@/lib/mission-ias/vocabulary-schema';
+import { VOCABULARY_COLLECTION, type VocabLevel, type WordDifficulty } from '@/lib/mission-ias/vocabulary-schema';
 
 export const maxDuration = 60;
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 const BATCH_SIZE = 12;
 
-const SYSTEM_PROMPT = `You are building a daily vocabulary list for UPSC (Indian civil services) aspirants — the kind of advanced English words that appear in The Hindu / Indian Express editorials.
-Generate exactly ${BATCH_SIZE} DIFFERENT words, none of which are in the "already used" list you'll be given.
+const UPSC_SYSTEM_PROMPT = `You are building a daily vocabulary list for UPSC (Indian civil services) aspirants — the kind of advanced English words that appear in The Hindu / Indian Express editorials.
+Generate exactly \${BATCH_SIZE} DIFFERENT words, none of which are in the "already used" list you'll be given.
 For each word provide: the word itself, part of speech, a clear one-sentence meaning, an accurate Hindi meaning (Devanagari script), 3 synonyms, 2 antonyms (empty array if genuinely none), one natural example sentence, one sentence describing how it's typically used in Indian editorial/political writing, and a difficulty (easy/medium/hard).
 Return ONLY valid JSON, no markdown, matching exactly:
 {"words":[{"word":"...","partOfSpeech":"...","meaning":"...","hindiMeaning":"...","synonyms":["...","...","..."],"antonyms":["...","..."],"exampleSentence":"...","editorialUsage":"...","difficulty":"easy|medium|hard"}]}`;
+
+const SSC_SYSTEM_PROMPT = `You are building a vocabulary list for SSC CGL/CHSL exam preparation.
+Generate exactly \${BATCH_SIZE} DIFFERENT common exam vocabulary words, none of which are in the "already used" list you'll be given.
+Prefer practical SSC-level words commonly tested in synonyms, antonyms, fill-in-the-blanks and reading comprehension. Keep the English meaning simple and clear, and provide an accurate Hindi meaning in Devanagari script. Give 3 synonyms, 2 antonyms (empty array if genuinely none), one natural example sentence, one short editorial/general usage sentence, and a difficulty (easy/medium/hard).
+Return ONLY valid JSON, no markdown, matching exactly:
+{"words":[{"word":"...","partOfSpeech":"...","meaning":"...","hindiMeaning":"...","synonyms":["...","...","..."],"antonyms":["...","..."],"exampleSentence":"...","editorialUsage":"...","difficulty":"easy|medium|hard"}]}`;
+
+function getSystemPrompt(level: VocabLevel) {
+  return level === 'ssc' ? SSC_SYSTEM_PROMPT : UPSC_SYSTEM_PROMPT;
+}
 
 /**
  * Core generation logic, shared by both the cron-triggered GET (daily,
@@ -20,7 +30,7 @@ Return ONLY valid JSON, no markdown, matching exactly:
  * model doesn't repeat itself, asks Gemini for a fresh batch, and writes any
  * genuinely new words into Firestore.
  */
-async function generateVocabularyBatch(): Promise<{ ok: true; requested: number; added: number } | { ok: false; error: string }> {
+async function generateVocabularyBatch(level: VocabLevel = 'upsc'): Promise<{ ok: true; requested: number; added: number } | { ok: false; error: string }> {
   if (!adminDb) return { ok: false, error: 'Server not configured' };
 
   const existingSnap = await adminDb
@@ -34,7 +44,7 @@ async function generateVocabularyBatch(): Promise<{ ok: true; requested: number;
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      system_instruction: { parts: [{ text: getSystemPrompt(level) }] },
       contents: [{
         role: 'user',
         parts: [{ text: `Already used words (do NOT repeat any of these): ${existingWords.join(', ') || '(none yet)'}` }]
@@ -87,6 +97,7 @@ async function generateVocabularyBatch(): Promise<{ ok: true; requested: number;
       exampleSentence: w.exampleSentence || '',
       editorialUsage: w.editorialUsage || '',
       difficulty: validDifficulties.includes(w.difficulty) ? w.difficulty : 'medium',
+      level,
       createdAt: Date.now()
     });
     existingSet.add(String(w.word).toLowerCase());
@@ -111,8 +122,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const requestedLevel = req.nextUrl.searchParams.get('level');
+  const level: VocabLevel = requestedLevel === 'ssc' ? 'ssc' : 'upsc';
+
   try {
-    const result = await generateVocabularyBatch();
+    const result = await generateVocabularyBatch(level);
     if (!result.ok) return NextResponse.json(result, { status: 500 });
     return NextResponse.json(result);
   } catch (e) {
@@ -138,8 +152,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  let body: { level?: VocabLevel } = {};
   try {
-    const result = await generateVocabularyBatch();
+    body = await req.json();
+  } catch {
+    // Empty request body keeps the default UPSC level.
+  }
+  const level: VocabLevel = body.level === 'ssc' ? 'ssc' : 'upsc';
+
+  try {
+    const result = await generateVocabularyBatch(level);
     if (!result.ok) return NextResponse.json(result, { status: 500 });
     return NextResponse.json(result);
   } catch (e) {
