@@ -112,7 +112,10 @@ function SessionHistory({ title, sessions }: { title: string; sessions: { id: st
 }
 
 function SpeakingPractice({ uid, sessions }: { uid: string; sessions: SpeakingSession[] }) {
-  const [prompt, setPrompt] = useState(randomPrompt(SPEAKING_PROMPTS));
+  const [prompt, setPrompt] = useState(SPEAKING_PROMPTS[0]);
+  useEffect(() => {
+    setPrompt(randomPrompt(SPEAKING_PROMPTS));
+  }, []);
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [hasRecording, setHasRecording] = useState(false);
