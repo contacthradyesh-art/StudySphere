@@ -24,7 +24,6 @@ const SECTIONS = [
   { title: 'Study', items: [
     { href: '/dashboard/mission-ias', label: 'Mission IAS', icon: Landmark },
     { href: '/dashboard/mock-tests', label: 'Mock Tests', icon: GraduationCap },
-    { href: '/dashboard/subjects', label: 'Subjects', icon: BookOpen },
     { href: '/dashboard/syllabus', label: 'Syllabus', icon: BookOpen },
     { href: '/dashboard/flashcards', label: 'Flashcards', icon: Layers },
     { href: '/dashboard/ai', label: 'AI Doubt Solver', icon: Sparkles },

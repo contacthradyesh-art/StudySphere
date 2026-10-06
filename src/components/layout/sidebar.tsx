@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, CalendarCheck, Timer, ShieldCheck, NotebookPen,
-  GraduationCap, BookHeart, Layers, Landmark, Languages, Settings, Users, Trophy
+  GraduationCap, Layers, Landmark, Languages, Settings, Users, Trophy
 } from 'lucide-react';
 
 const NAV = [
@@ -13,7 +13,6 @@ const NAV = [
   { href: '/dashboard/community', label: 'Study Together', icon: Users },
   { href: '/dashboard/planner', label: 'Planner', icon: CalendarCheck },
   { href: '/dashboard/mock-tests', label: 'Mock Tests', icon: GraduationCap },
-  { href: '/dashboard/subjects', label: 'Subjects', icon: BookHeart },
   { href: '/dashboard/pomodoro', label: 'Pomodoro', icon: Timer },
   { href: '/dashboard/focus', label: 'Focus Shield', icon: ShieldCheck },
   { href: '/dashboard/notes', label: 'Notes', icon: NotebookPen },
