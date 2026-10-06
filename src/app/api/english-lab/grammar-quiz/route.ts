@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRequestAuth } from '@/lib/auth/verify-request';
 import { enforceUserRateLimit } from '@/lib/auth/rate-limit';
-
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+import { generateGeminiJson, GeminiJsonError } from '@/lib/ai/gemini-json';
 
 const SYSTEM_PROMPT = `You are an English grammar tutor for Indian competitive-exam students (SSC/UPSC/banking). Generate exactly 5 multiple-choice grammar questions on the given topic. Mix difficulty. Return ONLY valid JSON, no markdown, matching exactly:
 {
@@ -20,22 +19,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const { topic } = await req.json();
-    const res = await fetch(`${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: 'user', parts: [{ text: `Topic: ${topic || 'general grammar (mixed topics)'}` }] }],
-        generationConfig: { maxOutputTokens: 1200, temperature: 0.6, responseMimeType: 'application/json' }
-      })
+    const result = await generateGeminiJson({
+      systemInstruction: SYSTEM_PROMPT,
+      contents: [{ role: 'user', parts: [{ text: `Topic: ${topic || 'general grammar (mixed topics)'}` }] }],
+      maxOutputTokens: 2048,
     });
-    const data = await res.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) throw new Error('AI did not return content');
-    const parsed = JSON.parse(raw);
-    return NextResponse.json(parsed);
+
+    return NextResponse.json(result);
   } catch (error) {
-    console.error('Grammar quiz error', error);
+    if (error instanceof GeminiJsonError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error('English Lab grammar error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Could not generate a quiz. Please try again.' }, { status: 500 });
   }
 }

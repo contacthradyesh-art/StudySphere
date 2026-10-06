@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRequestAuth } from '@/lib/auth/verify-request';
 import { enforceUserRateLimit } from '@/lib/auth/rate-limit';
-
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+import { generateGeminiJson, GeminiJsonError } from '@/lib/ai/gemini-json';
 
 const SYSTEM_PROMPT = `You are a supportive English communication coach for Indian students preparing for competitive exams (UPSC/SSC/banking) and job interviews. You will receive an audio recording of a student speaking in response to a prompt. First transcribe what they said, then give constructive, encouraging feedback on their spoken English. Return ONLY valid JSON, no markdown, matching exactly:
 {
@@ -30,30 +29,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Recording chhoti karein — 3 MB se badi recording submit nahi ho sakti.' }, { status: 413 });
     }
 
-    const res = await fetch(`${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{
-          role: 'user',
-          parts: [
-            { text: `Prompt the student was responding to: ${prompt}` },
-            { inline_data: { mime_type: mimeType || 'audio/webm', data: audio } }
-          ]
-        }],
-        generationConfig: { maxOutputTokens: 800, temperature: 0.4, responseMimeType: 'application/json' }
-      })
+    const feedback = await generateGeminiJson({
+      systemInstruction: SYSTEM_PROMPT,
+      contents: [{ role: 'user', parts: [{ text: `Prompt the student was responding to: ${prompt}` }, { inline_data: { mime_type: mimeType || 'audio/webm', data: audio } }] }],
+      maxOutputTokens: 2048,
     });
-
-    const data = await res.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) throw new Error('AI did not return content');
-    const feedback = JSON.parse(raw);
 
     return NextResponse.json({ feedback });
   } catch (error) {
-    console.error('Speaking feedback error', error);
+    if (error instanceof GeminiJsonError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error('English Lab speaking error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Could not analyze your recording. Please try again.' }, { status: 500 });
   }
 }

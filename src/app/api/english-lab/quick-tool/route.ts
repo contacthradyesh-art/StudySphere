@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRequestAuth } from '@/lib/auth/verify-request';
 import { enforceUserRateLimit } from '@/lib/auth/rate-limit';
-
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+import { generateGeminiJson, GeminiJsonError } from '@/lib/ai/gemini-json';
 
 export type QuickToolType =
   | 'synonym' | 'antonym' | 'one-word' | 'idiom' | 'sentence-improve' | 'paraphrase';
@@ -33,24 +32,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unknown tool' }, { status: 400 });
     }
 
-    const res = await fetch(`${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: input.trim() }] }],
-        generationConfig: { maxOutputTokens: 400, temperature: 0.5, responseMimeType: 'application/json' }
-      })
+    const result = await generateGeminiJson({
+      systemInstruction: systemPrompt,
+      contents: [{ role: 'user', parts: [{ text: input.trim() }] }],
+      maxOutputTokens: 1024,
     });
 
-    const data = await res.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) throw new Error('AI did not return content');
-    const parsed = JSON.parse(raw);
-
-    return NextResponse.json(parsed);
+    return NextResponse.json(result);
   } catch (error) {
-    console.error('Quick tool error', error);
+    if (error instanceof GeminiJsonError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error('English Lab quick error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Could not process that. Please try again.' }, { status: 500 });
   }
 }

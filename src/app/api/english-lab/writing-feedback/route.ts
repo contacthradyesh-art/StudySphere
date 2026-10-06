@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRequestAuth } from '@/lib/auth/verify-request';
 import { enforceUserRateLimit } from '@/lib/auth/rate-limit';
-
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+import { generateGeminiJson, GeminiJsonError } from '@/lib/ai/gemini-json';
 
 const SYSTEM_PROMPT = `You are a supportive English communication coach for Indian students preparing for competitive exams (UPSC/SSC/banking) and job interviews. Given a writing prompt and the student's response, give constructive, encouraging feedback. Return ONLY valid JSON, no markdown, matching exactly:
 {
@@ -26,24 +25,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Please write at least a couple of sentences.' }, { status: 400 });
     }
 
-    const res = await fetch(`${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: 'user', parts: [{ text: `Prompt: ${prompt}\n\nStudent's response:\n${text}` }] }],
-        generationConfig: { maxOutputTokens: 800, temperature: 0.4, responseMimeType: 'application/json' }
-      })
+    const feedback = await generateGeminiJson({
+      systemInstruction: SYSTEM_PROMPT,
+      contents: [{ role: 'user', parts: [{ text: `Prompt: ${prompt}\n\nStudent's response:\n${text}` }] }],
+      maxOutputTokens: 2048,
     });
-
-    const data = await res.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) throw new Error('AI did not return content');
-    const feedback = JSON.parse(raw);
 
     return NextResponse.json({ feedback });
   } catch (error) {
-    console.error('Writing feedback error', error);
+    if (error instanceof GeminiJsonError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error('English Lab writing error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Could not generate feedback. Please try again.' }, { status: 500 });
   }
 }
