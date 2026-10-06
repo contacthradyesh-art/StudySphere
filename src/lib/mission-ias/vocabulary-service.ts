@@ -23,7 +23,37 @@ function progressCol(uid: string) {
 
 export async function getLearnedWordIds(uid: string): Promise<Set<string>> {
   const snap = await getDocs(progressCol(uid));
-  return new Set(snap.docs.map((d) => d.id));
+  return new Set(
+    snap.docs
+      .filter((d) => Boolean(d.data().learnedAt))
+      .map((d) => d.id)
+  );
+}
+
+export async function getSavedWordIds(uid: string): Promise<Set<string>> {
+  const snap = await getDocs(progressCol(uid));
+  return new Set(
+    snap.docs
+      .filter((d) => Boolean(d.data().savedAt))
+      .map((d) => d.id)
+  );
+}
+
+export async function markWordSaved(uid: string, wordId: string, saved: boolean) {
+  const ref = doc(progressCol(uid), wordId);
+  if (saved) {
+    await setDoc(ref, { wordId, savedAt: Date.now() }, { merge: true });
+  } else {
+    const snap = await getDocs(query(progressCol(uid), orderBy('savedAt', 'desc')));
+    const current = snap.docs.find((d) => d.id === wordId);
+    if (!current) return;
+    const data = current.data();
+    if (data.learnedAt) {
+      await setDoc(ref, { wordId, learnedAt: data.learnedAt }, { merge: false });
+    } else {
+      await deleteDoc(ref);
+    }
+  }
 }
 
 export async function markWordLearned(uid: string, wordId: string, learned: boolean) {
