@@ -98,16 +98,23 @@ function SpeakingPractice({ uid, sessions }: { uid: string; sessions: SpeakingSe
   }
 
   async function startRecording() {
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      if (typeof MediaRecorder === 'undefined') {
+        toast.error('Is device par recording supported nahi.');
+        return;
+      }
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+      const mimeType = mimeTypes.find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       const chunks: BlobPart[] = [];
-      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.ondataavailable = (event) => chunks.push(event.data);
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
         audioBlobRef.current = blob;
         setHasRecording(true);
-        stream.getTracks().forEach(t => t.stop());
+        stream?.getTracks().forEach((track) => track.stop());
       };
       recorder.start();
       mediaRecorderRef.current = recorder;
@@ -116,7 +123,7 @@ function SpeakingPractice({ uid, sessions }: { uid: string; sessions: SpeakingSe
       setHasRecording(false);
       setFeedback(null);
       timerRef.current = setInterval(() => {
-        setSeconds(previous => {
+        setSeconds((previous) => {
           const next = previous + 1;
           if (next >= 90) {
             window.setTimeout(() => {
@@ -128,11 +135,18 @@ function SpeakingPractice({ uid, sessions }: { uid: string; sessions: SpeakingSe
           return next;
         });
       }, 1000);
-    } catch {
-      toast.error('Microphone access needed.');
+    } catch (error) {
+      stream?.getTracks().forEach((track) => track.stop());
+      const errorName = error instanceof DOMException ? error.name : '';
+      if (errorName === 'NotAllowedError') {
+        toast.error('Microphone permission band hai. Browser ya phone ki Settings mein Microphone Allow karein.');
+      } else if (errorName === 'NotFoundError') {
+        toast.error('Mic nahi mila.');
+      } else {
+        toast.error('Recording start nahi ho payi.');
+      }
     }
   }
-
   async function handleSubmit() {
     const blob = audioBlobRef.current;
     if (!blob) return;
