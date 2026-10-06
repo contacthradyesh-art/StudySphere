@@ -41,7 +41,7 @@ function getApiKey(): string {
 
 async function requestModel(model: string, apiKey: string, options: GenerateJsonOptions): Promise<string> {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/\${model}:generateContent?key=\${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -60,7 +60,7 @@ async function requestModel(model: string, apiKey: string, options: GenerateJson
   const data: unknown = await response.json();
   if (!response.ok) {
     const message = getGeminiErrorMessage(data);
-    console.error(`English Lab Gemini request failed: model=\${model}, status=\${response.status}, message=\${message}`);
+    console.error(`English Lab Gemini request failed: model=${model}, status=${response.status}, message=${message}`);
     if (isQuotaError(response.status, message)) throw new GeminiJsonError(QUOTA_MESSAGE, 429);
     throw new GeminiJsonError('AI service is temporarily unavailable.', response.status >= 400 && response.status < 600 ? response.status : 500);
   }
@@ -85,10 +85,10 @@ export async function generateGeminiJson<T>(options: GenerateJsonOptions): Promi
         } catch (error) {
           lastError = error;
           if (attempt === 0) {
-            console.error(`English Lab Gemini JSON parse failed: model=\${model}; retrying once.`);
+            console.error(`English Lab Gemini JSON parse failed: model=${model}; retrying once.`);
             continue;
           }
-          console.error(`English Lab Gemini JSON parse failed after retry: model=\${model}.`);
+          console.error(`English Lab Gemini JSON parse failed after retry: model=${model}.`);
         }
       } catch (error) {
         lastError = error;
