@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { authedFetch } from '@/lib/auth/authed-fetch';
 import { subscribeSpeakingSessions, saveSpeakingSession } from '@/lib/english-lab/english-lab-service';
 import { SPEAKING_PROMPTS, type SpeakingFeedback, type SpeakingSession } from '@/lib/english-lab/english-lab-schema';
-import { subscribeVocabulary, getLearnedWordIds, markWordLearned } from '@/lib/mission-ias/vocabulary-service';
+import { subscribeVocabulary, getLearnedWordIds, getSavedWordIds, markWordLearned, markWordSaved } from '@/lib/mission-ias/vocabulary-service';
 import type { VocabLevel, VocabWord } from '@/lib/mission-ias/vocabulary-schema';
 
 function randomPrompt(list: string[], exclude?: string): string {
@@ -24,41 +24,234 @@ function ScoreBadge({ score }: { score: number }) {
 
 function VocabularyTab({ uid, words }: { uid: string; words: VocabWord[] }) {
   const [level, setLevel] = useState<VocabLevel>('ssc');
+  const [filter, setFilter] = useState<'all' | 'saved' | 'learned'>('all');
   const [learned, setLearned] = useState<Set<string>>(new Set());
+  const [saved, setSaved] = useState<Set<string>>(new Set());
   const [practiceIndex, setPracticeIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  const [readAll, setReadAll] = useState(false);
   const [quiz, setQuiz] = useState<{ word: VocabWord; options: string[] } | null>(null);
   const [quizAnswer, setQuizAnswer] = useState<number | null>(null);
-  useEffect(() => { getLearnedWordIds(uid).then(setLearned).catch(() => undefined); }, [uid]);
-  const levelWords = useMemo(() => words.filter((word) => (word.level ?? 'upsc') === level), [words, level]);
+
+  useEffect(() => {
+    getLearnedWordIds(uid).then(setLearned).catch(() => undefined);
+    getSavedWordIds(uid).then(setSaved).catch(() => undefined);
+  }, [uid]);
+
+  const levelWords = useMemo(() => {
+    const base = words.filter((word) => (word.level ?? 'upsc') === level);
+    if (filter === 'saved') return base.filter((word) => saved.has(word.id));
+    if (filter === 'learned') return base.filter((word) => learned.has(word.id));
+    return base;
+  }, [words, level, filter, saved, learned]);
+
   const practiceWord = levelWords.length ? levelWords[practiceIndex % levelWords.length] : null;
-  const learnedCount = levelWords.reduce((count, word) => count + (learned.has(word.id) ? 1 : 0), 0);
-  useEffect(() => { setPracticeIndex(0); setRevealed(false); setQuiz(null); setQuizAnswer(null); }, [level]);
-  async function learnWord(word: VocabWord) {
-    const next = new Set(learned); next.add(word.id); setLearned(next);
-    try { await markWordLearned(uid, word.id, true); setRevealed(false); setPracticeIndex((index) => index + 1); }
-    catch { toast.error('Progress save नहीं हो पाया।'); }
+  const learnedCount = words.filter((word) => (word.level ?? 'upsc') === level && learned.has(word.id)).length;
+  const savedCount = words.filter((word) => (word.level ?? 'upsc') === level && saved.has(word.id)).length;
+
+  useEffect(() => {
+    setPracticeIndex(0);
+    setRevealed(false);
+    setQuiz(null);
+    setQuizAnswer(null);
+    setReadAll(false);
+  }, [level, filter]);
+
+  function goNext() {
+    if (!levelWords.length) return;
+    setPracticeIndex((index) => (index + 1) % levelWords.length);
+    setRevealed(false);
   }
+
+  function goPrevious() {
+    if (!levelWords.length) return;
+    setPracticeIndex((index) => (index - 1 + levelWords.length) % levelWords.length);
+    setRevealed(false);
+  }
+
+  async function learnWord(word: VocabWord) {
+    const next = new Set(learned);
+    if (next.has(word.id)) next.delete(word.id);
+    else next.add(word.id);
+    setLearned(next);
+    try {
+      await markWordLearned(uid, word.id, !learned.has(word.id));
+      if (!learned.has(word.id)) {
+        setPracticeIndex((index) => levelWords.length ? (index + 1) % levelWords.length : 0);
+        setRevealed(false);
+      }
+    } catch {
+      setLearned(learned);
+      toast.error('Progress save नहीं हो पाया।');
+    }
+  }
+
+  async function saveWord(word: VocabWord) {
+    const next = new Set(saved);
+    const isSaved = saved.has(word.id);
+    if (isSaved) next.delete(word.id); else next.add(word.id);
+    setSaved(next);
+    try {
+      await markWordSaved(uid, word.id, !isSaved);
+      toast.success(isSaved ? 'Saved list se hata diya।' : 'Word save ho gaya।');
+    } catch {
+      setSaved(saved);
+      toast.error('Save नहीं हो पाया।');
+    }
+  }
+
   function startQuiz() {
     if (!practiceWord || levelWords.length < 4) return;
-    const distractors = levelWords.filter((word) => word.id !== practiceWord.id).sort(() => Math.random() - 0.5).slice(0, 3).map((word) => word.meaning);
-    setQuiz({ word: practiceWord, options: [practiceWord.meaning, ...distractors].sort(() => Math.random() - 0.5) }); setQuizAnswer(null);
+    const distractors = levelWords
+      .filter((word) => word.id !== practiceWord.id)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3)
+      .map((word) => word.meaning);
+    setQuiz({ word: practiceWord, options: [practiceWord.meaning, ...distractors].sort(() => Math.random() - 0.5) });
+    setQuizAnswer(null);
   }
-  if (!levelWords.length) return <GlassCard className="space-y-3"><p className="font-semibold">{level === 'ssc' ? 'SSC words jald aayenge · SSC शब्द जल्द आएंगे' : 'UPSC words jald aayenge · UPSC शब्द जल्द आएंगे'}</p><p className="text-sm text-muted-foreground">Abhi is level ke vocabulary words available nahi hain।</p>{level === 'ssc' && <Button variant="gradient" className="w-full sm:w-auto" onClick={async () => { try { const res = await authedFetch('/api/mission-ias/generate-vocabulary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ level: 'ssc' }) }); const data = await res.json(); if (!res.ok || !data.ok) throw new Error(data.error || 'Generation failed'); toast.success(data.added > 0 ? `SSC ke ${data.added} words add ho gaye.` : 'Koi new SSC word add nahi hua. Dobara try karein.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'SSC words generate nahi ho paaye.'); } }}>SSC Words Generate Karein · SSC शब्द बनाएं</Button>}</GlassCard>;
-  return <div className="space-y-4">
-    <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Word Meaning · शब्द अर्थ</p><p className="text-xs text-muted-foreground">Exam level choose karke practice karein।</p></div>
-      <div className="inline-flex rounded-full border bg-muted/20 p-1">{(['ssc', 'upsc'] as VocabLevel[]).map((item) => <button key={item} type="button" onClick={() => setLevel(item)} className={cn('rounded-full px-3 py-1.5 text-xs font-semibold uppercase transition-colors', level === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>{item}</button>)}</div>
+
+  if (!levelWords.length) {
+    return (
+      <GlassCard className="space-y-3">
+        <p className="font-semibold">
+          {filter === 'saved'
+            ? 'Saved words · सेव किए शब्द अभी नहीं हैं'
+            : filter === 'learned'
+              ? 'Yaad kiye words · याद किए शब्द अभी नहीं हैं'
+              : level === 'ssc'
+                ? 'SSC words jald aayenge · SSC शब्द जल्द आएंगे'
+                : 'UPSC words jald aayenge · UPSC शब्द जल्द आएंगे'}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {filter === 'all' ? 'Abhi is level ke vocabulary words available nahi hain।' : 'Is list mein abhi koi word nahi hai।'}
+        </p>
+        {filter === 'all' && level === 'ssc' && (
+          <Button
+            variant="gradient"
+            className="w-full sm:w-auto"
+            onClick={async () => {
+              try {
+                const res = await authedFetch('/api/mission-ias/generate-vocabulary', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ level: 'ssc' })
+                });
+                const data = await res.json();
+                if (!res.ok || !data.ok) throw new Error(data.error || 'Generation failed');
+                toast.success(data.added > 0 ? `SSC ke ${data.added} words add ho gaye.` : 'Koi new SSC word add nahi hua. Dobara try karein.');
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : 'SSC words generate nahi ho paaye.');
+              }
+            }}
+          >
+            SSC Words Generate Karein · SSC शब्द बनाएं
+          </Button>
+        )}
+      </GlassCard>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-full border bg-muted/20 p-1">
+          {(['ssc', 'upsc'] as VocabLevel[]).map((item) => (
+            <button key={item} type="button" onClick={() => setLevel(item)} className={cn('rounded-full px-3 py-1.5 text-xs font-semibold uppercase', level === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>
+              {item}
+            </button>
+          ))}
+        </div>
+        <div className="inline-flex rounded-full border bg-muted/20 p-1">
+          {([
+            ['all', 'All · सभी'],
+            ['saved', 'Saved · सेव'],
+            ['learned', 'Yaad · याद']
+          ] as const).map(([item, label]) => (
+            <button key={item} type="button" onClick={() => setFilter(item)} className={cn('rounded-full px-3 py-1.5 text-xs font-semibold', filter === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <GlassCard className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div><p className="text-xs text-muted-foreground">Total · कुल</p><p className="text-xl font-bold">{words.filter((word) => (word.level ?? 'upsc') === level).length}</p></div>
+        <div><p className="text-xs text-muted-foreground">Learned · याद</p><p className="text-xl font-bold">{learnedCount}</p></div>
+        <div><p className="text-xs text-muted-foreground">Saved · सेव</p><p className="text-xl font-bold">{savedCount}</p></div>
+        <div><p className="text-xs text-muted-foreground">Showing · दिख रहे</p><p className="text-xl font-bold">{levelWords.length}</p></div>
+      </GlassCard>
+
+      <div className="flex flex-wrap gap-2">
+        <Button variant={readAll ? 'gradient' : 'outline'} onClick={() => setReadAll(!readAll)}>
+          <BookOpen className="h-4 w-4" /> {readAll ? 'One by One · एक-एक' : 'Read All · सब साथ में'}
+        </Button>
+        <Button variant="outline" onClick={() => setFilter('saved')}>Saved Cards · सेव कार्ड</Button>
+        <Button variant="outline" onClick={() => setFilter('learned')}>Yaad Cards · याद कार्ड</Button>
+      </div>
+
+      {readAll ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {levelWords.map((word) => (
+            <GlassCard key={word.id} className="space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div><p className="text-xl font-bold">{word.word}</p><p className="text-xs text-muted-foreground">{word.partOfSpeech}</p></div>
+                <button type="button" onClick={() => saveWord(word)} className="text-xs font-semibold text-primary">{saved.has(word.id) ? '★ Saved' : '☆ Save'}</button>
+              </div>
+              <div className="space-y-2 rounded-xl border bg-muted/20 p-3 text-sm">
+                <p><span className="font-semibold text-primary">Meaning:</span> {word.meaning}</p>
+                <p><span className="font-semibold text-primary">हिंदी:</span> {word.hindiMeaning}</p>
+                <p><span className="font-semibold text-primary">Synonyms:</span> {word.synonyms.length ? word.synonyms.join(', ') : '—'}</p>
+                <p><span className="font-semibold text-primary">Example:</span> {word.exampleSentence}</p>
+              </div>
+              <Button variant={learned.has(word.id) ? 'gradient' : 'outline'} size="sm" onClick={() => learnWord(word)}>
+                {learned.has(word.id) ? 'Yaad hai ✓' : 'Yaad kar liya'}
+              </Button>
+            </GlassCard>
+          ))}
+        </div>
+      ) : practiceWord ? (
+        <GlassCard className="space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{level.toUpperCase()}</span>
+            <span className="text-xs text-muted-foreground">{practiceIndex % levelWords.length + 1} / {levelWords.length}</span>
+          </div>
+          <button type="button" onClick={() => setRevealed(!revealed)} className="w-full rounded-2xl border bg-muted/10 p-6 text-left transition-colors hover:bg-muted/20">
+            <p className="text-3xl font-bold">{practiceWord.word}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{practiceWord.partOfSpeech}</p>
+            {revealed ? (
+              <div className="mt-5 space-y-3 text-sm">
+                <p><span className="font-semibold text-primary">English Meaning:</span> {practiceWord.meaning}</p>
+                <p><span className="font-semibold text-primary">हिंदी अर्थ:</span> {practiceWord.hindiMeaning}</p>
+                <p><span className="font-semibold text-primary">Synonyms:</span> {practiceWord.synonyms.length ? practiceWord.synonyms.join(', ') : '—'}</p>
+                <p><span className="font-semibold text-primary">Example:</span> {practiceWord.exampleSentence}</p>
+              </div>
+            ) : (
+              <p className="mt-5 text-sm text-muted-foreground">Tap card to flip · कार्ड पलटने के लिए टैप करें</p>
+            )}
+          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={() => saveWord(practiceWord)}>{saved.has(practiceWord.id) ? '★ Saved · सेव' : '☆ Save · सेव'}</Button>
+            <Button variant={learned.has(practiceWord.id) ? 'gradient' : 'outline'} onClick={() => learnWord(practiceWord)}>{learned.has(practiceWord.id) ? 'Yaad hai ✓' : 'Yaad hai · याद'}</Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={goPrevious} disabled={levelWords.length < 2}>← Previous</Button>
+            <Button variant="gradient" onClick={goNext} disabled={levelWords.length < 2}>Next →</Button>
+          </div>
+        </GlassCard>
+      ) : null}
+
+      {levelWords.length >= 4 && !readAll && (
+        <GlassCard className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div><p className="font-semibold">Quick Quiz · त्वरित क्विज़</p><p className="text-xs text-muted-foreground">4 options mein sahi meaning chunein।</p></div>
+            <Button size="sm" variant="outline" onClick={startQuiz}>Quiz shuru karein</Button>
+          </div>
+          {quiz && <div className="space-y-3 rounded-xl border bg-muted/20 p-4"><p className="font-semibold">{quiz.word.word}</p><div className="grid gap-2 sm:grid-cols-2">{quiz.options.map((option, index) => { const correct = option === quiz.word.meaning; const selected = quizAnswer === index; const state = quizAnswer === null ? (selected ? 'border-primary bg-primary/10' : 'hover:bg-muted/40') : (correct ? 'border-emerald-500/40 bg-emerald-500/10' : selected ? 'border-red-500/40 bg-red-500/10' : ''); return <button key={quiz.word.id + '-' + index} type="button" onClick={() => setQuizAnswer(index)} disabled={quizAnswer !== null} className={cn('rounded-lg border p-3 text-left text-sm transition-colors', state)}>{option}</button>; })}</div>{quizAnswer !== null && <p className={cn('text-sm font-medium', quiz.options[quizAnswer] === quiz.word.meaning ? 'text-emerald-600' : 'text-red-600')}>{quiz.options[quizAnswer] === quiz.word.meaning ? 'Sahi jawab! 🎉' : 'Sahi meaning: ' + quiz.word.meaning}</p>}</div>}
+        </GlassCard>
+      )}
     </div>
-    <GlassCard className="grid grid-cols-2 gap-3 sm:grid-cols-3"><div><p className="text-xs text-muted-foreground">Total · कुल</p><p className="text-xl font-bold">{levelWords.length}</p></div><div><p className="text-xs text-muted-foreground">Learned · याद</p><p className="text-xl font-bold">{learnedCount}</p></div><div><p className="text-xs text-muted-foreground">Remaining · बाकी</p><p className="text-xl font-bold">{Math.max(0, levelWords.length - learnedCount)}</p></div></GlassCard>
-    {practiceWord && <GlassCard className="space-y-4"><div className="flex items-center justify-between gap-2"><span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{level.toUpperCase()}</span><span className="text-xs text-muted-foreground">{practiceIndex % levelWords.length + 1} / {levelWords.length}</span></div>
-      <div><p className="text-2xl font-bold">{practiceWord.word}</p><p className="text-xs text-muted-foreground">{practiceWord.partOfSpeech}</p></div>
-      {revealed ? <div className="space-y-3 rounded-xl border bg-muted/20 p-4"><div><p className="text-xs font-semibold text-primary">English Meaning</p><p className="text-sm">{practiceWord.meaning}</p></div><div><p className="text-xs font-semibold text-primary">हिंदी अर्थ</p><p className="text-sm">{practiceWord.hindiMeaning}</p></div><div><p className="text-xs font-semibold text-primary">Synonyms</p><p className="text-sm">{practiceWord.synonyms.length ? practiceWord.synonyms.join(', ') : '—'}</p></div><div><p className="text-xs font-semibold text-primary">Example</p><p className="text-sm leading-6">{practiceWord.exampleSentence}</p></div></div> : <Button variant="outline" className="w-full" onClick={() => setRevealed(true)}>Meaning dekhein · अर्थ देखें</Button>}
-      <div className="grid gap-2 sm:grid-cols-2"><Button variant="gradient" onClick={() => learnWord(practiceWord)} disabled={learned.has(practiceWord.id)}><CheckCircle2 className="h-4 w-4" />{learned.has(practiceWord.id) ? 'Yaad hai ✓' : 'Yaad hai'}</Button><Button variant="outline" onClick={() => setRevealed(false)}>Dobara dekhna</Button></div>
-    </GlassCard>}
-    {levelWords.length >= 4 && <GlassCard className="space-y-3"><div className="flex items-center justify-between gap-3"><div><p className="font-semibold">Quick Quiz · त्वरित क्विज़</p><p className="text-xs text-muted-foreground">4 options mein sahi meaning chunein।</p></div><Button size="sm" variant="outline" onClick={startQuiz}>Quiz shuru karein</Button></div>
-      {quiz && <div className="space-y-3 rounded-xl border bg-muted/20 p-4"><p className="font-semibold">{quiz.word.word}</p><div className="grid gap-2 sm:grid-cols-2">{quiz.options.map((option, index) => { const correct = option === quiz.word.meaning; const selected = quizAnswer === index; const state = quizAnswer === null ? (selected ? 'border-primary bg-primary/10' : 'hover:bg-muted/40') : (correct ? 'border-emerald-500/40 bg-emerald-500/10' : selected ? 'border-red-500/40 bg-red-500/10' : ''); return <button key={quiz.word.id + '-' + index} type="button" onClick={() => setQuizAnswer(index)} disabled={quizAnswer !== null} className={cn('rounded-lg border p-3 text-left text-sm transition-colors', state)}>{option}</button>; })}</div>{quizAnswer !== null && <p className={cn('text-sm font-medium', quiz.options[quizAnswer] === quiz.word.meaning ? 'text-emerald-600' : 'text-red-600')}>{quiz.options[quizAnswer] === quiz.word.meaning ? 'Sahi jawab! 🎉' : 'Sahi meaning: ' + quiz.word.meaning}</p>}</div>}
-    </GlassCard>}
-  </div>;
+  );
 }
 
 function SessionHistory({ title, sessions }: { title: string; sessions: { id: string; createdAt: number; prompt: string; score: number; onOpen: () => void }[] }) {
