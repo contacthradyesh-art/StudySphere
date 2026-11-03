@@ -75,3 +75,11 @@
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
   .safe-top { padding-top: env(safe-area-inset-top); }
 }
+
+/* Local system-font fallbacks keep the journal editor reliable in offline and production builds. */
+@layer components {
+  .diary-font-classic { font-family: "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive; }
+  .diary-font-handwriting { font-family: "Comic Sans MS", "Segoe Print", "Bradley Hand", cursive; }
+  .diary-font-cursive { font-family: "Chalkboard", "Comic Sans MS", cursive; }
+  .diary-font-elegant { font-family: "Brush Script MT", "Segoe Script", "Apple Chancery", cursive; }
+}
