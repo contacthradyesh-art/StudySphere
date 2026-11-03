@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Patrick_Hand, Caveat, Kalam, Dancing_Script } from 'next/font/google';
+// Use local system handwriting fallbacks to keep production builds independent of Google Fonts.
 import { BookOpenText, Feather, Flame, Shuffle } from 'lucide-react';
 import { GlassCard } from '@/components/shared/glass-card';
 import { cn } from '@/lib/utils';
@@ -10,10 +10,10 @@ import { cn } from '@/lib/utils';
 // ---------------------------------------------------------------------------
 // Handwriting fonts — loaded once, swapped instantly via class name.
 // ---------------------------------------------------------------------------
-const patrickHand = Patrick_Hand({ subsets: ['latin'], weight: '400', display: 'swap' });
-const caveat = Caveat({ subsets: ['latin'], weight: ['500', '700'], display: 'swap' });
-const kalam = Kalam({ subsets: ['latin'], weight: ['300', '400', '700'], display: 'swap' });
-const dancingScript = Dancing_Script({ subsets: ['latin'], weight: ['500', '700'], display: 'swap' });
+const patrickHand = { className: 'diary-font-classic' };
+const caveat = { className: 'diary-font-handwriting' };
+const kalam = { className: 'diary-font-cursive' };
+const dancingScript = { className: 'diary-font-elegant' };
 
 type WritingStyleId = 'classic' | 'handwriting' | 'cursive' | 'elegant';
 
