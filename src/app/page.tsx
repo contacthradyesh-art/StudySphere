@@ -4,7 +4,7 @@ import { ThemeToggle } from '@/components/shared/theme-toggle';
 import {
   ArrowRight, ArrowUpRight, BookOpen, BrainCircuit, CalendarDays, Check,
   GraduationCap, Layers3, LineChart, ShieldCheck, Sparkles, Target, Timer,
-  Trophy, Users, Zap,
+  Trophy, Zap,
 } from 'lucide-react';
 
 const paths = [
@@ -19,7 +19,7 @@ const pillars = [
   { icon: Layers3, title: 'Remember what you learn', text: 'Keep notes, make flashcards and return to important concepts with spaced revision.' },
   { icon: BrainCircuit, title: 'AI study support', text: 'Get explanations, summaries and study material when you need a clearer way forward.' },
   { icon: LineChart, title: 'Progress that means something', text: 'Track completed work, focus time, test performance and consistency over time.' },
-  { icon: Users, title: 'Study with others', text: 'Join study rooms, stay accountable and make focused learning feel less lonely.' },
+  { icon: Target, title: 'Build consistency', text: 'Turn small daily goals into steady progress with habits, revision and a clear next step.' },
 ];
 
 const steps = [

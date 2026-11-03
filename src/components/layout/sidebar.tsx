@@ -5,22 +5,23 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, CalendarCheck, Timer, ShieldCheck, NotebookPen,
-  GraduationCap, Layers, Landmark, Languages, Settings, Users, Trophy
+  GraduationCap, Layers, Landmark, Languages, Settings, BookOpen, Newspaper, BrainCircuit
 } from 'lucide-react';
 
 const NAV = [
   { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-  { href: '/dashboard/community', label: 'Study Together', icon: Users },
   { href: '/dashboard/planner', label: 'Planner', icon: CalendarCheck },
   { href: '/dashboard/mock-tests', label: 'Mock Tests', icon: GraduationCap },
   { href: '/dashboard/pomodoro', label: 'Pomodoro', icon: Timer },
   { href: '/dashboard/focus', label: 'Focus Shield', icon: ShieldCheck },
   { href: '/dashboard/notes', label: 'Notes', icon: NotebookPen },
   { href: '/dashboard/flashcards', label: 'Flashcards', icon: Layers },
-  { href: '/dashboard/ai', label: 'AI Doubt Solver', icon: Landmark },
+  { href: '/dashboard/ai', label: 'AI Study Assistant', icon: BrainCircuit },
+  { href: '/dashboard/syllabus', label: 'Syllabus', icon: BookOpen },
+  { href: '/dashboard/mission-ias', label: 'Mission IAS', icon: Landmark },
+  { href: '/dashboard/mission-ias/current-affairs', label: 'Current Affairs', icon: Newspaper },
   { href: '/dashboard/english-lab', label: 'English Lab', icon: Languages },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
-  { href: '/dashboard/achievements', label: 'Achievements', icon: Trophy },
 ];
 
 export function Sidebar() {
@@ -41,7 +42,7 @@ export function Sidebar() {
       </nav>
       <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">StudySphere India</p>
-        <p className="mt-1 text-xs text-muted-foreground">One place to plan, focus and study together.</p>
+        <p className="mt-1 text-xs text-muted-foreground">One place to plan, focus and learn.</p>
       </div>
     </aside>
   );

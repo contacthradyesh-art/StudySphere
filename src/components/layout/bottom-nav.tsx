@@ -2,13 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, CalendarCheck, Timer, StickyNote } from 'lucide-react';
+import { LayoutDashboard, CalendarCheck, Timer, StickyNote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MoreSheet } from '@/components/layout/more-sheet';
 
 const BOTTOM_NAV = [
   { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-  { href: '/dashboard/community', label: 'Together', icon: Users },
   { href: '/dashboard/planner', label: 'Planner', icon: CalendarCheck },
   { href: '/dashboard/pomodoro', label: 'Focus', icon: Timer },
   { href: '/dashboard/notes', label: 'Notes', icon: StickyNote },
