@@ -7,48 +7,38 @@ import { cn } from '@/lib/utils';
 import {
   GraduationCap, ShieldCheck, BookOpen, BookHeart, Layers, Sparkles,
   MoreHorizontal, X, Landmark, Languages, CalendarDays, Timer,
-  Library, Bookmark, BarChart3, Settings, Target, Newspaper,
-  PenLine, Brain, Map, Mic2, History, ClipboardCheck, TrendingUp,
-  Users, UserRound, Bell, Trophy, Home, StickyNote,
+  Library, Bookmark, BarChart3, Settings, Newspaper,
+  PenLine, Brain, Map, Mic2, TrendingUp, Home, StickyNote, History,
 } from 'lucide-react';
 
 const SECTIONS = [
   { title: 'Main', items: [
     { href: '/dashboard', label: 'Home', icon: Home },
-    { href: '/dashboard/community', label: 'Study Together', icon: Users },
-    { href: '/dashboard/community/discover', label: 'Find Students', icon: UserRound },
-    { href: '/dashboard/community/notifications', label: 'Notifications', icon: Bell },
-    { href: '/dashboard/planner', label: 'Life Planner', icon: CalendarDays },
+    { href: '/dashboard/planner', label: 'Planner', icon: CalendarDays },
     { href: '/dashboard/pomodoro', label: 'Pomodoro', icon: Timer },
+    { href: '/dashboard/focus', label: 'Focus Shield', icon: ShieldCheck },
   ]},
   { title: 'Study', items: [
     { href: '/dashboard/mission-ias', label: 'Mission IAS', icon: Landmark },
+    { href: '/dashboard/mission-ias/current-affairs', label: 'Current Affairs', icon: Newspaper },
     { href: '/dashboard/mock-tests', label: 'Mock Tests', icon: GraduationCap },
     { href: '/dashboard/syllabus', label: 'Syllabus', icon: BookOpen },
     { href: '/dashboard/flashcards', label: 'Flashcards', icon: Layers },
-    { href: '/dashboard/ai', label: 'AI Doubt Solver', icon: Sparkles },
+    { href: '/dashboard/ai', label: 'AI Study Assistant', icon: Sparkles },
     { href: '/dashboard/english-lab', label: 'English Lab', icon: Languages },
     { href: '/dashboard/notes', label: 'Notes', icon: StickyNote },
-    { href: '/dashboard/mission-ias/current-affairs', label: 'Current Affairs', icon: Newspaper },
-    { href: '/dashboard/mission-ias/answer-writing', label: 'Answer Writing', icon: PenLine },
-    { href: '/dashboard/mission-ias/pyq-intelligence', label: 'PYQ Intelligence', icon: Brain },
+    { href: '/dashboard/mission-ias/daily-answer-writing', label: 'Answer Writing', icon: PenLine },
+    { href: '/dashboard/mission-ias/pyq-explorer', label: 'PYQ Explorer', icon: Brain },
     { href: '/dashboard/mission-ias/map-practice', label: 'Map Practice', icon: Map },
-    { href: '/dashboard/mission-ias/interview', label: 'Interview Prep', icon: Mic2 },
+    { href: '/dashboard/mission-ias/interview-room', label: 'Interview Prep', icon: Mic2 },
   ]},
-  { title: 'Productivity & Resources', items: [
-    { href: '/dashboard/focus', label: 'Focus Shield', icon: ShieldCheck },
+  { title: 'Resources', items: [
     { href: '/dashboard/journal', label: 'Journal', icon: BookHeart },
-    { href: '/dashboard/achievements', label: 'Achievements', icon: Target },
     { href: '/dashboard/analytics', label: 'Analytics', icon: TrendingUp },
     { href: '/dashboard/mission-ias/digital-library', label: 'Digital Library', icon: Library },
     { href: '/dashboard/mission-ias/bookmarks', label: 'Bookmarks', icon: Bookmark },
-    { href: '/dashboard/mission-ias/reports-indices', label: 'Reports', icon: BarChart3 },
-    { href: '/dashboard/mission-ias/revision', label: 'Revision Hub', icon: History },
-    { href: '/dashboard/mission-ias/tests', label: 'Test History', icon: ClipboardCheck },
-    { href: '/dashboard/community/profile', label: 'My Profile', icon: UserRound },
-    { href: '/dashboard/community/following', label: 'Connections', icon: Users },
-    { href: '/dashboard/community/leaderboard', label: 'Streaks', icon: Trophy },
-    { href: '/dashboard/community/manage', label: 'Host Tools', icon: Settings },
+    { href: '/dashboard/mission-ias/reports-indices', label: 'Reports & Indices', icon: BarChart3 },
+    { href: '/dashboard/mission-ias/revision-engine', label: 'Revision Hub', icon: History },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
   ]},
 ];
@@ -66,7 +56,7 @@ export function MoreSheet() {
           <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={() => setOpen(false)} />
           <div className="safe-bottom absolute bottom-0 left-0 right-0 max-h-[86vh] overflow-y-auto rounded-t-[26px] border-t border-border bg-background p-4 pb-8 shadow-2xl">
             <div className="sticky top-0 z-10 mb-4 flex items-center justify-between bg-background pb-2">
-              <div><h3 className="text-lg font-semibold">All features</h3><p className="text-xs text-muted-foreground">All available StudySphere tools</p></div>
+              <div><h3 className="text-lg font-semibold">Study tools</h3><p className="text-xs text-muted-foreground">Your essential learning workspace</p></div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Close more menu" className="rounded-xl p-2 hover:bg-muted"><X className="h-5 w-5 text-muted-foreground" /></button>
             </div>
             <div className="space-y-6">

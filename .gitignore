@@ -13,3 +13,4 @@ next-env.d.ts
 *.log
 *.tsbuildinfo
 scripts/vocabulary-audit-report.json
+.idea/
