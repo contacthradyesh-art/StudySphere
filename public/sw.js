@@ -1,47 +1,76 @@
+/* StudySphere service worker: cache public static assets only. */
+const CACHE = 'studysphere-static-v2';
+const OWNED_CACHE_PREFIX = 'studysphere-';
+const APP_SHELL = ['/manifest.webmanifest'];
 
-/* StudySphere service worker: offline app shell + notification handling. */
-const CACHE = 'studysphere-v1';
-const APP_SHELL = ['/', '/dashboard', '/manifest.webmanifest'];
- 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then((cache) => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
   );
 });
- 
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys
+          .filter((key) => key.startsWith(OWNED_CACHE_PREFIX) && key !== CACHE)
+          .map((key) => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
   );
 });
- 
-/* Network-first for navigations (fresh content), cache fallback when offline. */
+
+/*
+ * Never cache HTML navigations or API responses. In particular, dashboard
+ * pages can contain private student data and must always be fetched online.
+ * Only cache public, same-origin static assets for an offline-friendly shell.
+ */
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
+
   const url = new URL(request.url);
-  if (url.pathname.startsWith('/_next/') || url.pathname.startsWith('/api/')) return;
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(request, copy));
-          return res;
-        })
-        .catch(() => caches.match(request).then((r) => r || caches.match('/dashboard')))
-    );
-    return;
-  }
-  event.respondWith(caches.match(request).then((cached) => cached || fetch(request)));
+  if (url.origin !== self.location.origin) return;
+  if (request.mode === 'navigate') return;
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_next/data/')) return;
+
+  const isPublicStaticAsset =
+    request.destination === 'image' ||
+    request.destination === 'font' ||
+    request.destination === 'style' ||
+    request.destination === 'script' ||
+    url.pathname.startsWith('/icons/') ||
+    url.pathname === '/manifest.webmanifest' ||
+    url.pathname === '/favicon.ico';
+
+  if (!isPublicStaticAsset) return;
+
+  event.respondWith(
+    caches.open(CACHE).then(async (cache) => {
+      const cached = await cache.match(request);
+      if (cached) return cached;
+
+      const response = await fetch(request);
+      if (response.ok && response.type === 'basic') {
+        await cache.put(request, response.clone());
+      }
+      return response;
+    })
+  );
 });
- 
+
 /* Receive push payloads (when FCM/web-push is wired server-side). */
 self.addEventListener('push', (event) => {
   let data = { title: 'StudySphere', body: 'Time to study!' };
-  try { if (event.data) data = event.data.json(); } catch { /* keep default */ }
+  try {
+    if (event.data) data = event.data.json();
+  } catch {
+    /* Keep the default notification. */
+  }
+
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
@@ -51,9 +80,8 @@ self.addEventListener('push', (event) => {
     })
   );
 });
- 
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(self.clients.openWindow('/dashboard'));
 });
- 

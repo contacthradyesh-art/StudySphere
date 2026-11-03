@@ -7,9 +7,13 @@ on:
       - fix/focus-shield-apk-build
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,6 +34,24 @@ jobs:
       - name: Install web dependencies
         run: npm ci
 
+      # Capacitor requires its configured webDir to exist before sync.
+      # The Android app loads the hosted StudySphere site at runtime.
+      - name: Prepare Capacitor web directory
+        run: |
+          mkdir -p out
+          cat > out/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>StudySphere</title>
+            </head>
+            <body>Loading StudySphere…</body>
+          </html>
+          HTML
+          test -s out/index.html
+
       - name: Sync Capacitor Android
         run: npx cap sync android
 
@@ -39,6 +61,9 @@ jobs:
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
+
+      - name: Verify APK exists
+        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
